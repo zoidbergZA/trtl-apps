@@ -1,0 +1,13 @@
+<app-top-bar></app-top-bar>
+<mat-sidenav-container class="app-container">
+  <mat-sidenav  mode="side"
+                [opened]="showSideNav"
+                class="app-sidenav"
+                fixedTopGap=0
+                fixedBottomGap=0>
+    <project-sidenav [appId]="appId"></project-sidenav>
+  </mat-sidenav>
+  <mat-sidenav-content fixedInViewport>
+    <router-outlet></router-outlet>
+  </mat-sidenav-content>
+</mat-sidenav-container>

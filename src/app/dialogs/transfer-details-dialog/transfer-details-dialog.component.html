@@ -1,0 +1,30 @@
+<h3>Transfer details</h3>
+<div *ngIf="transfer$ | async as transfer" class="container">
+  <table>
+    <tr>
+      <td class="table-key">Transfer ID</td>
+      <td class="table-value">
+        <copy-string-box [data]="transfer?.id"></copy-string-box>
+      </td>
+    </tr>
+    <tr>
+      <td class="table-key">Sender ID</td>
+      <td class="table-value">
+        <copy-string-box [data]="transfer?.senderId"></copy-string-box>
+      </td>
+    </tr>
+    <tr>
+      <td class="table-key">Timestamp</td>
+      <td class="table-value">{{ transfer?.timestamp | date: 'short' }}</td>
+    </tr>
+    <tr *ngFor="let recipient of transfer?.recipients">
+      <td class="table-key">Recipient</td>
+      <td class="table-value">{{ recipient.amount | TRTL }} <span class="recipient-label"> user ID: </span>
+        <span class="code-font"> {{ recipient.userId }}</span>
+      </td>
+    </tr>
+  </table>
+</div>
+<div style="display: flex; justify-content: flex-end">
+  <button mat-flat-button (click)="onCloseClick()">close</button>
+</div>

@@ -1,0 +1,25 @@
+import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { WithdrawalsViewComponent } from './withdrawals-view.component';
+
+describe('WithdrawalsViewComponent', () => {
+  let component: WithdrawalsViewComponent;
+  let fixture: ComponentFixture<WithdrawalsViewComponent>;
+
+  beforeEach(async(() => {
+    TestBed.configureTestingModule({
+      declarations: [ WithdrawalsViewComponent ]
+    })
+    .compileComponents();
+  }));
+
+  beforeEach(() => {
+    fixture = TestBed.createComponent(WithdrawalsViewComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});

@@ -1,0 +1,53 @@
+<div class="page-content">
+  <h2 class="center-text">Register</h2>
+  <div class="container">
+    <mat-card>
+      <mat-card-content>
+        <div *ngIf="!working">
+          <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+            <div>
+              <div>
+                <mat-form-field class="form-field">
+                  <input matInput
+                    type="email"
+                    placeholder="e-mail"
+                    formControlName="email">
+                </mat-form-field>
+              </div>
+              <div>
+                <mat-form-field class="form-field">
+                  <input matInput
+                    minlength="6"
+                    type="password"
+                    placeholder="password"
+                    formControlName="password">
+                </mat-form-field>
+              </div>
+              <div>
+                <mat-form-field class="form-field">
+                  <input matInput
+                    minlength="6"
+                    type="password"
+                    placeholder="confirm password"
+                    formControlName="confirmPassword">
+                </mat-form-field>
+              </div>
+            </div>
+            <div>
+              <p class="error-text">{{ (status$ | async) }}</p>
+            </div>
+            <div class="center-text">
+              <button mat-stroked-button
+                class="button"
+                type="submit"
+                [disabled]="!form.valid || !checkPasswordMatch()">create account</button>
+            </div>
+          </form>
+        </div>
+        <div *ngIf="working">
+          <mat-spinner diameter="64"></mat-spinner>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

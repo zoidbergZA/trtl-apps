@@ -1,0 +1,67 @@
+<div class="api-top-panel">
+  <div>
+    <button *ngIf="!creatingUser"
+      class="create-user"
+      mat-flat-button
+      color="accent"
+      (click)="createAppUser()"
+    >create new user</button>
+    <mat-spinner *ngIf="creatingUser" diameter="32"></mat-spinner>
+  </div>
+  <div class="api-search-container">
+    <search-box (searchChanged)="onSearchValueChanged($event)"></search-box>
+  </div>
+</div>
+<div class="api-table-container">
+  <mat-table [dataSource]="appUsers$" class="mat-elevation-z8">
+    <!-- userId column -->
+    <ng-container matColumnDef="userId">
+      <mat-header-cell *matHeaderCellDef> User ID </mat-header-cell>
+      <mat-cell *matCellDef="let element" [class.deleted-user]="element.deleted">
+        <a
+          class="code-font"
+          [routerLink]="[]"
+          (click)="userDetailsClick(element.userId)">{{element.userId}}</a>
+        <span *ngIf="element.deleted" class="postfix">(deleted)</span>
+      </mat-cell>
+    </ng-container>
+    <!-- createdAt column -->
+    <ng-container matColumnDef="createdAt">
+      <mat-header-cell *matHeaderCellDef> Created date </mat-header-cell>
+      <mat-cell *matCellDef="let element">
+        <span>{{element.createdAt | date: 'short'}}</span>
+      </mat-cell>
+    </ng-container>
+    <!-- balance column -->
+    <ng-container matColumnDef="balance">
+      <mat-header-cell *matHeaderCellDef> Balance </mat-header-cell>
+      <mat-cell *matCellDef="let element">
+        <span> {{ element.balanceUnlocked | TRTL }} </span>
+        <span *ngIf="element.balanceLocked != 0"  class="unconfirmed-text"> (+{{ element.balanceLocked | TRTL:true }})</span>
+      </mat-cell>
+    </ng-container>
+    <!-- options column -->
+    <ng-container matColumnDef="options">
+      <mat-header-cell *matHeaderCellDef> Actions </mat-header-cell>
+      <mat-cell *matCellDef="let element">
+        <user-options [userId]="element.userId"
+          (withdraw)="userWithdraw($event)"
+          (transfer)="userTransfer($event)"
+          (setWithdrawAddress)="userSetWithdrawAddress($event)"
+          (delete)="userDelete($event)"
+          (reactivate)="userReactivate($event)">
+        </user-options>
+      </mat-cell>
+    </ng-container>
+    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+    <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+  </mat-table>
+  <div class="api-load-more">
+    <div *ngIf="showLoadMore && !fetching && searchValue === ''">
+      <button mat-flat-button color="accent" (click)="loadMoreClick()">load more</button>
+    </div>
+    <div *ngIf="fetching">
+      <mat-spinner diameter="32"></mat-spinner>
+    </div>
+  </div>
+</div>

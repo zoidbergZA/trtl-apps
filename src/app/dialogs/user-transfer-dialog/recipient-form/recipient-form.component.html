@@ -1,0 +1,16 @@
+<form class="form-content" [formGroup]="form">
+  <mat-form-field class="form-user" appearance="fill">
+    <input matInput
+      formControlName="receiverId"
+      type="text"
+      autocomplete="off"
+      placeholder="recipient ID">
+  </mat-form-field>
+  <mat-form-field class="form-amount input-amount" appearance="outline">
+    <input matInput currencyMask
+      formControlName="amount">
+  </mat-form-field>
+  <button *ngIf="removeable" (click)="onRemoveClick()" mat-button class="remove-button">
+    <mat-icon>close</mat-icon>
+  </button>
+</form>

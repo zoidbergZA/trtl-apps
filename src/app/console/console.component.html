@@ -1,0 +1,8 @@
+<div fxLayout=row fxLayoutAlign="center">
+  <div class="projects-container" fxLayout="row wrap" fxLayoutGap="20px">
+    <project-card class="project-card-holder" createNew=true></project-card>
+    <div *ngFor="let project of projects$ | async">
+      <project-card class="project-card-holder" [name]="project.name" [appId]="project.appId"></project-card>
+    </div>
+  </div>
+</div>

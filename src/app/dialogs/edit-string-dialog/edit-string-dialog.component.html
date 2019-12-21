@@ -1,0 +1,18 @@
+<h3>{{ title }}</h3>
+<form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+  <mat-form-field class="input-field">
+    <input matInput
+      formControlName="stringValue"
+      type="text"
+      autocomplete="off"
+      placeholder="enter value">
+  </mat-form-field>
+  <div>
+    <button mat-stroked-button
+      type="submit"
+      [disabled]="!form.valid">confirm</button>
+  </div>
+</form>
+<div style="display: flex; justify-content: flex-end">
+  <button mat-flat-button (click)="onCancelClick()">cancel</button>
+</div>

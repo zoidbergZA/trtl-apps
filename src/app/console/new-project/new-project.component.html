@@ -1,0 +1,43 @@
+<div class="page-content">
+  <h2 class="title-text">Create new app</h2>
+  <div class="container">
+    <mat-card>
+      <mat-card-content>
+        <div *ngIf="cautionAccepted">
+          <div class="busy-spinner" *ngIf="creatingApp">
+            <mat-spinner diameter="64"></mat-spinner>
+          </div>
+          <div *ngIf="!creatingApp">
+            <p *ngIf="errorMessage" class="error-text">{{ errorMessage }}</p>
+            <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+              <mat-form-field class="name-input">
+                <input matInput
+                  formControlName="appName"
+                  type="text"
+                  maxlength="24"
+                  minlength="3"
+                  autocomplete="off"
+                  placeholder="app name">
+              </mat-form-field>
+              <p><span class="warning-text">IMPORTANT:</span> This service is still in early testing stages, only create apps for testing purposes and use small amounts.</p>
+              <div>
+                <button mat-stroked-button
+                  type="submit"
+                  [disabled]="!form.valid">Create app</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div *ngIf="!cautionAccepted">
+          <p><span class="error-text">CAUTION: </span> This service is still in an early alpha stage
+          and should be used for experimental purposes only! Use of this service is strictly at your
+          own risk and TRTL apps does take any responsibilty for loss of funds.
+        </p>
+          <div class="agree-button">
+            <button mat-flat-button color="primary" (click)="onAgreeClick()">I Understand</button>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

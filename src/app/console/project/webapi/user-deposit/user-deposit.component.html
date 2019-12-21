@@ -1,0 +1,39 @@
+<div>
+  <div *ngIf="!busy">
+    <p *ngIf="errorMessage" class="error-text">error: {{ errorMessage }}</p>
+    <div *ngIf="!depositId" class="amount-box">
+      <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+        <div>
+          <mat-form-field class="amount-input">
+            <mat-label>Amount</mat-label>
+            <input matInput currencyMask
+              formControlName="amount">
+          </mat-form-field>
+        </div>
+        <div>
+          <mat-form-field class="form-input long-input">
+            <mat-label>callback URL (optional)</mat-label>
+            <input matInput type="text" formControlName="callbackUrl">
+          </mat-form-field>
+        </div>
+        <div>
+          <button mat-stroked-button
+            type="submit"
+            [disabled]="!form.valid">request deposit</button>
+        </div>
+      </form>
+      <div style="display: flex; justify-content: flex-end">
+        <button mat-flat-button (click)="onCancelClick()">cancel</button>
+      </div>
+    </div>
+    <div *ngIf="depositId">
+      <deposit-details [appId]="app?.appId" [depositId]="depositId"></deposit-details>
+      <div style="display: flex; justify-content: flex-end">
+        <button mat-flat-button (click)="onDoneClick()">done</button>
+      </div>
+    </div>
+  </div>
+  <div *ngIf="busy">
+    <mat-spinner diameter="64"></mat-spinner>
+  </div>
+</div>

@@ -1,0 +1,14 @@
+<div fxFlex="250px">
+  <mat-card appMaterialElevation class="card-holder" (click)="onCardClick()">
+    <mat-card-content>
+      <div *ngIf="createNew">
+        <p class="title-text">+ new app</p>
+      </div>
+      <div *ngIf="!createNew">
+        <p class="title-text">{{ name }}</p>
+        <p class="sub-text">app ID: </p>
+        <p class="sub-text">{{ appId }}</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

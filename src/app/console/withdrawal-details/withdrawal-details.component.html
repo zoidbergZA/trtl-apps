@@ -1,0 +1,51 @@
+<div *ngIf="withdrawal$ | async as withdrawal">
+  <table>
+    <tr>
+      <td class="table-key">Withdrawal ID</td>
+      <td class="table-value">
+        <copy-string-box [data]="withdrawal.id"></copy-string-box>
+      </td>
+    </tr>
+    <tr>
+      <td class="table-key">Date</td>
+      <td class="table-value">{{ withdrawal.timestamp | date: 'short' }}</td>
+    </tr>
+    <tr>
+      <td class="table-key">Last update</td>
+      <td class="table-value">{{ withdrawal.lastUpdate | date: 'short' }}</td>
+    </tr>
+    <tr>
+      <td class="table-key">Status</td>
+      <td class="table-value">{{ withdrawal.status }}<span *ngIf="withdrawal.failed"> (failed)</span></td>
+    </tr>
+    <tr>
+      <td class="table-key">Amount</td>
+      <td class="table-value">{{ withdrawal.amount | TRTL }}</td>
+    </tr>
+    <tr>
+      <td class="table-key">Fee</td>
+      <td class="table-value">{{ withdrawal.fee | TRTL }}</td>
+    </tr>
+    <tr>
+      <td class="table-key">Send address</td>
+      <td class="table-value">
+        <copy-string-box [data]="withdrawal.address"></copy-string-box>
+      </td>
+    </tr>
+    <tr>
+      <td class="table-key">Payment ID</td>
+      <td class="table-value">
+        <copy-string-box [data]="withdrawal.paymentId"></copy-string-box>
+      </td>
+    </tr>
+    <tr>
+      <td class="table-key">Tx hash</td>
+      <td class="table-value">
+        <span *ngIf="withdrawal.txHash">
+          <copy-string-box [data]="withdrawal.txHash"></copy-string-box>
+        </span>
+        <span *ngIf="!withdrawal.txHash">--</span>
+      </td>
+    </tr>
+  </table>
+</div>

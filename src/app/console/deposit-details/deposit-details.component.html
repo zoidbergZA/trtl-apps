@@ -1,0 +1,40 @@
+<div *ngIf="deposit$ | async as deposit">
+  <table>
+    <tr>
+      <td class="table-key">Deposit ID</td>
+      <td class="table-value"><copy-string-box [data]="deposit.id"></copy-string-box></td>
+    </tr>
+    <tr>
+      <td class="table-key">User ID</td>
+      <td class="table-value"><copy-string-box [data]="deposit.userId"></copy-string-box></td>
+    </tr>
+    <tr>
+      <td class="table-key">Tx hash</td>
+      <td class="table-value"><copy-string-box [data]="deposit.txHash"></copy-string-box></td>
+    </tr>
+    <tr>
+      <td class="table-key">Date</td>
+      <td class="table-value">{{ deposit.createdDate | date: 'short' }}</td>
+    </tr>
+    <tr>
+      <td class="table-key">Last update</td>
+      <td class="table-value">{{ deposit.lastUpdate | date: 'short' }}</td>
+    </tr>
+    <tr>
+      <td class="table-key">Status</td>
+      <td class="table-value">{{ deposit.status }}<span *ngIf="deposit.expired"> (expired)</span></td>
+    </tr>
+    <tr>
+      <td class="table-key">Amount</td>
+      <td class="table-value">{{ deposit.amount | TRTL }}</td>
+    </tr>
+    <tr *ngIf="deposit.cancelled">
+      <td class="table-key">cancelled</td>
+      <td class="table-value">{{ deposit.cancelled }}</td>
+    </tr>
+    <tr *ngIf="deposit.userCredited">
+      <td class="table-key">User credited</td>
+      <td class="table-value">{{ deposit.userCredited }}</td>
+    </tr>
+  </table>
+</div>

@@ -1,0 +1,30 @@
+<h3>Transfer</h3>
+<div class="container">
+  <div *ngIf="!busy">
+    <p *ngIf="errorMessage" class="error-text">error: {{ errorMessage }}</p>
+    <div *ngIf="!transfer">
+      <div *ngFor="let recipient of recipients">
+        <recipient-form
+          [recipient]=recipient
+          [removeable]="recipients.length > 1"
+          (remove)="removeRecipient($event)"
+          (recipientChange)="onRecipientChange($event)">
+        </recipient-form>
+      </div>
+      <button mat-stroked-button (click)="onAddRecipientClick()">+ recipient</button>
+    </div>
+    <div *ngIf="!busy && !transfer" class="send-button">
+      <button [disabled]="!isValid" mat-flat-button (click)="onSendClick()"><mat-icon>send</mat-icon> send</button>
+    </div>
+    <div *ngIf="transfer">
+      <p>Transfer successful!</p>
+      <p>transfer ID: {{ transfer?.id }}</p>
+    </div>
+    <div *ngIf="!busy" style="display: flex; justify-content: flex-end">
+      <button mat-flat-button (click)="onCloseClick()">close</button>
+    </div>
+  </div>
+  <div *ngIf="busy" class="busy-box">
+    <mat-spinner diameter="64"></mat-spinner>
+  </div>
+</div>

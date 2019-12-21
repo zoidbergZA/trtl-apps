@@ -1,0 +1,18 @@
+.container {
+  margin: auto;
+  padding: 20px 20px 20px 20px;
+  width: 650px;
+  // border: 1px solid grey;
+}
+.table-value {
+  max-width: 500px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+.no-webhook {
+  color: gray;
+  font-style: italic;
+}
+.adress-field {
+  font-family: 'Hack';
+}

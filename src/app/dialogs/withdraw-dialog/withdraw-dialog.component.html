@@ -1,0 +1,54 @@
+<h3>Withdraw</h3>
+<div>
+  <div *ngIf="!busy">
+    <table>
+      <tr>
+        <td class="table-key">User ID</td>
+        <td class="table-value">{{ userId }}</td>
+      </tr>
+      <tr>
+        <td class="table-key">Node fee</td>
+        <td class="table-value"><span *ngIf="fee">{{ fee | TRTL }}</span><span *ngIf="!fee">?</span></td>
+      </tr>
+    </table>
+    <p *ngIf="errorMessage" class="error-text">error: {{ errorMessage }}</p>
+    <div *ngIf="!withdrawalId">
+      <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+        <div>
+          <mat-form-field appearance="outline" class="input-amount">
+            <mat-label>Amount</mat-label>
+            <input matInput currencyMask
+              formControlName="amount">
+          </mat-form-field>
+        </div>
+        <div>
+          <mat-form-field class="form-input">
+            <mat-label>send address (optional)</mat-label>
+            <input matInput type="text" formControlName="sendAddress">
+          </mat-form-field>
+        </div>
+        <table *ngIf="total">
+            <tr>
+              <td class="table-key">Total</td>
+              <td class="table-value">{{ total | TRTL }}</td>
+            </tr>
+          </table>
+        <div>
+          <button mat-stroked-button
+            type="submit"
+            [disabled]="!form.valid">withdraw</button>
+        </div>
+      </form>
+    </div>
+    <div *ngIf="withdrawalId">
+      <p>Withdraw request successfully created.</p>
+      <p>withdrawal ID: {{ withdrawalId }}</p>
+    </div>
+  </div>
+  <div *ngIf="!busy" style="display: flex; justify-content: flex-end">
+    <button mat-flat-button (click)="onCloseClick()">close</button>
+  </div>
+  <div *ngIf="busy">
+    <mat-spinner diameter="64"></mat-spinner>
+  </div>
+</div>

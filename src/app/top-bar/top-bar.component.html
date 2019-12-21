@@ -1,0 +1,22 @@
+<mat-toolbar color="primary">
+  <button mat-button [routerLink]="['']" class="home-button">TRTL apps</button>
+  <button mat-button (click)="onGetStartedClick()">Getting started</button>
+  <button mat-button [routerLink]="['/docs']">Documentation</button>
+  <button mat-button (click)="onSupportClick()">Support</button>
+  <span class="fill-toolbar-space"></span>
+  <button mat-button (click)='onConsoleClick()'>Go to console</button>
+  <button *ngIf="!user" mat-button (click)='onSignInClick()'>Sign in</button>
+  <button *ngIf="user" mat-icon-button aria-label="user" [matMenuTriggerFor]="userMenu">
+    <mat-icon>account_circle</mat-icon>
+  </button>
+</mat-toolbar>
+
+<!-- <mat-menu #integrationsMenu="matMenu">
+  <button mat-menu-item (click)="onGetStartedHttpClick()">HTTP endpoints</button>
+  <button mat-menu-item (click)="onGetStartedNodeClick()">npm package</button>
+</mat-menu> -->
+
+<mat-menu #userMenu="matMenu">
+  <!-- <button mat-menu-item (click)="onAccountClick()">account</button> -->
+  <button mat-menu-item (click)="onSignOutClick()">sign out</button>
+</mat-menu>

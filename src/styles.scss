@@ -1,0 +1,163 @@
+
+// Custom Theming for Angular Material
+// For more information: https://material.angular.io/guide/theming
+@import '~@angular/material/theming';
+// Plus imports for other components in your app.
+
+// Include the common styles for Angular Material. We include this here so that you only
+// have to load a single css file for Angular Material in your app.
+// Be sure that you only ever include this mixin once!
+@include mat-core();
+
+$mat-turtlegreen: (
+    50 : #e4ece4,
+    100 : #bbcfbc,
+    200 : #8daf90,
+    300 : #5f8e63,
+    400 : #00853D,
+    500 : #00853D,
+    600 : #00853D,
+    700 : #00853D,
+    800 : #104213,
+    900 : #08310b,
+    A100 : #6bff74,
+    A200 : #38ff45,
+    A400 : #05ff15,
+    A700 : #00eb0f,
+    contrast: (
+        50 : #000000,
+        100 : #000000,
+        200 : #000000,
+        300 : #ffffff,
+        400 : #ffffff,
+        500 : #ffffff,
+        600 : #ffffff,
+        700 : #ffffff,
+        800 : #ffffff,
+        900 : #ffffff,
+        A100 : #000000,
+        A200 : #000000,
+        A400 : #000000,
+        A700 : #000000,
+    )
+);
+
+// Define the palettes for your theme using the Material Design palettes available in palette.scss
+// (imported above). For each palette, you can optionally specify a default, lighter, and darker
+// hue. Available color palettes: https://material.io/design/color/
+$leather-wallet-primary: mat-palette($mat-turtlegreen);
+$leather-wallet-accent: mat-palette($mat-blue);
+
+// The warn palette is optional (defaults to red).
+$leather-wallet-warn: mat-palette($mat-red);
+
+// Create the theme object (a Sass map containing all of the palettes).
+$leather-wallet-theme: mat-light-theme($leather-wallet-primary, $leather-wallet-accent, $leather-wallet-warn);
+
+// Include theme styles for core and each component used in your app.
+// Alternatively, you can import and @include the theme mixins for each component
+// that you are using.
+@include angular-material-theme($leather-wallet-theme);
+
+@font-face {
+  font-family: hack;
+  src: url(assets/fonts/Hack-Regular.ttf) format('truetype');
+}
+
+html, body { height: 100%; }
+
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+p {
+  line-height: 1.6em;
+}
+
+td {
+  padding-bottom: 12px;
+}
+
+.page-content {
+  margin-top: 20px;
+  margin-left: 40px;
+  margin-right: 40px;
+  max-width: 800px;
+  margin: auto;
+}
+
+.page-title {
+  font-size: 3em;
+  font-weight: lighter;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+.section-spacer {
+  margin-top: 40px;
+}
+
+.y-spacer {
+  margin-top: 40px;
+}
+
+.input-amount {
+  font-family: 'Hack';
+  font-size: 1.2em;
+}
+
+.center-text {
+  text-align: center;
+}
+.error-text {
+  color: red;
+}
+
+.unconfirmed-text {
+  font-style: italic;
+  color: gray;
+}
+
+.api-top-panel {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 20px 40px 0px 40px;
+}
+
+.api-search-container {
+  width: 350px;
+}
+
+.api-table-container {
+  margin: 20px 40px 40px 40px;
+  max-width: 1100px;
+}
+
+.api-load-more {
+  margin-top: 20px;
+}
+
+.table-key {
+  width: 110px;
+  color: gray;
+  font-size: 0.8em;
+}
+
+.table-value {
+  font-size: 0.8em;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.code-font {
+  font-family: 'Hack';
+}
+
+.code-block {
+  margin: 0 auto;
+  font-family: 'Hack';
+  text-align: left;
+  background: #f8f8f8;
+  border: 1px dotted rgb(228, 228, 228);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  max-width: 800px;
+}

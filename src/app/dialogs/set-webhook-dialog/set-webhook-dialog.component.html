@@ -1,0 +1,27 @@
+<h3>Set app webhook</h3>
+<div *ngIf="busy">
+  <mat-spinner diameter="64"></mat-spinner>
+</div>
+<div *ngIf="!busy">
+  <div *ngIf="errorMessage">
+    <p>{{ errorMessage }}</p>
+  </div>
+  <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+    <mat-form-field class="input-field">
+      <input matInput
+        formControlName="url"
+        type="url"
+        autocomplete="off"
+        placeholder="enter url">
+    </mat-form-field>
+    <button mat-stroked-button  class="confirm-button"
+      type="submit"
+      [disabled]="!form.valid"><mat-icon>done</mat-icon> confirm</button>
+  </form>
+  <button mat-stroked-button *ngIf="initialValue"
+    (click)="onDeleteClick()">
+    <mat-icon>clear</mat-icon> delete webhook</button>
+  <div style="display: flex; justify-content: flex-end">
+    <button mat-flat-button (click)="onCloseClick()">close</button>
+  </div>
+</div>

@@ -1,0 +1,41 @@
+<div class="api-top-panel">
+  <div class="api-search-container">
+    <search-box (searchChanged)="onSearchValueChanged($event)"></search-box>
+  </div>
+</div>
+<div class="table-container">
+  <div class="api-table-container">
+    <mat-table [dataSource]="transfers$" class="mat-elevation-z8">
+      <!-- transferId column -->
+      <ng-container matColumnDef="transferId">
+        <mat-header-cell *matHeaderCellDef> Transfer ID </mat-header-cell>
+        <mat-cell *matCellDef="let element">
+          <a class="code-font" [routerLink]="[]" (click)="onDetailsClick(element.id)">{{element.id}}</a>
+        </mat-cell>
+      </ng-container>
+      <!-- Date column -->
+      <ng-container matColumnDef="createdDate">
+        <mat-header-cell *matHeaderCellDef> Date </mat-header-cell>
+        <mat-cell *matCellDef="let element">
+          <span> {{ element.timestamp | date: 'short' }} </span>
+        </mat-cell>
+      </ng-container>
+      <!-- amount column -->
+      <ng-container matColumnDef="amount">
+        <mat-header-cell *matHeaderCellDef> Amount </mat-header-cell>
+        <mat-cell *matCellDef="let element">
+          <span> {{ getTotalAmount(element) | TRTL }} </span>
+        </mat-cell>
+      </ng-container>
+      <!-- recipients column -->
+      <ng-container matColumnDef="recipients">
+          <mat-header-cell *matHeaderCellDef> # Recipients </mat-header-cell>
+          <mat-cell *matCellDef="let element">
+            <span> {{ element.recipients?.length }} </span>
+          </mat-cell>
+        </ng-container>
+      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+    </mat-table>
+  </div>
+</div>

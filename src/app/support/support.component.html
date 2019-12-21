@@ -1,0 +1,22 @@
+<div class="page-content">
+  <mat-card class="y-spacer">
+    <mat-card-content>
+      <mat-card-title class="page-title">Support</mat-card-title>
+      <div class="section-spacer"></div>
+      <p>
+        You can contact us on twitter <a href="https://twitter.com/trtlapps" target="_blank">@trtlapps</a> or on
+        the TurtleCoin discord server.
+      </p>
+      <div class="section-spacer"></div>
+      <mat-card-title>Donate</mat-card-title>
+      <p>
+        If you would like to support the project, you can donate using the information below.
+        Every contribution is appreciated and helps further development!
+      </p>
+      <div class="qr-code">
+        <img [src]="donationQrCode" height="256" width="256">
+        <copy-string-box [data]="donationAddress"></copy-string-box>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,19 @@
+.table-container {
+  margin: 40px 40px 40px 40px;
+  max-width: 1300px;
+}
+.mat-column-depositId {
+  word-wrap: break-word;
+}
+.mat-column-createdDate {
+  flex: 0 0 20% !important;
+  width: 20% !important;
+}
+.mat-column-amount {
+  flex: 0 0 20% !important;
+  width: 20% !important;
+}
+.mat-column-status {
+  flex: 0 0 10% !important;
+  width: 10% !important;
+}

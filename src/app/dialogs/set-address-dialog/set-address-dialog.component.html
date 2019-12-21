@@ -1,0 +1,28 @@
+<h3>Set withdraw address</h3>
+<p *ngIf="currentAddress">current address: {{ currentAddress }}</p>
+<div>
+  <div *ngIf="!busy && !currentAddress">
+    <p *ngIf="errorMessage" class="error-text">error: {{ errorMessage }}</p>
+    <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+      <mat-form-field class="address-input">
+        <!-- <span matPrefix>address: &nbsp;</span> -->
+        <input matInput
+          formControlName="address"
+          type="text"
+          autocomplete="off"
+          placeholder="withdraw address">
+      </mat-form-field>
+      <div>
+        <button mat-stroked-button
+          type="submit"
+          [disabled]="!form.valid">set address</button>
+      </div>
+    </form>
+  </div>
+  <div *ngIf="!busy" style="display: flex; justify-content: flex-end">
+    <button mat-flat-button (click)="onCloseClick()">close</button>
+  </div>
+  <div *ngIf="busy">
+    <mat-spinner diameter="32"></mat-spinner>
+  </div>
+</div>

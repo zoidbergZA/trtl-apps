@@ -1,0 +1,45 @@
+<h3>User details</h3>
+<div *ngIf="appUser$ | async as user">
+  <table>
+    <tr>
+      <td class="table-key">User ID</td>
+      <td class="table-value">
+        <copy-string-box [data]="user?.userId"></copy-string-box>
+      </td>
+    </tr>
+    <tr>
+      <td class="table-key">Balance</td>
+      <td class="table-value">{{ user?.balanceUnlocked | TRTL }}
+        <span *ngIf="user?.balanceLocked !== 0"> ({{ user?.balanceLocked | TRTL }})</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="table-key">Created date</td>
+      <td class="table-value">{{ user?.createdAt | date: 'short' }}</td>
+    </tr>
+    <tr>
+      <td class="table-key">Deposit address</td>
+      <td class="table-value">
+        <copy-string-box [data]="user?.depositAddress"></copy-string-box>
+      </td>
+    </tr>
+    <tr>
+      <td class="table-key">Withdraw address</td>
+      <td class="table-value">
+        <span *ngIf="user?.withdrawAddress">
+          <copy-string-box [data]="user?.withdrawAddress"></copy-string-box>
+        </span>
+        <span *ngIf="!user?.withdrawAddress">--</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="table-key">Deposit QR code</td>
+      <td class="table-value">
+        <img [src]="user?.depositQrCode" height="256" width="256">
+      </td>
+    </tr>
+  </table>
+</div>
+<div style="display: flex; justify-content: flex-end">
+  <button mat-flat-button (click)="onCloseClick()">close</button>
+</div>
