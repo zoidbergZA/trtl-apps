@@ -217,7 +217,7 @@ export async function processUserWithdrawalUpdate(
     const [app, error] = await AppModule.getApp(oldState.appId);
 
     if (!app) {
-      console.error(error?.message);
+      console.error((error as ServiceError).message);
       return;
     }
 

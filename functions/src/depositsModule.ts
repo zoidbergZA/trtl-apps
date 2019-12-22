@@ -50,7 +50,7 @@ export async function processUserDepositUpdate(
   const [app, error] = await AppModule.getApp(oldState.appId);
 
   if (!app) {
-    console.error(`${error?.message}, skipping callback.`);
+    console.error((error as ServiceError).message);
     return;
   }
 
