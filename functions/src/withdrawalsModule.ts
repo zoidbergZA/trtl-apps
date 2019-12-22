@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 import * as WalletManager from './walletManager';
+import * as AppModule from './appModule';
 import { ServiceError } from './serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
 import { AppUser, AppUserUpdate, TurtleApp, Withdrawal, WithdrawalUpdate } from '../../shared/types';
@@ -213,15 +214,12 @@ export async function processUserWithdrawalUpdate(
   newState: Withdrawal): Promise<void> {
 
   if (oldState.status === 'confirming' && newState.status === 'completed') {
-    // TODO: refactor to get app tp appModule
-    const appDoc  = await admin.firestore().doc(`apps/${newState.appId}`).get();
+    const [app, error] = await AppModule.getApp(oldState.appId);
 
-    if (!appDoc.exists) {
-      console.error(`app with id: ${newState.appId} does not exist! skipping callback.`);
+    if (!app) {
+      console.error(error?.message);
       return;
     }
-
-    const app = appDoc.data() as TurtleApp;
 
     const callbackCode: CallbackCode = newState.failed ? 'withdrawal/failed' : 'withdrawal/succeeded';
 

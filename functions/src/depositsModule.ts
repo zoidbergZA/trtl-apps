@@ -47,16 +47,12 @@ export async function processUserDepositUpdate(
   oldState: Deposit,
   newState: Deposit): Promise<void> {
 
-  const appId   = oldState.appId;
-  // TODO: refactor to use getApp in appModule
-  const appDoc  = await admin.firestore().doc(`apps/${appId}`).get();
+  const [app, error] = await AppModule.getApp(oldState.appId);
 
-  if (!appDoc.exists) {
-    console.error(`app with id: ${appId} does not exist! skipping callback.`);
+  if (!app) {
+    console.error(`${error?.message}, skipping callback.`);
     return;
   }
-
-  const app = appDoc.data() as TurtleApp;
 
   if (oldState.status === 'confirming' && newState.status === 'completed') {
     if (newState.cancelled) {

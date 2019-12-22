@@ -44,10 +44,6 @@ export class OverviewComponent implements OnInit {
     });
   }
 
-  webhookInfoClick() {
-    console.log('todo: handle webhook info click');
-  }
-
   setWebHook() {
     if (!this.app) {
       return;

@@ -160,6 +160,5 @@ export async function updateDaemonInfo(): Promise<void> {
 
   // TODO: update daemon info: fee, selected node, etc...
 
-  // TODO: handle caase where node is switched
   return Promise.resolve();
 }
