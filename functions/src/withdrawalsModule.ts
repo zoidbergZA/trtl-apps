@@ -153,7 +153,12 @@ export async function updateWithdrawals(): Promise<void> {
 
   const transactions = serviceWallet.wallet
     .getTransactions(undefined, undefined, false)
-    .filter(tx => tx.blockHeight >= scanHeight);
+    .filter(tx => {
+      const transfers = Array.from(tx.transfers.values());
+
+      // tx must be above scan height and contain at least one negative amount transfer
+      return tx.blockHeight >= scanHeight && transfers.find(t => t < 0)
+    });
 
   const [walletHeight,,] = serviceWallet.wallet.getSyncStatus();
   const promises: Promise<any>[] = [];
