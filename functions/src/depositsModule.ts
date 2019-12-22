@@ -35,7 +35,12 @@ export async function updateDeposits(): Promise<void> {
 
   const transactions = serviceWallet.wallet
     .getTransactions(undefined, undefined, false)
-    .filter(tx => tx.blockHeight >= scanHeight);
+    .filter(tx => {
+      const transfers = Array.from(tx.transfers.values());
+
+      // tx must be above scan height and contain at least one positive amount transfer
+      return (tx.blockHeight >= scanHeight && transfers.find(t => t > 0));
+    });
 
   const deposits = await getAllDeposits(scanHeight);
 
