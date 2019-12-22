@@ -14,16 +14,15 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
     return [undefined, new ServiceError('service/master-wallet-info', 'Service already bootstrapped!')];
   }
 
-  // TODO: comment all these properties
   const serviceConfig: ServiceConfig = {
-    daemonHost:             'blockapi.turtlepay.io',
-    daemonPort:             443,
-    nodeFee:                10,
-    txScanDepth:            2 * 60 * 24 * 7, // scan txs up to aprox 7 days in the past
-    txConfirmations:        6,
-    withdrawTimoutBlocks:   20,
-    waitForSyncTimeout:     20000,
-    serviceHalted:          false
+    daemonHost:             'blockapi.turtlepay.io',  // Default daemon to connect to
+    daemonPort:             443,                      // Port number of the daemon
+    nodeFee:                10,                       // Fee to use when sending transaction to the node
+    txScanDepth:            2 * 60 * 24 * 7,          // Scan transactions up to aprox 7 days in the past
+    txConfirmations:        6,                        // Amount of blocks needed to confirm a deposit/withdrawal
+    withdrawTimoutBlocks:   20,                       // Amount of blocks since a withdrawal tx was lost before it is considered failed
+    waitForSyncTimeout:     20000,                    // Max time is miliseconds for the master wallet to sync
+    serviceHalted:          false                     // If true, the service is disables and doesn't process transactions
   }
 
   // // TODO: set default node list in firestore
