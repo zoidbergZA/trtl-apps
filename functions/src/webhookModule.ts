@@ -72,12 +72,10 @@ export async function createCallback(app: TurtleApp, code: CallbackCode, data: a
 
   if (app.webhook) {
     try {
-      const headers = {
-        'x-trltapps-signature': generateRequestSignature(requestBody, app.appSecret)
-      }
+      const headers   = createRequestHeaders(requestBody, app.appSecret);
+      const response  = await axios.default.post(app.webhook, requestBody, { headers: headers });
 
-      const response = await axios.default.post(app.webhook, requestBody, { headers: headers });
-      console.log('webhook post response: ' + response.status);
+      console.log(`webhook POST response: ${response.status}`);
 
       const updateObject: CallbackUpdate = {
         delivered: true,
@@ -136,12 +134,10 @@ async function retryCallback(callback: Callback): Promise<void> {
   const attemptNumber = callback.attempts + 1;
 
   try {
-    const headers = {
-      'x-trltapps-signature': generateRequestSignature(requestBody, app.appSecret)
-    }
+    const headers   = createRequestHeaders(requestBody, app.appSecret);
+    const response  = await axios.default.post(callback.webhook, requestBody, { headers: headers });
 
-    const response = await axios.default.post(callback.webhook, requestBody, { headers: headers });
-    console.log('webhook post response: ' + response.status);
+    console.log(`webhook POST response: ${response.status}`);
 
     const updateObject: CallbackUpdate = {
       delivered: true,
@@ -150,8 +146,6 @@ async function retryCallback(callback: Callback): Promise<void> {
 
     await callbackDoc.update(updateObject);
   } catch (error) {
-    console.log('error sending callback.');
-
     const nextAttemptDate = getNextAttemptDate(attemptNumber + 1);
 
     const updateObject: CallbackUpdate = {
@@ -166,6 +160,14 @@ async function retryCallback(callback: Callback): Promise<void> {
 
     await callbackDoc.update(updateObject);
   }
+}
+
+function createRequestHeaders(requestBody: any, appSecret: string) {
+  const headers = {
+    'x-trtl-apps-signature': generateRequestSignature(requestBody, appSecret)
+  }
+
+  return headers;
 }
 
 function getNextAttemptDate(nextAttemptNumber: number): number | undefined {

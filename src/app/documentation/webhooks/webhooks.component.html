@@ -16,7 +16,7 @@
       <mat-card-title>Validating payloads from TRTL apps</mat-card-title>
       <p>
         TRTL apps uses your app secret to create a hash signature with each payload.
-        This hash signature is passed along with each request in the headers as <span class="code-block">x-trltapps-signature</span>.
+        This hash signature is passed along with each request in the headers as <span class="code-block">x-trtl-apps-signature</span>.
       </p>
       <p>
         To validate a request, compute a hash using your APP_SECRET, and ensure that the hash from the request header matches. TRTL apps
