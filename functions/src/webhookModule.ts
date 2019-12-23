@@ -1,6 +1,9 @@
 import * as admin from 'firebase-admin';
 import * as axios from 'axios';
+import * as crypto from 'crypto';
+import * as AppModule from './appModule';
 import { TurtleApp } from '../../shared/types';
+import { ServiceError } from './serviceError';
 
 const retryIntervals: number[] = [
   1  * 60 * 1000,
@@ -69,7 +72,11 @@ export async function createCallback(app: TurtleApp, code: CallbackCode, data: a
 
   if (app.webhook) {
     try {
-      const response = await axios.default.post(app.webhook, requestBody);
+      const headers = {
+        'x-trltapps-signature': generateRequestSignature(requestBody, app.appSecret)
+      }
+
+      const response = await axios.default.post(app.webhook, requestBody, { headers: headers });
       console.log('webhook post response: ' + response.status);
 
       const updateObject: CallbackUpdate = {
@@ -112,6 +119,13 @@ async function retryCallback(callback: Callback): Promise<void> {
     return;
   }
 
+  const [app, error] = await AppModule.getApp(callback.appId);
+
+  if (!app) {
+    console.log((error as ServiceError).message);
+    return;
+  }
+
   // send cleaner version of the callback object
   const requestBody = {
     code: callback.code,
@@ -122,7 +136,11 @@ async function retryCallback(callback: Callback): Promise<void> {
   const attemptNumber = callback.attempts + 1;
 
   try {
-    const response = await axios.default.post(callback.webhook, requestBody);
+    const headers = {
+      'x-trltapps-signature': generateRequestSignature(requestBody, app.appSecret)
+    }
+
+    const response = await axios.default.post(callback.webhook, requestBody, { headers: headers });
     console.log('webhook post response: ' + response.status);
 
     const updateObject: CallbackUpdate = {
@@ -158,4 +176,13 @@ function getNextAttemptDate(nextAttemptNumber: number): number | undefined {
   const intervalIndex = Math.max(0, (nextAttemptNumber - 2));
 
   return Date.now() + retryIntervals[intervalIndex];
+}
+
+function generateRequestSignature(requestBody: any, appSecret: string): string {
+  const hash = crypto
+                .createHmac("sha256", appSecret)
+                .update(JSON.stringify(requestBody))
+                .digest("hex");
+
+  return `sha256=${hash}`;
 }
