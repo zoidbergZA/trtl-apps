@@ -1,8 +1,15 @@
-<div fxLayout=row fxLayoutAlign="center">
-  <div class="projects-container" fxLayout="row wrap" fxLayoutGap="20px">
-    <project-card class="project-card-holder" createNew=true></project-card>
-    <div *ngFor="let project of projects$ | async">
-      <project-card class="project-card-holder" [name]="project.name" [appId]="project.appId"></project-card>
+<div>
+  <ng-container *ngIf="( projects$ | async ) as projects">
+    <div *ngIf="projects.length === 0">
+      <h2 class="center-text">Create a new app to get started!</h2>
     </div>
-  </div>
+    <div fxLayout=row fxLayoutAlign="center">
+      <div class="projects-container" fxLayout="row wrap" fxLayoutGap="20px">
+        <project-card class="project-card-holder" createNew=true></project-card>
+        <div *ngFor="let project of projects">
+          <project-card class="project-card-holder" [name]="project.name" [appId]="project.appId"></project-card>
+        </div>
+      </div>
+    </div>
+  </ng-container>
 </div>
