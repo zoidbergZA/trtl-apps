@@ -2,6 +2,11 @@
   max-height: 550px;
   overflow-y: auto;
 }
+.table-value {
+  max-width: 500px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
 .send-button {
   margin-top: 20px;
 }

@@ -17,8 +17,13 @@
       <button [disabled]="!isValid" mat-flat-button (click)="onSendClick()"><mat-icon>send</mat-icon> send</button>
     </div>
     <div *ngIf="transfer">
-      <p>Transfer successful!</p>
-      <p>transfer ID: {{ transfer?.id }}</p>
+      <p>Transfer successful.</p>
+      <table>
+        <tr>
+          <td class="table-key">Transfer ID</td>
+          <td class="table-value"><copy-string-box [data]="transfer?.id"></copy-string-box></td>
+        </tr>
+      </table>
     </div>
     <div *ngIf="!busy" style="display: flex; justify-content: flex-end">
       <button mat-flat-button (click)="onCloseClick()">close</button>

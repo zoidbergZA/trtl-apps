@@ -42,7 +42,12 @@
     </div>
     <div *ngIf="withdrawalId">
       <p>Withdraw request successfully created.</p>
-      <p>withdrawal ID: {{ withdrawalId }}</p>
+      <table>
+        <tr>
+          <td class="table-key">Withdrawal ID</td>
+          <td class="table-value"><copy-string-box [data]="withdrawalId"></copy-string-box></td>
+        </tr>
+      </table>
     </div>
   </div>
   <div *ngIf="!busy" style="display: flex; justify-content: flex-end">

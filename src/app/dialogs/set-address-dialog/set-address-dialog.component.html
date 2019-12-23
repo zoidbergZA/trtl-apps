@@ -1,5 +1,13 @@
 <h3>Set withdraw address</h3>
-<p *ngIf="currentAddress">current address: {{ currentAddress }}</p>
+<div *ngIf="currentAddress">
+  <p>Withdraw address successfully set.</p>
+    <table>
+      <tr>
+        <td class="table-key">Withdraw address</td>
+        <td class="table-value"><copy-string-box [data]="currentAddress"></copy-string-box></td>
+      </tr>
+    </table>
+</div>
 <div>
   <div *ngIf="!busy && !currentAddress">
     <p *ngIf="errorMessage" class="error-text">error: {{ errorMessage }}</p>
