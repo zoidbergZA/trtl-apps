@@ -68,6 +68,13 @@ html, body { height: 100%; }
 
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
+h2 {
+  font-size: 1.6em;
+  font-weight: normal;
+  margin-top: 30px;
+  margin-bottom: 10px;
+}
+
 p {
   line-height: 1.6em;
 }
@@ -90,6 +97,7 @@ td {
   margin-top: 20px;
   margin-bottom: 20px;
 }
+
 .section-spacer {
   margin-top: 40px;
 }

@@ -12,19 +12,37 @@
         The backend expects a 2xx response code to indicate that the notification was received. In the event of failure,
         the backend will retry the sending the event a few times in larger time intervals.
       </p>
-      <p>
-        Below the different event types are listed along with example data.
-      </p>
-      <!-- <div class="section-spacer"></div>
-      <mat-card-title>User updated</mat-card-title>
-      <p>
-        This event fires every time a user object has been updated, for example when their balance changed.
-      </p>
-      <div class="code-block">
-        <pre>{{ userUpdated | json }}</pre>
-      </div> -->
       <div class="section-spacer"></div>
-      <mat-card-title>New deposit</mat-card-title>
+      <mat-card-title>Validating payloads from TRTL apps</mat-card-title>
+      <p>
+        TRTL apps uses your app secret to create a hash signature with each payload.
+        This hash signature is passed along with each request in the headers as <span class="code-block">x-trltapps-signature</span>.
+      </p>
+      <p>
+        To validate a request, compute a hash using your APP_SECRET, and ensure that the hash from the request header matches. TRTL apps
+        uses a HMAC hexdigest to compute the hash. An example validation function in node.js using the <span class="code-block">crypto</span> module:
+      </p>
+      <pre class="code-block">
+        const hash = 'sha256=' + crypto
+                      .createHmac("sha256", 'YOUR_APP_SECRET')
+                      .update(JSON.stringify(request.body))
+                      .digest("hex");
+
+        const isValid = hash === requestSignature;
+
+        return isValid;
+      </pre>
+      <p>
+        Your language and server implementations may differ than this code, however no matter which implementation
+        you use, the hash signature starts with <span class="code-block">sha256=</span>, using
+        your app secret token and the payload body.
+      </p>
+      <div class="section-spacer"></div>
+      <mat-card-title>Examples</mat-card-title>
+      <p>
+        Below the different event types are listed along with example payloads.
+      </p>
+      <h2>New deposit</h2>
       <p>
         This event is sent when a new user deposit is detected. New deposits start with a <span class="code-block">confirming</span>
         status while we wait for block confirmations.
@@ -32,8 +50,7 @@
       <div class="code-block">
         <pre>{{ depositConfirming | json }}</pre>
       </div>
-      <div class="section-spacer"></div>
-      <mat-card-title>Deposit succeeded</mat-card-title>
+      <h2>Deposit succeeded</h2>
       <p>
         Once the deposit has been confirmed, the user's balance is credited with the deposit amount and the deposit succeeded
         event is sent.
@@ -41,8 +58,7 @@
       <div class="code-block">
         <pre>{{ depositSucceeded | json }}</pre>
       </div>
-      <div class="section-spacer"></div>
-      <mat-card-title>Deposit cancelled</mat-card-title>
+      <h2>Deposit cancelled</h2>
       <p>
         In the case where the deposit transaction was not confirmed in the blockchain, the deposit is marked as failed
         and the deposit cancelled event will be fired.
@@ -50,16 +66,14 @@
       <div class="code-block">
         <pre>{{ depositCancelled | json }}</pre>
       </div>
-      <div class="section-spacer"></div>
-      <mat-card-title>Withdrawal succeeded</mat-card-title>
+      <h2>Withdrawal succeeded</h2>
       <p>
         This event is sent when a user withdrawal has been successfully processed.
       </p>
       <div class="code-block">
         <pre>{{ withdrawalSucceeded | json }}</pre>
       </div>
-      <div class="section-spacer"></div>
-      <mat-card-title>Withdrawal failed</mat-card-title>
+      <h2>Withdrawal failed</h2>
       <p>
         In the case where a user withdrawal was not processed succesfully, the user's balance will be reimbursement
         with the amount and the withdrawal failed event is sent.
