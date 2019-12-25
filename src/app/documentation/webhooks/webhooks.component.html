@@ -44,7 +44,7 @@
       </p>
       <h2>New deposit</h2>
       <p>
-        This event is sent when a new user deposit is detected. New deposits start with a <span class="code-block">confirming</span>
+        This event is sent when a new account deposit is detected. New deposits start with a <span class="code-block">confirming</span>
         status while we wait for block confirmations.
       </p>
       <div class="code-block">
@@ -52,7 +52,7 @@
       </div>
       <h2>Deposit succeeded</h2>
       <p>
-        Once the deposit has been confirmed, the user's balance is credited with the deposit amount and the deposit succeeded
+        Once the deposit has been confirmed, the account's balance is credited with the deposit amount and the deposit succeeded
         event is sent.
       </p>
       <div class="code-block">
@@ -68,14 +68,14 @@
       </div>
       <h2>Withdrawal succeeded</h2>
       <p>
-        This event is sent when a user withdrawal has been successfully processed.
+        This event is sent when an account withdrawal has been successfully processed.
       </p>
       <div class="code-block">
         <pre>{{ withdrawalSucceeded | json }}</pre>
       </div>
       <h2>Withdrawal failed</h2>
       <p>
-        In the case where a user withdrawal was not processed succesfully, the user's balance will be reimbursement
+        In the case where an account withdrawal was not processed succesfully, the account's balance will be reimbursement
         with the amount and the withdrawal failed event is sent.
       </p>
       <div class="code-block">
