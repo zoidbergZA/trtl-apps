@@ -8,7 +8,7 @@ import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
 import * as TransfersModule from './transfersModule';
 import { validateAddress as backendValidateAddress } from 'turtlecoin-wallet-backend';
-import { TurtleApp, AppUserUpdate, Recipient } from '../../shared/types';
+import { TurtleApp, AccountUpdate, Recipient } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
 export const api = express();
@@ -16,9 +16,9 @@ export const api = express();
 // Automatically allow cross-origin requests
 api.use(cors({ origin: true }));
 
-api.post('/:appId/users/', async (req, res) => {
+api.post('/:appId/accounts/', async (req, res) => {
   try {
-    return createAppUser(req, res);
+    return createAccount(req, res);
   }
   catch (error) {
     console.error(error);
@@ -38,9 +38,9 @@ api.post('/:appId/users/', async (req, res) => {
 //   }
 // });
 
-api.get('/:appId/users/:userId', async (req, res) => {
+api.get('/:appId/accounts/:accountId', async (req, res) => {
   try {
-    return getAppUser(req, res);
+    return getAppAccount(req, res);
   }
   catch (error) {
     console.error(error);
@@ -48,7 +48,7 @@ api.get('/:appId/users/:userId', async (req, res) => {
   }
 });
 
-api.put('/:appId/users/:userId/withdrawaddress', async (req, res) => {
+api.put('/:appId/accounts/:accountId/withdrawaddress', async (req, res) => {
   try {
     return setWithdrawAddress(req, res);
   } catch (error) {
@@ -56,15 +56,6 @@ api.put('/:appId/users/:userId/withdrawaddress', async (req, res) => {
     res.status(500).send(new ServiceError('service/unknown-error'));
   }
 });
-
-// api.post('/:appId/deposits/', async (req, res) => {
-//   try {
-//     return createAppDepositRequest(req, res);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).send(new ServiceError('service/unknown-error'));
-//   }
-// });
 
 api.get('/:appId/deposits/:depositId', async (req, res) => {
   try {
@@ -78,7 +69,7 @@ api.get('/:appId/deposits/:depositId', async (req, res) => {
 
 api.post('/:appId/withdrawals/', async (req, res) => {
   try {
-    return userWithdraw(req, res);
+    return accountWithdraw(req, res);
   } catch (error) {
     console.error(error);
     res.status(500).send(new ServiceError('service/unknown-error'));
@@ -97,7 +88,7 @@ api.get('/:appId/withdrawals/:withdrawalId', async (req, res) => {
 
 api.post('/:appId/transfers/', async (req, res) => {
   try {
-    return userTransfer(req, res);
+    return appTransfer(req, res);
   } catch (error) {
     console.error(error);
     res.status(500).send(new ServiceError('service/unknown-error'));
@@ -106,7 +97,7 @@ api.post('/:appId/transfers/', async (req, res) => {
 
 api.get('/:appId/transfers/:transferId', async (req, res) => {
   try {
-    return getUserTransfer(req, res);
+    return getAccountTransfer(req, res);
   }
   catch (error) {
     console.error(error);
@@ -132,7 +123,7 @@ api.get('/service/validateaddress', async (req, res) => {
   }
 });
 
-async function createAppUser(request: any, response: any): Promise<void> {
+async function createAccount(request: any, response: any): Promise<void> {
   const [app, error] = await authorizeAppRequest(request);
 
   if (!app) {
@@ -140,12 +131,12 @@ async function createAppUser(request: any, response: any): Promise<void> {
     return;
   }
 
-  const [appUser, createError] = await UsersModule.createAppUser(app);
+  const [account, createError] = await UsersModule.createAppAccount(app);
 
-  if (!appUser) {
+  if (!account) {
     response.status(500).send((createError));
   } else {
-    response.status(200).send(appUser);
+    response.status(200).send(account);
   }
 }
 
@@ -173,7 +164,7 @@ async function createAppUser(request: any, response: any): Promise<void> {
 //   response.status(200).send(users);
 // }
 
-async function getAppUser(request: any, response: any): Promise<void> {
+async function getAppAccount(request: any, response: any): Promise<void> {
   const [app, authError] = await authorizeAppRequest(request);
 
   if (!app) {
@@ -181,21 +172,21 @@ async function getAppUser(request: any, response: any): Promise<void> {
     return;
   }
 
-  const userId: string = request.params.userId;
+  const accountId: string = request.params.accountId;
 
-  if (!userId) {
+  if (!accountId) {
     response.status(400).send(new ServiceError('request/invalid-params'));
     return;
   }
 
-  const [appUser, userError] = await UsersModule.getAppUser(app.appId, userId);
+  const [appAccount, accountError] = await UsersModule.getAppAccount(app.appId, accountId);
 
-  if (!appUser) {
-    response.status(500).send(userError);
+  if (!appAccount) {
+    response.status(500).send(accountError);
     return;
   }
 
-  response.status(200).send(appUser);
+  response.status(200).send(appAccount);
 }
 
 export async function getDeposit(request: any, response: any): Promise<void> {
@@ -248,7 +239,7 @@ export async function getWithdrawalRequest(request: any, response: any): Promise
   response.status(200).send(withdrawRequest);
 }
 
-async function userTransfer(request: any, response: any): Promise<void> {
+async function appTransfer(request: any, response: any): Promise<void> {
   const [app, error] = await authorizeAppRequest(request);
 
   if (!app) {
@@ -264,7 +255,7 @@ async function userTransfer(request: any, response: any): Promise<void> {
     return;
   }
 
-  const [transfer, transferError] = await TransfersModule.userTransfer(app, senderId, recipients);
+  const [transfer, transferError] = await TransfersModule.accountTransfer(app, senderId, recipients);
 
   if (transfer) {
     response.status(200).send(transfer);
@@ -275,7 +266,7 @@ async function userTransfer(request: any, response: any): Promise<void> {
   }
 }
 
-export async function getUserTransfer(request: any, response: any): Promise<void> {
+export async function getAccountTransfer(request: any, response: any): Promise<void> {
   const [app, authError] = await authorizeAppRequest(request);
 
   if (!app) {
@@ -290,7 +281,7 @@ export async function getUserTransfer(request: any, response: any): Promise<void
     return;
   }
 
-  const [transfer, serviceError] = await TransfersModule.getUserTransfer(app.appId, transferId);
+  const [transfer, serviceError] = await TransfersModule.getTransfer(app.appId, transferId);
 
   if (!transfer) {
     response.status(500).send(serviceError);
@@ -300,7 +291,7 @@ export async function getUserTransfer(request: any, response: any): Promise<void
   response.status(200).send(transfer);
 }
 
-async function userWithdraw(request: any, response: any): Promise<void> {
+async function accountWithdraw(request: any, response: any): Promise<void> {
   const [app, authError] = await authorizeAppRequest(request);
 
   if (!app) {
@@ -308,7 +299,7 @@ async function userWithdraw(request: any, response: any): Promise<void> {
     return;
   }
 
-  const userId: string = request.body.userId;
+  const accountId: string = request.body.accountId;
   const amount: number = Number(request.body.amount);
   let sendAddress: string | undefined = request.body.sendAddress;
 
@@ -317,20 +308,20 @@ async function userWithdraw(request: any, response: any): Promise<void> {
     return;
   }
 
-  if (!userId || amount <= 0) {
+  if (!accountId || amount <= 0) {
     response.status(400).send(new ServiceError('request/invalid-params'));
     return;
   }
 
-  const [appUser, userError] = await UsersModule.getAppUser(app.appId, userId);
+  const [appAccount, accountError] = await UsersModule.getAppAccount(app.appId, accountId);
 
-  if (!appUser) {
-    response.status(400).send((userError));
+  if (!appAccount) {
+    response.status(400).send((accountError));
     return;
   }
 
   if (!sendAddress) {
-    sendAddress = appUser.withdrawAddress;
+    sendAddress = appAccount.withdrawAddress;
   }
 
   if (!sendAddress) {
@@ -347,7 +338,7 @@ async function userWithdraw(request: any, response: any): Promise<void> {
 
   const [withdrawRequest, withdrawError] = await WithdrawalsModule.processWithdrawRequest(
                                             app,
-                                            appUser,
+                                            appAccount,
                                             amount,
                                             sendAddress);
 
@@ -378,18 +369,18 @@ async function setWithdrawAddress(request: any, response: any): Promise<void> {
     return;
   }
 
-  const userId  = request.params.userId;
+  const accountId  = request.params.accountId;
   const address = request.body.address;
 
-  if (!userId || !address) {
+  if (!accountId || !address) {
     response.status(400).send(new ServiceError('request/invalid-params'));
     return;
   }
 
-  const [appUser, userError] = await UsersModule.getAppUser(app.appId, userId);
+  const [appAccount, accountError] = await UsersModule.getAppAccount(app.appId, accountId);
 
-  if (!appUser) {
-    response.status(400).send((userError));
+  if (!appAccount) {
+    response.status(400).send((accountError));
     return;
   }
 
@@ -402,11 +393,11 @@ async function setWithdrawAddress(request: any, response: any): Promise<void> {
     return;
   }
 
-  const userUpdateObject: AppUserUpdate = {
+  const accountUpdateObject: AccountUpdate = {
     withdrawAddress: address
   }
 
-  await admin.firestore().doc(`apps/${app.appId}/users/${userId}`).update(userUpdateObject);
+  await admin.firestore().doc(`apps/${app.appId}/accounts/${accountId}`).update(accountUpdateObject);
 
   response.status(200).send({ withdrawAddress: address });
 }
@@ -425,79 +416,6 @@ async function validateAddress(request: any, response: any): Promise<void> {
 
   return response.status(200).send({ isValid: isValidAddress });
 }
-
-// async function createAppDepositRequest(request: any, response: any): Promise<void> {
-//   const [app, error] = await authorizeAppRequest(request);
-
-//   if (!app) {
-//     response.status(401).send((error));
-//     return;
-//   }
-
-//   if (app.appType !== 'appWallet') {
-//     response.status(500).send(new ServiceError('app/invalid-app-type'));
-//     return;
-//   }
-
-//   // request params
-//   const userId: string = request.body.userId;
-//   const amount: number = Number(request.body.amount);
-//   const callbackUrl: string | undefined = request.body.callbackUrl;
-
-//   if (!Number.isInteger(amount)) {
-//     response.status(400).send(new ServiceError('request/invalid-params', 'amount must be in atomic units.'));
-//     return;
-//   }
-
-//   if (!userId || !amount || amount <= 0) {
-//     response.status(400).send(new ServiceError('request/invalid-params'));
-//     return;
-//   }
-
-//   const [serviceConfig, ] = await ServiceModule.getServiceConfig();
-
-//   if (!serviceConfig) {
-//     response.status(500).send(new ServiceError('service/unknown-error'));
-//     return;
-//   }
-
-//   const [appUser, userError] = await UsersModule.getAppUser(app.appId, userId);
-
-//   if (!appUser) {
-//     response.status(400).send((userError));
-//     return;
-//   }
-
-//   const paymentId = generateRandomPaymentId();
-//   let integratedAddress: string | undefined;
-
-//   try {
-//     integratedAddress = createIntegratedAddress(app.subWallet, paymentId);
-//   } catch (error) {
-//     console.error(error);
-//   }
-
-//   if (!integratedAddress) {
-//     response.status(500).send(new ServiceError('service/unknown-error'));
-//     return;
-//   }
-
-//   const expireDate = Date.now() + serviceConfig.txTimeout;
-//   const depositDoc = admin.firestore().collection(`apps/${app.appId}/deposits`).doc();
-//   const depositRequest = DepositsModule.createDeposit(
-//                           depositDoc.id,
-//                           app.appId,
-//                           paymentId,
-//                           app.subWallet,
-//                           integratedAddress,
-//                           userId,
-//                           amount,
-//                           expireDate,
-//                           callbackUrl);
-
-//   await depositDoc.set(depositRequest);
-//   response.status(200).send(depositRequest);
-// }
 
 async function authorizeAppRequest(
   request: functions.https.Request): Promise<[TurtleApp | undefined, undefined | ServiceError]> {

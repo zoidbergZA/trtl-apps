@@ -3,12 +3,12 @@ import * as WalletManager from './walletManager';
 import * as AppModule from './appModule';
 import { ServiceError } from './serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
-import { AppUser, AppUserUpdate, TurtleApp, Withdrawal, WithdrawalUpdate } from '../../shared/types';
+import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate } from '../../shared/types';
 import { generateRandomPaymentId } from './utils';
 
 export async function processWithdrawRequest(
   app: TurtleApp,
-  appUser: AppUser,
+  appAccount: Account,
   amount: number,
   sendAddress: string): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
 
@@ -23,9 +23,9 @@ export async function processWithdrawRequest(
   const fee = serviceWallet.serviceConfig.nodeFee;
   const totalAmount = amount + fee;
 
-  console.log(`user [${appUser.userId}] withdraw amount: ${amount}, fee: ${fee}`);
+  console.log(`account [${appAccount.id}] withdraw amount: ${amount}, fee: ${fee}`);
 
-  if (appUser.balanceUnlocked < totalAmount) {
+  if (appAccount.balanceUnlocked < totalAmount) {
     return [undefined, new ServiceError('transfer/insufficient-funds')];
   }
 
@@ -39,7 +39,7 @@ export async function processWithdrawRequest(
     status:             'confirming',
     blockHeight:        0,
     appId:              app.appId,
-    userId:             appUser.userId,
+    accountId:          appAccount.id,
     amount:             amount,
     fee:                fee,
     address:            sendAddress,
@@ -53,13 +53,13 @@ export async function processWithdrawRequest(
 
   try {
     await admin.firestore().runTransaction(async (txn) => {
-      const userDocRef  = admin.firestore().doc(`apps/${app.appId}/users/${appUser.userId}`);
-      const userDoc     = await txn.get(userDocRef);
-      const user        = userDoc.data() as AppUser;
+      const accountDocRef = admin.firestore().doc(`apps/${app.appId}/accounts/${appAccount.id}`);
+      const accountDoc    = await txn.get(accountDocRef);
+      const account       = accountDoc.data() as Account;
 
-      if (user.balanceUnlocked >= amount) {
-        txn.update(userDocRef, {
-          balanceUnlocked: user.balanceUnlocked - totalAmount
+      if (account.balanceUnlocked >= amount) {
+        txn.update(accountDocRef, {
+          balanceUnlocked: account.balanceUnlocked - totalAmount
         });
 
         txn.create(withdrawDoc, withdrawRequest);
@@ -214,7 +214,7 @@ export async function updateWithdrawals(): Promise<void> {
   }
 }
 
-export async function processUserWithdrawalUpdate(
+export async function processWithdrawalUpdate(
   oldState: Withdrawal,
   newState: Withdrawal): Promise<void> {
 
@@ -233,7 +233,7 @@ export async function processUserWithdrawalUpdate(
 }
 
 async function cancelFailedWithdrawal(appId: string, withdrawalId: string): Promise<boolean> {
-  // mark withdrawal as failed, credit the user with the withdrawal the amount + fee
+  // mark withdrawal as failed, credit the account with the withdrawal the amount + fee
   let cancellationProcessed = true;
 
   try {
@@ -242,9 +242,9 @@ async function cancelFailedWithdrawal(appId: string, withdrawalId: string): Prom
       const withdrawalDoc     = await txn.get(withdrawalDocRef);
       const withdrawal        = withdrawalDoc.data() as Withdrawal;
       const totalAmount       = withdrawal.amount + withdrawal.fee;
-      const userDocRef        = admin.firestore().doc(`apps/${appId}/users/${withdrawal.userId}`);
-      const userDoc           = await txn.get(userDocRef);
-      const user              = userDoc.data() as AppUser;
+      const accountDocRef     = admin.firestore().doc(`apps/${appId}/accounts/${withdrawal.accountId}`);
+      const accountDoc        = await txn.get(accountDocRef);
+      const account           = accountDoc.data() as Account;
       const FieldValue        = require('firebase-admin').firestore.FieldValue;
 
       const withdrawalUpdate: WithdrawalUpdate = {
@@ -254,12 +254,12 @@ async function cancelFailedWithdrawal(appId: string, withdrawalId: string): Prom
         txHash:     FieldValue.delete()
       }
 
-      const userUpdate: AppUserUpdate = {
-        balanceUnlocked: user.balanceUnlocked + totalAmount
+      const accountUpdate: AccountUpdate = {
+        balanceUnlocked: account.balanceUnlocked + totalAmount
       }
 
       txn.update(withdrawalDocRef, withdrawalUpdate);
-      txn.update(userDocRef, userUpdate);
+      txn.update(accountDocRef, accountUpdate);
     });
   } catch (error) {
     console.error(error);

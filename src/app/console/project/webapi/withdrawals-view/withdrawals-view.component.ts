@@ -75,12 +75,12 @@ export class WithdrawalsViewComponent implements OnInit {
     this.dialogService.openWithdrawalDetailsDialog(withdrawalId, this.app.appId);
   }
 
-  userDetailsClick(userId: string) {
+  accountDetailsClick(accountId: string) {
     if (!this.app) {
       console.error(`no app input defined!`);
       return;
     }
 
-    this.dialogService.openUserDetailsDialog(userId, this.app);
+    this.dialogService.openAccountDetailsDialog(accountId, this.app);
   }
 }

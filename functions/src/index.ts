@@ -104,7 +104,7 @@ exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/
   const oldState  = change.before.data() as Deposit;
   const newState  = change.after.data() as Deposit;
 
-  await DepositsModule.processUserDepositUpdate(oldState, newState);
+  await DepositsModule.processAccountDepositUpdate(oldState, newState);
   return null;
 });
 
@@ -113,17 +113,9 @@ exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdr
   const oldState  = change.before.data() as Withdrawal;
   const newState  = change.after.data() as Withdrawal;
 
-  await WithdrawalsModule.processUserWithdrawalUpdate(oldState, newState);
+  await WithdrawalsModule.processWithdrawalUpdate(oldState, newState);
   return null;
 });
-
-// exports.onUserUpdated = functions.firestore.document(`/apps/{appId}/users/{userId}`)
-// .onUpdate(async (change, context) => {
-//   const oldState = change.before.data() as AppUser;
-//   const newState = change.after.data() as AppUser;
-
-//   await UsersModule.processUserUpdated(oldState, newState);
-// });
 
 
 // =============================================================================

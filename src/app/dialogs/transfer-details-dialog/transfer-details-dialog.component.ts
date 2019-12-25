@@ -1,5 +1,5 @@
 import { Component, OnInit, Inject } from '@angular/core';
-import { UserTransfer } from 'shared/types';
+import { Transfer } from 'shared/types';
 import { Observable } from 'rxjs';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material';
 import { ConsoleService } from 'src/app/providers/console.service';
@@ -14,7 +14,7 @@ export class TransferDetailsDialogComponent implements OnInit {
 
   appId: string;
   transferId: string;
-  transfer$: Observable<UserTransfer | undefined>;
+  transfer$: Observable<Transfer | undefined>;
 
   constructor(
     public dialogRef: MatDialogRef<TransferDetailsDialogComponent>,

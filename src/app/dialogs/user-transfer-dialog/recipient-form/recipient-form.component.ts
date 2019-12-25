@@ -31,7 +31,7 @@ export class RecipientFormComponent implements OnInit, OnDestroy {
       ]))
     });
 
-    this.receiverSubscription = this.form.controls.receiverId.valueChanges.subscribe(v => this.onUserIdChange(v));
+    this.receiverSubscription = this.form.controls.receiverId.valueChanges.subscribe(v => this.onAccountIdChange(v));
     this.amountSubscription = this.form.controls.amount.valueChanges.subscribe(v => this.onAmountChange(v));
   }
 
@@ -49,9 +49,9 @@ export class RecipientFormComponent implements OnInit, OnDestroy {
     }
   }
 
-  onUserIdChange(value: string) {
+  onAccountIdChange(value: string) {
     if (this.recipient) {
-      this.recipient.userId = value;
+      this.recipient.accountId = value;
       this.recipientChange.emit(this.recipient);
     }
   }

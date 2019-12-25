@@ -14,7 +14,7 @@ import { ServiceError } from 'trtl-apps';
 export class SetAddressDialogComponent implements OnInit {
 
   app: TurtleApp;
-  userId: string;
+  accountId: string;
   currentAddress: string | undefined;
   busy = false;
   errorMessage: string | undefined;
@@ -26,7 +26,7 @@ export class SetAddressDialogComponent implements OnInit {
     private consoleService: ConsoleService) {
 
     this.app = data.app;
-    this.userId = data.userId;
+    this.accountId = data.accountId;
 
     this.form = new FormGroup({
       address: new FormControl('', Validators.compose([
@@ -43,7 +43,7 @@ export class SetAddressDialogComponent implements OnInit {
   }
 
   async onSubmit(data: any) {
-    if (!this.app || !this.userId) {
+    if (!this.app || !this.accountId) {
       console.error('input params not set! skipping set address.');
       return;
     }
@@ -55,7 +55,7 @@ export class SetAddressDialogComponent implements OnInit {
     const [newAddress, error] = await this.consoleService.setWithdrawAddress(
                                       this.app.appId,
                                       this.app.appSecret,
-                                      this.userId,
+                                      this.accountId,
                                       address);
 
     this.busy = false;

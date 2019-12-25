@@ -19,8 +19,8 @@
     </tr>
     <tr *ngFor="let recipient of transfer?.recipients">
       <td class="table-key">Recipient</td>
-      <td class="table-value">{{ recipient.amount | TRTL }} <span class="recipient-label"> user ID: </span>
-        <span class="code-font"> {{ recipient.userId }}</span>
+      <td class="table-value">{{ recipient.amount | TRTL }} <span class="recipient-label"> account ID: </span>
+        <span class="code-font"> {{ recipient.accountId }}</span>
       </td>
     </tr>
   </table>

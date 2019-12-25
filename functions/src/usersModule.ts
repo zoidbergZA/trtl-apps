@@ -1,12 +1,10 @@
 import { ServiceError } from "./serviceError";
-import { ServiceUser, AppUser, TurtleApp } from "../../shared/types";
+import { ServiceUser, Account, TurtleApp } from "../../shared/types";
 import { generateRandomPaymentId } from './utils';
 import { createIntegratedAddress } from 'turtlecoin-wallet-backend';
-import { createCallback } from './webhookModule';
-import * as AppModule from './appModule';
 import * as admin from 'firebase-admin';
 
-export type UsersOrderBy = 'userId' | 'createdAt' | 'balanceUnlocked';
+export type AccountsOrderBy = 'accountId' | 'createdAt' | 'balanceUnlocked';
 
 export async function createServiceUser(userRecord: admin.auth.UserRecord): Promise<void> {
   const id = userRecord.uid;
@@ -33,14 +31,14 @@ export async function createServiceUser(userRecord: admin.auth.UserRecord): Prom
   await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
 }
 
-export async function createAppUser(app: TurtleApp): Promise<[AppUser | undefined, undefined | ServiceError]> {
-  const userDoc           = admin.firestore().collection(`apps/${app.appId}/users`).doc();
+export async function createAppAccount(app: TurtleApp): Promise<[Account | undefined, undefined | ServiceError]> {
+  const accountDoc        = admin.firestore().collection(`apps/${app.appId}/accounts`).doc();
   const timestamp         = Date.now();
   const paymentId         = generateRandomPaymentId();
   const integratedAddress = createIntegratedAddress(app.subWallet, paymentId);
 
-  const appUser: AppUser = {
-    userId:             userDoc.id,
+  const account: Account = {
+    id:                 accountDoc.id,
     appId:              app.appId,
     balanceLocked:      0,
     balanceUnlocked:    0,
@@ -52,73 +50,72 @@ export async function createAppUser(app: TurtleApp): Promise<[AppUser | undefine
   }
 
   try {
-    await userDoc.create(appUser);
-    return [appUser, undefined];
+    await accountDoc.create(account);
+    return [account, undefined];
   } catch (error) {
     console.error(error);
-    return [undefined, new ServiceError('app/create-user-failed')];
+    return [undefined, new ServiceError('app/create-account-failed')];
   }
 }
 
-export async function getAppUsers(
+export async function getAppAccounts(
   appId: string,
-  orderBy: UsersOrderBy,
+  orderBy: AccountsOrderBy,
   limit: number,
-  startAfterUser?: string): Promise<[AppUser[] | undefined, undefined | ServiceError]> {
+  startAfterAccount?: string): Promise<[Account[] | undefined, undefined | ServiceError]> {
 
   try {
     let querySnapshot: FirebaseFirestore.QuerySnapshot;
 
-    if (startAfterUser) {
-      const startAfterDoc = await admin.firestore().doc(`apps/${appId}/users/${startAfterUser}`).get();
+    if (startAfterAccount) {
+      const startAfterDoc = await admin.firestore().doc(`apps/${appId}/accounts/${startAfterAccount}`).get();
 
       if (!startAfterDoc.exists) {
-        return [undefined, new ServiceError('app/user-not-found')];
+        return [undefined, new ServiceError('app/account-not-found')];
       }
 
-      querySnapshot = await admin.firestore().collection(`apps/${appId}/users`)
+      querySnapshot = await admin.firestore().collection(`apps/${appId}/accounts`)
         .orderBy(orderBy)
         .startAfter(startAfterDoc)
         .limit(limit)
         .get();
       } else {
-        querySnapshot = await admin.firestore().collection(`apps/${appId}/users`)
+        querySnapshot = await admin.firestore().collection(`apps/${appId}/accounts`)
         .orderBy(orderBy)
         .limit(limit)
         .get();
       }
-      const users = querySnapshot.docs.map(d => d.data() as AppUser);
-    return [users, undefined];
+      const accounts = querySnapshot.docs.map(d => d.data() as Account);
+    return [accounts, undefined];
   } catch (error) {
     return [undefined, new ServiceError('service/unknown-error')];
   }
 }
 
-export async function getAppUser(
+export async function getAppAccount(
   appId: string,
-  userId: string): Promise<[AppUser | undefined, undefined | ServiceError]> {
+  accountId: string): Promise<[Account | undefined, undefined | ServiceError]> {
 
-  const userDoc = await admin.firestore().doc(`apps/${appId}/users/${userId}`).get();
+  const accountDoc = await admin.firestore().doc(`apps/${appId}/accounts/${accountId}`).get();
 
-  if (userDoc.exists) {
-    const user = userDoc.data() as AppUser;
-    return [user, undefined];
+  if (accountDoc.exists) {
+    const account = accountDoc.data() as Account;
+    return [account, undefined];
   } else {
-    return [undefined, new ServiceError('app/user-not-found')];
+    return [undefined, new ServiceError('app/account-not-found')];
   }
-
 }
 
-export async function processUserUpdated(
-  oldState: AppUser,
-  newState: AppUser): Promise<void> {
+// export async function processAccountUpdated(
+//   oldState: Account,
+//   newState: Account): Promise<void> {
 
-  const [app, error] = await AppModule.getApp(oldState.appId);
+//   const [app, error] = await AppModule.getApp(oldState.appId);
 
-  if (!app) {
-    console.log((error as ServiceError).message);
-    return;
-  }
+//   if (!app) {
+//     console.log((error as ServiceError).message);
+//     return;
+//   }
 
-  await createCallback(app, 'user/updated', newState);
-}
+//   await createCallback(app, 'user/updated', newState);
+// }

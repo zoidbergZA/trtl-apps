@@ -4,8 +4,8 @@ export interface ServiceUser {
   email?: string;
 }
 
-export interface AppUser {
-  userId: string;
+export interface Account {
+  id: string;
   appId: string;
   balanceUnlocked: number;
   balanceLocked: number;
@@ -18,7 +18,7 @@ export interface AppUser {
   data?: any;
 }
 
-export interface AppUserUpdate {
+export interface AccountUpdate {
   balanceUnlocked?: number;
   balanceLocked?: number;
   withdrawAddress?: string;
@@ -57,7 +57,7 @@ export interface TurtleAppUpdate {
   disabled?: boolean;
 }
 
-export interface UserTransfer {
+export interface Transfer {
   id: string;
   appId: string;
   senderId: string;
@@ -66,7 +66,7 @@ export interface UserTransfer {
 }
 
 export interface Recipient {
-  userId: string;
+  accountId: string;
   amount: number;
 }
 
@@ -75,7 +75,7 @@ export type DepositStatus = 'confirming' | 'completed';
 export interface Deposit {
   id: string;
   appId: string;
-  userId: string;
+  accountId: string;
   blockHeight: number;
   amount: number;
   depositAddress: string;
@@ -84,7 +84,7 @@ export interface Deposit {
   status: DepositStatus;
   txHash?: string;
   createdDate: number;
-  userCredited: boolean;
+  accountCredited: boolean;
   lastUpdate: number;
   cancelled: boolean;
 }
@@ -92,7 +92,7 @@ export interface Deposit {
 export interface AppDepositUpdate {
   lastUpdate: number;
   status?: DepositStatus;
-  userCredited?: boolean;
+  accountCredited?: boolean;
   cancelled?: boolean;
   txHash?: string;
 }
@@ -103,7 +103,7 @@ export interface Withdrawal {
   id: string;
   paymentId: string;
   appId: string;
-  userId: string;
+  accountId: string;
   amount: number;
   fee: number;
   address: string;

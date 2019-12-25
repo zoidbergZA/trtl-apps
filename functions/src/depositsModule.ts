@@ -6,7 +6,7 @@ import { ServiceError } from './serviceError';
 import { createCallback } from './webhookModule';
 import { Transaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { ServiceWallet } from './types';
-import { AppUser, AppUserUpdate, TurtleApp, SubWalletInfo,
+import { Account, AccountUpdate, TurtleApp, SubWalletInfo,
   Deposit, DepositStatus, AppDepositUpdate } from '../../shared/types';
 
 export async function getDeposit(
@@ -48,7 +48,7 @@ export async function updateDeposits(): Promise<void> {
   await updateConfirmingDeposits(serviceWallet);
 }
 
-export async function processUserDepositUpdate(
+export async function processAccountDepositUpdate(
   oldState: Deposit,
   newState: Deposit): Promise<void> {
 
@@ -135,10 +135,10 @@ async function processDepositTransaction(tx: Transaction): Promise<Deposit | und
     return undefined;
   }
 
-  const user = await findUserForDepositTx(tx, app);
+  const account = await findAccountForDepositTx(tx, app);
 
-  if (!user) {
-    // console.log(`failed to find user for tx with paymentID: ${tx.paymentID}, hash: ${tx.hash}`);
+  if (!account) {
+    // console.log(`failed to find account for tx with paymentID: ${tx.paymentID}, hash: ${tx.hash}`);
     return undefined;
   }
 
@@ -156,8 +156,8 @@ async function processDepositTransaction(tx: Transaction): Promise<Deposit | und
     app.appId,
     tx.paymentID,
     app.subWallet,
-    user.depositAddress,
-    user.userId,
+    account.depositAddress,
+    account.id,
     totalAmount,
     tx.hash,
     tx.blockHeight);
@@ -170,19 +170,18 @@ async function createNewDeposit(deposit: Deposit): Promise<void> {
 
   try {
     await admin.firestore().runTransaction(async (txn) => {
-      const userDocRef    = admin.firestore().doc(`apps/${deposit.appId}/users/${deposit.userId}`);
-      const depositDocRef = admin.firestore().doc(`apps/${deposit.appId}/deposits/${deposit.id}`);
+      const accountDocRef     = admin.firestore().doc(`apps/${deposit.appId}/accounts/${deposit.accountId}`);
+      const depositDocRef     = admin.firestore().doc(`apps/${deposit.appId}/deposits/${deposit.id}`);
+      const accountDoc        = await txn.get(accountDocRef);
+      const account           = accountDoc.data() as Account;
+      const newLockedBalance  = account.balanceLocked + deposit.amount;
 
-      const userDoc           = await txn.get(userDocRef);
-      const user              = userDoc.data() as AppUser;
-      const newLockedBalance  = user.balanceLocked + deposit.amount;
-
-      const userUpdate: AppUserUpdate = {
+      const accountUpdate: AccountUpdate = {
         balanceLocked: newLockedBalance
       }
 
       txn.create(depositDocRef, deposit);
-      txn.update(userDocRef, userUpdate);
+      txn.update(accountDocRef, accountUpdate);
 
       creationSucceeded = true;
     });
@@ -243,14 +242,14 @@ async function findAppForDepositTx(transaction: Transaction): Promise<TurtleApp 
   return undefined;
 }
 
-async function findUserForDepositTx(transaction: Transaction, app: TurtleApp): Promise<AppUser | undefined> {
+async function findAccountForDepositTx(transaction: Transaction, app: TurtleApp): Promise<Account | undefined> {
   const querySnapshot = await admin.firestore()
-                        .collection(`apps/${app.appId}/users`)
+                        .collection(`apps/${app.appId}/accounts`)
                         .where('paymentId', '==', transaction.paymentID)
                         .get();
 
   if (querySnapshot.size === 1) {
-    return querySnapshot.docs[0].data() as AppUser;
+    return querySnapshot.docs[0].data() as Account;
   }
 
   return undefined;
@@ -297,9 +296,9 @@ async function updateConfirmingDeposits(serviceWallet: ServiceWallet): Promise<v
 async function completeSuccessfulDeposit(deposit: Deposit): Promise<void> {
   try {
     await admin.firestore().runTransaction(async (txn) => {
-      const userDocRef    = admin.firestore().doc(`apps/${deposit.appId}/users/${deposit.userId}`);
-      const depositDocRef = admin.firestore().doc(`apps/${deposit.appId}/deposits/${deposit.id}`);
-      const depositDoc    = await txn.get(depositDocRef);
+      const accountDocRef   = admin.firestore().doc(`apps/${deposit.appId}/accounts/${deposit.accountId}`);
+      const depositDocRef   = admin.firestore().doc(`apps/${deposit.appId}/deposits/${deposit.id}`);
+      const depositDoc      = await txn.get(depositDocRef);
 
       if (!depositDoc.exists) {
         throw new Error('deposit document does not exist.');
@@ -311,21 +310,21 @@ async function completeSuccessfulDeposit(deposit: Deposit): Promise<void> {
         throw new Error('deposit not in confirming state.');
       }
 
-      const userDoc = await txn.get(userDocRef);
-      const user    = userDoc.data() as AppUser;
+      const accountDoc = await txn.get(accountDocRef);
+      const account    = accountDoc.data() as Account;
 
-      const userUpdate: AppUserUpdate = {
-        balanceUnlocked:  user.balanceUnlocked + depositRecord.amount,
-        balanceLocked:    user.balanceLocked - depositRecord.amount
+      const accountUpdate: AccountUpdate = {
+        balanceUnlocked:  account.balanceUnlocked + depositRecord.amount,
+        balanceLocked:    account.balanceLocked - depositRecord.amount
       }
 
       const depositUpdate: AppDepositUpdate = {
         status:       'completed',
-        userCredited: true,
+        accountCredited: true,
         lastUpdate:   Date.now()
       }
 
-      txn.update(userDocRef, userUpdate);
+      txn.update(accountDocRef, accountUpdate);
       txn.update(depositDocRef, depositUpdate);
     });
   } catch (error) {
@@ -336,7 +335,7 @@ async function completeSuccessfulDeposit(deposit: Deposit): Promise<void> {
 async function completeCancelledDeposit(deposit: Deposit): Promise<void> {
   try {
     await admin.firestore().runTransaction(async (txn) => {
-      const userDocRef    = admin.firestore().doc(`apps/${deposit.appId}/users/${deposit.userId}`);
+      const accountDocRef = admin.firestore().doc(`apps/${deposit.appId}/accounts/${deposit.accountId}`);
       const depositDocRef = admin.firestore().doc(`apps/${deposit.appId}/deposits/${deposit.id}`);
       const depositDoc    = await txn.get(depositDocRef);
 
@@ -350,23 +349,23 @@ async function completeCancelledDeposit(deposit: Deposit): Promise<void> {
         throw new Error('deposit not in confirming state.');
       }
 
-      const userDoc     = await txn.get(userDocRef);
-      const user        = userDoc.data() as AppUser;
+      const accountDoc  = await txn.get(accountDocRef);
+      const account     = accountDoc.data() as Account;
       const FieldValue  = require('firebase-admin').firestore.FieldValue;
 
-      const userUpdate: AppUserUpdate = {
-        balanceLocked: user.balanceLocked - depositRecord.amount
+      const accountUpdate: AccountUpdate = {
+        balanceLocked: account.balanceLocked - depositRecord.amount
       }
 
       const depositUpdate: AppDepositUpdate = {
-        status:       'completed',
-        cancelled:    true,
-        userCredited: false,
-        lastUpdate:   Date.now(),
-        txHash:       FieldValue.delete()
+        status:           'completed',
+        cancelled:        true,
+        accountCredited:  false,
+        lastUpdate:       Date.now(),
+        txHash:           FieldValue.delete()
       }
 
-      txn.update(userDocRef, userUpdate);
+      txn.update(accountDocRef, accountUpdate);
       txn.update(depositDocRef, depositUpdate);
     });
   } catch (error) {
@@ -380,7 +379,7 @@ function createDepositObject(
   paymentId: string,
   depositAddress: string,
   integratedAddress: string,
-  userId: string,
+  accountId: string,
   amount: number,
   txHash: string,
   blockHeight: number): Deposit {
@@ -390,7 +389,7 @@ function createDepositObject(
   const deposit: Deposit = {
     id: id,
     appId,
-    userId,
+    accountId: accountId,
     blockHeight,
     paymentId,
     depositAddress,
@@ -399,7 +398,7 @@ function createDepositObject(
     txHash: txHash,
     createdDate: timestamp,
     status: 'confirming',
-    userCredited: false,
+    accountCredited: false,
     lastUpdate: timestamp,
     cancelled: false
   };

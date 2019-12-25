@@ -1,5 +1,5 @@
 import { Component, OnInit, Inject } from '@angular/core';
-import { TurtleApp, Recipient, UserTransfer } from 'shared/types';
+import { TurtleApp, Recipient, Transfer } from 'shared/types';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material';
 import { ConsoleService } from 'src/app/providers/console.service';
 import { ServiceError } from 'trtl-apps';
@@ -13,10 +13,10 @@ import { ServiceError } from 'trtl-apps';
 export class UserTransferDialogComponent implements OnInit {
 
   app: TurtleApp;
-  userId: string;
+  accountId: string;
   isValid = false;
   busy = false;
-  transfer: UserTransfer | undefined;
+  transfer: Transfer | undefined;
   errorMessage: string | undefined;
   recipients: Recipient[];
 
@@ -26,8 +26,8 @@ export class UserTransferDialogComponent implements OnInit {
     private consoleService: ConsoleService) {
 
     this.app = data.app;
-    this.userId = data.userId;
-    this.recipients = [{ userId: '', amount: 0 }];
+    this.accountId = data.accountId;
+    this.recipients = [{ accountId: '', amount: 0 }];
   }
 
   ngOnInit() {
@@ -35,7 +35,7 @@ export class UserTransferDialogComponent implements OnInit {
 
   onRecipientChange(_: Recipient) {
     this.recipients.forEach(r => {
-      if (r.userId === '') {
+      if (r.accountId === '') {
         this.isValid = false;
         return;
       }
@@ -49,7 +49,7 @@ export class UserTransferDialogComponent implements OnInit {
   }
 
   onAddRecipientClick() {
-    this.recipients.push({ userId: '', amount: 0 });
+    this.recipients.push({ accountId: '', amount: 0 });
   }
 
   removeRecipient(recipient: Recipient) {
@@ -68,28 +68,28 @@ export class UserTransferDialogComponent implements OnInit {
     this.transfer = undefined;
     this.errorMessage = undefined;
 
-    if (!this.app || !this.userId || this.recipients.length === 0) {
+    if (!this.app || !this.accountId || this.recipients.length === 0) {
       this.errorMessage = 'Invalid input parameters.';
       return;
     }
 
     this.busy = true;
-    let [newTransfer, error]: [UserTransfer | undefined, ServiceError | undefined] = [undefined, undefined];
+    let [newTransfer, error]: [Transfer | undefined, ServiceError | undefined] = [undefined, undefined];
 
     // note: we use both 'transfer' and 'transferMany' functions to test the node package.
     if (this.recipients.length === 1) {
-      [newTransfer, error] = await this.consoleService.userTransfer(
-                                      this.app.appId,
-                                      this.app.appSecret,
-                                      this.userId,
-                                      this.recipients[0].userId,
-                                      this.recipients[0].amount);
+      [newTransfer, error] = await this.consoleService.transfer(
+                              this.app.appId,
+                              this.app.appSecret,
+                              this.accountId,
+                              this.recipients[0].accountId,
+                              this.recipients[0].amount);
     } else {
-      [newTransfer, error] = await this.consoleService.userTransferMany(
-                                    this.app.appId,
-                                    this.app.appSecret,
-                                    this.userId,
-                                    this.recipients);
+      [newTransfer, error] = await this.consoleService.transferMany(
+                              this.app.appId,
+                              this.app.appSecret,
+                              this.accountId,
+                              this.recipients);
     }
 
     this.busy = false;

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireFunctions } from '@angular/fire/functions';
-import { TurtleApp, AppUser, UserTransfer, Recipient, Deposit, Withdrawal } from 'shared/types';
+import { TurtleApp, Account, Transfer, Recipient, Deposit, Withdrawal } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
@@ -81,16 +81,16 @@ export class ConsoleService {
     return this.firestore.doc<Withdrawal>(`apps/${appId}/withdrawals/${withdrawalId}`).valueChanges();
   }
 
-  getAppTransfers$(appId: string, limit: number, transferId?: string): Observable<UserTransfer[]> {
+  getAppTransfers$(appId: string, limit: number, transferId?: string): Observable<Transfer[]> {
     if (transferId && transferId !== '') {
       return this.firestore
-      .collection<UserTransfer>(`apps/${appId}/transfers`, ref => ref
+      .collection<Transfer>(`apps/${appId}/transfers`, ref => ref
         .where('id', '==', transferId).limit(limit)
         .orderBy('timestamp', 'desc'))
       .valueChanges();
     } else {
       return this.firestore
-      .collection<UserTransfer>(`apps/${appId}/transfers`, ref => ref
+      .collection<Transfer>(`apps/${appId}/transfers`, ref => ref
         .limit(limit)
         .orderBy('timestamp', 'desc'))
       .valueChanges();
@@ -101,70 +101,70 @@ export class ConsoleService {
     return this.firestore.doc<TurtleApp>(`apps/${appId}`).valueChanges();
   }
 
-  getAppUsers$(appId: string, limit: number, userId?: string): Observable<AppUser[]> {
-    if (userId && userId !== '') {
+  getAppAccounts$(appId: string, limit: number, accountId?: string): Observable<Account[]> {
+    if (accountId && accountId !== '') {
       return this.firestore
-      .collection<AppUser>(`apps/${appId}/users`, ref => ref
-        .where('userId', '==', userId).limit(limit)
+      .collection<Account>(`apps/${appId}/accounts`, ref => ref
+        .where('accountId', '==', accountId).limit(limit)
         .orderBy('createdAt', 'desc'))
       .valueChanges();
     } else {
       return this.firestore
-      .collection<AppUser>(`apps/${appId}/users`, ref => ref
+      .collection<Account>(`apps/${appId}/accounts`, ref => ref
         .limit(limit)
         .orderBy('createdAt', 'desc'))
       .valueChanges();
     }
   }
 
-  getAppUser$(appId: string, userId: string): Observable<AppUser | undefined> {
-    return this.firestore.doc<AppUser>(`apps/${appId}/users/${userId}`).valueChanges();
+  getAppAccount$(appId: string, accountId: string): Observable<Account | undefined> {
+    return this.firestore.doc<Account>(`apps/${appId}/accounts/${accountId}`).valueChanges();
   }
 
-  getTransfer$(appId: string, transferId: string): Observable<UserTransfer | undefined> {
-    return this.firestore.doc<UserTransfer>(`apps/${appId}/transfers/${transferId}`).valueChanges();
+  getTransfer$(appId: string, transferId: string): Observable<Transfer | undefined> {
+    return this.firestore.doc<Transfer>(`apps/${appId}/transfers/${transferId}`).valueChanges();
   }
 
-  async createAppUser(appId: string, appSecret: string): Promise<[AppUser | undefined, undefined | ServiceError]> {
+  async createAppAccount(appId: string, appSecret: string): Promise<[Account | undefined, undefined | ServiceError]> {
     TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
-    return await TA.createUser();
+    return await TA.createAccount();
   }
 
-  async getAppUser(
+  async getAppAccount(
     appId: string,
     appSecret: string,
-    userId: string): Promise<[AppUser | undefined, undefined | ServiceError]> {
+    accountId: string): Promise<[Account | undefined, undefined | ServiceError]> {
 
     TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
-    return await TA.getUser(userId);
+    return await TA.getAccount(accountId);
   }
 
   async setWithdrawAddress(
     appId: string,
     appSecret: string,
-    userId: string,
+    accountId: string,
     address: string): Promise<[string | undefined, undefined | ServiceError]> {
 
     TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
-    return await TA.setWithdrawAddress(userId, address);
+    return await TA.setWithdrawAddress(accountId, address);
   }
 
-  async userTransfer(
+  async transfer(
     appId: string,
     appSecret: string,
     senderId: string,
     receiverId: string,
-    amount: number): Promise<[UserTransfer | undefined, undefined | ServiceError]> {
+    amount: number): Promise<[Transfer | undefined, undefined | ServiceError]> {
 
     TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
     return await TA.transfer(senderId, receiverId, amount);
   }
 
-  async userTransferMany(
+  async transferMany(
     appId: string,
     appSecret: string,
     senderId: string,
-    recipients: Recipient[]): Promise<[UserTransfer | undefined, undefined | ServiceError]> {
+    recipients: Recipient[]): Promise<[Transfer | undefined, undefined | ServiceError]> {
 
     TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
     return await TA.transferMany(senderId, recipients);
@@ -178,15 +178,15 @@ export class ConsoleService {
   async withdraw(
     appId: string,
     appSecret: string,
-    userId: string,
+    accountId: string,
     amount: number,
     sendAddress?: string): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
 
     TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
-    return await TA.withdraw(userId, amount, sendAddress);
+    return await TA.withdraw(accountId, amount, sendAddress);
   }
 
-  setAppUserData(appId: string, appSecret: string, userId: string, data: any): Promise<boolean> {
+  setAppAccountData(appId: string, appSecret: string, accountId: string, data: any): Promise<boolean> {
     return Promise.resolve(false);
   }
 

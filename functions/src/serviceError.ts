@@ -10,8 +10,8 @@ export type ServiceErrorCode =  'service/unknown-error'               |
                                 'app/invalid-app-name'                |
                                 'app/app-not-found'                   |
                                 'app/app-disabled'                    |
-                                'app/create-user-failed'              |
-                                'app/user-not-found'                  |
+                                'app/create-account-failed'           |
+                                'app/account-not-found'               |
                                 'app/invalid-withdraw-address'        |
                                 'app/deposit-not-found'               |
                                 'app/withdrawal-not-found'            |
@@ -62,18 +62,18 @@ export class ServiceError {
         return 'App not found.';
       case 'app/app-disabled':
         return 'App is currently disabled.';
-      case 'app/create-user-failed':
-        return 'Failed to create app user.'
-      case 'app/user-not-found':
-        return 'App user not found';
+      case 'app/create-account-failed':
+        return 'Failed to create app account.'
+      case 'app/account-not-found':
+        return 'App account not found';
       case 'app/invalid-withdraw-address':
-        return 'User does not have a withdraw address set.';
+        return 'Account does not have a withdraw address set.';
       case 'app/deposit-not-found':
         return 'Deposit not found';
       case 'app/withdrawal-not-found':
         return 'Withdrawal request not found';
       case 'app/transfer-not-found':
-        return 'User transfer not found';
+        return 'Transfer not found';
 
       case 'request/invalid-params':
         return 'Invalid request parameters provided';
@@ -81,7 +81,7 @@ export class ServiceError {
         return 'Unauthorized request.'
 
       case 'transfer/insufficient-funds':
-        return 'User has insufficient funds for transfer.'
+        return 'Account has insufficient funds for transfer.'
       case 'transfer/invalid-amount':
         return 'Invalid amout specified in transfer request.'
       case 'transfer/invalid-recipient':

@@ -20,11 +20,11 @@ export class DialogService {
 
   constructor(public dialog: MatDialog) { }
 
-  openUserDetailsDialog(userId: string, app: TurtleApp) {
+  openAccountDetailsDialog(accountId: string, app: TurtleApp) {
     this.dialog.open(UserDetailsDialogComponent, {
       autoFocus: false,
       width: this.dialogWidth,
-      data: { userId, app }
+      data: { accountId, app }
     });
   }
 
@@ -52,35 +52,35 @@ export class DialogService {
     });
   }
 
-  openDepositRequestDialog(userId: string, app: TurtleApp) {
+  openDepositRequestDialog(accountId: string, app: TurtleApp) {
     this.dialog.open(DepositRequestDialogComponent, {
       autoFocus: false,
       width: this.dialogWidth,
-      data: { userId, app }
+      data: { accountId, app }
     });
   }
 
-  openUserWithdrawDialog(userId: string, app: TurtleApp) {
+  openAccountWithdrawDialog(accountId: string, app: TurtleApp) {
     this.dialog.open(WithdrawDialogComponent, {
       autoFocus: false,
       width: this.dialogWidth,
-      data: { userId, app }
+      data: { accountId, app }
     });
   }
 
-  openUserTransferDialog(userId: string, app: TurtleApp) {
+  openTransferDialog(accountId: string, app: TurtleApp) {
     this.dialog.open(UserTransferDialogComponent, {
       autoFocus: false,
       width: this.dialogWidth,
-      data: { userId, app }
+      data: { accountId, app }
     });
   }
 
-  openUserWithdrawAddressDialog(userId: string, app: TurtleApp) {
+  openWithdrawAddressDialog(accountId: string, app: TurtleApp) {
     this.dialog.open(SetAddressDialogComponent, {
       autoFocus: false,
       width: this.dialogWidth,
-      data: { userId, app }
+      data: { accountId, app }
     });
   }
 

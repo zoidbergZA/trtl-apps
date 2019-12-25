@@ -1,27 +1,27 @@
 <div class="api-top-panel">
   <div>
-    <button *ngIf="!creatingUser"
+    <button *ngIf="!creatingAccount"
       class="create-user"
       mat-flat-button
       color="accent"
-      (click)="createAppUser()"
-    >create new user</button>
-    <mat-spinner *ngIf="creatingUser" diameter="32"></mat-spinner>
+      (click)="createAppAccount()"
+    >create new account</button>
+    <mat-spinner *ngIf="creatingAccount" diameter="32"></mat-spinner>
   </div>
   <div class="api-search-container">
     <search-box (searchChanged)="onSearchValueChanged($event)"></search-box>
   </div>
 </div>
 <div class="api-table-container">
-  <mat-table [dataSource]="appUsers$" class="mat-elevation-z8">
-    <!-- userId column -->
-    <ng-container matColumnDef="userId">
-      <mat-header-cell *matHeaderCellDef> User ID </mat-header-cell>
+  <mat-table [dataSource]="appAccounts$" class="mat-elevation-z8">
+    <!-- accountId column -->
+    <ng-container matColumnDef="accountId">
+      <mat-header-cell *matHeaderCellDef> Account ID </mat-header-cell>
       <mat-cell *matCellDef="let element" [class.deleted-user]="element.deleted">
         <a
           class="code-font"
           [routerLink]="[]"
-          (click)="userDetailsClick(element.userId)">{{element.userId}}</a>
+          (click)="accountDetailsClick(element.id)">{{element.id}}</a>
         <span *ngIf="element.deleted" class="postfix">(deleted)</span>
       </mat-cell>
     </ng-container>
@@ -44,12 +44,12 @@
     <ng-container matColumnDef="options">
       <mat-header-cell *matHeaderCellDef> Actions </mat-header-cell>
       <mat-cell *matCellDef="let element">
-        <user-options [userId]="element.userId"
-          (withdraw)="userWithdraw($event)"
-          (transfer)="userTransfer($event)"
-          (setWithdrawAddress)="userSetWithdrawAddress($event)"
-          (delete)="userDelete($event)"
-          (reactivate)="userReactivate($event)">
+        <user-options [userId]="element.id"
+          (withdraw)="accountWithdraw($event)"
+          (transfer)="transfer($event)"
+          (setWithdrawAddress)="setWithdrawAddress($event)"
+          (delete)="accountDelete($event)"
+          (reactivate)="accountReactivate($event)">
         </user-options>
       </mat-cell>
     </ng-container>

@@ -5,7 +5,7 @@ service cloud.firestore {
       allow read: if request.auth.uid == resource.data.owner;
       allow write: if false;
 
-      match /users/{user} {
+      match /accounts/{account} {
       	allow read: if get(/databases/$(database)/documents/apps/$(appId)).data.owner == request.auth.uid;
       	allow write: if false;
       }

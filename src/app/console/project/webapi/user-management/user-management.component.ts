@@ -1,5 +1,5 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { TurtleApp, AppUser } from 'shared/types';
+import { TurtleApp, Account } from 'shared/types';
 import { ConsoleService } from 'src/app/providers/console.service';
 import { MatSnackBar } from '@angular/material';
 import { Observable, BehaviorSubject } from 'rxjs';
@@ -26,17 +26,17 @@ export class UserManagementComponent implements OnInit {
     if (app) {
       this.fetching = true;
 
-      this.appUsers$ = combineLatest(
-        this.userFilter$,
+      this.appAccounts$ = combineLatest(
+        this.accountFilter$,
         this.limit$
       ).pipe(
         tap(_ => this.fetching = true),
-        switchMap(([userId, limit]) => this.consoleService.getAppUsers$(app.appId, limit, userId))
+        switchMap(([accountId, limit]) => this.consoleService.getAppAccounts$(app.appId, limit, accountId))
       ).pipe(
-        tap(users => {
+        tap(accounts => {
           const limit       = this.limit$.value;
           this.fetching     = false;
-          this.showLoadMore = users.length === limit && limit < this.maxLimit;
+          this.showLoadMore = accounts.length === limit && limit < this.maxLimit;
         })
       );
     }
@@ -47,13 +47,13 @@ export class UserManagementComponent implements OnInit {
 
   // tslint:disable-next-line:variable-name
   _app: TurtleApp | undefined;
-  userFilter$ = new BehaviorSubject<string>('');
-  appUsers$: Observable<AppUser[]> | undefined;
+  accountFilter$ = new BehaviorSubject<string>('');
+  appAccounts$: Observable<Account[]> | undefined;
   limit$ = new BehaviorSubject<number>(this.limitIncrement);
-  displayedColumns: string[] = ['userId', 'createdAt', 'balance', 'options'];
+  displayedColumns: string[] = ['accountId', 'createdAt', 'balance', 'options'];
 
   searchValue     = '';
-  creatingUser    = false;
+  creatingAccount = false;
   fetching        = false;
   showLoadMore    = false;
 
@@ -65,73 +65,73 @@ export class UserManagementComponent implements OnInit {
   ngOnInit() {
   }
 
-  createAppUser() {
+  createAppAccount() {
     if (!this.app) {
       return;
     }
 
-    this.creatingUser = true;
+    this.creatingAccount = true;
 
-    this.consoleService.createAppUser(this.app.appId, this.app.appSecret).then(([user, error]) => {
-      if (user) {
-        this.snackBar.open(`new app user created: ${user.userId}`, undefined, { duration: 6000 });
+    this.consoleService.createAppAccount(this.app.appId, this.app.appSecret).then(([account, error]) => {
+      if (account) {
+        this.snackBar.open(`new app account created: ${account.id}`, undefined, { duration: 6000 });
       } else {
         console.log((error as ServiceError).message);
-        this.snackBar.open('failed to create app user.', undefined, { duration: 6000 });
+        this.snackBar.open('failed to create app account.', undefined, { duration: 6000 });
       }
-      this.creatingUser = false;
+      this.creatingAccount = false;
     }).catch(_ => {
-      console.log('error creating app user.');
-      this.creatingUser = false;
+      console.log('error creating app account.');
+      this.creatingAccount = false;
     });
   }
 
   onSearchValueChanged(searchValue: string) {
     this.searchValue = searchValue;
-    this.userFilter$.next(searchValue);
+    this.accountFilter$.next(searchValue);
   }
 
-  userDetailsClick(userId: string) {
+  accountDetailsClick(accountId: string) {
     if (!this.app) {
       return;
     }
 
-    this.dialogService.openUserDetailsDialog(userId, this.app);
+    this.dialogService.openAccountDetailsDialog(accountId, this.app);
   }
 
   loadMoreClick() {
     this.limit$.next(this.limit$.value + this.limitIncrement);
   }
 
-  userWithdraw(userId: string) {
+  accountWithdraw(accountId: string) {
     if (!this.app) {
       return;
     }
 
-    this.dialogService.openUserWithdrawDialog(userId, this.app);
+    this.dialogService.openAccountWithdrawDialog(accountId, this.app);
   }
 
-  userTransfer(userId: string) {
+  transfer(accountId: string) {
     if (!this.app) {
       return;
     }
 
-    this.dialogService.openUserTransferDialog(userId, this.app);
+    this.dialogService.openTransferDialog(accountId, this.app);
   }
 
-  userSetWithdrawAddress(userId: string) {
+  setWithdrawAddress(accountId: string) {
     if (!this.app) {
       return;
     }
 
-    this.dialogService.openUserWithdrawAddressDialog(userId, this.app);
+    this.dialogService.openWithdrawAddressDialog(accountId, this.app);
   }
 
-  userDelete(userId: string) {
-    console.log('handle user delete...');
+  accountDelete(accountId: string) {
+    console.log('handle account delete...');
   }
 
-  userReactivate(userId: string) {
-    console.log('handle user reactivate...');
+  accountReactivate(accountId: string) {
+    console.log('handle account reactivate...');
   }
 }

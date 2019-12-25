@@ -1,5 +1,5 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { TurtleApp, UserTransfer } from 'shared/types';
+import { TurtleApp, Transfer } from 'shared/types';
 import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
 import { ConsoleService } from 'src/app/providers/console.service';
 import { DialogService } from 'src/app/providers/dialog.service';
@@ -18,7 +18,7 @@ export class TransfersViewComponent implements OnInit {
   // tslint:disable-next-line:variable-name
   _app: TurtleApp | undefined;
   displayedColumns: string[] = ['transferId', 'createdDate', 'amount', 'recipients'];
-  transfers$: Observable<UserTransfer[] | undefined> | undefined;
+  transfers$: Observable<Transfer[] | undefined> | undefined;
 
   transferFilter$ = new BehaviorSubject<string>('');
   limit$          = new BehaviorSubject<number>(this.limitIncrement);
@@ -66,7 +66,7 @@ export class TransfersViewComponent implements OnInit {
     this.transferFilter$.next(searchValue);
   }
 
-  getTotalAmount(transfer: UserTransfer): number {
+  getTotalAmount(transfer: Transfer): number {
     return transfer.recipients.reduce((prev, cur) => prev + cur.amount, 0);
   }
 

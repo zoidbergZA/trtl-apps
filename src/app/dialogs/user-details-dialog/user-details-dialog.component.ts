@@ -1,7 +1,7 @@
 import { Component, OnInit, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material';
 import { ConsoleService } from 'src/app/providers/console.service';
-import { AppUser, TurtleApp } from 'shared/types';
+import { Account, TurtleApp } from 'shared/types';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -13,17 +13,17 @@ import { Observable } from 'rxjs';
 export class UserDetailsDialogComponent implements OnInit {
 
   app: TurtleApp;
-  userId: string;
-  appUser$: Observable<AppUser | undefined>;
+  accountId: string;
+  appAccount$: Observable<Account | undefined>;
 
   constructor(
     public dialogRef: MatDialogRef<UserDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private consoleService: ConsoleService
   ) {
-    this.app      = data.app;
-    this.userId   = data.userId;
-    this.appUser$ = this.consoleService.getAppUser$(this.app.appId, this.userId);
+    this.app          = data.app;
+    this.accountId    = data.accountId;
+    this.appAccount$  = this.consoleService.getAppAccount$(this.app.appId, this.accountId);
   }
 
   ngOnInit() {

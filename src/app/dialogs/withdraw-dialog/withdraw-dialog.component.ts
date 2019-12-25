@@ -15,7 +15,7 @@ import { ServiceError } from 'trtl-apps';
 export class WithdrawDialogComponent implements OnInit {
 
   app: TurtleApp;
-  userId: string;
+  accountId: string;
   busy = false;
   withdrawalId: string | undefined;
   errorMessage: string | undefined;
@@ -30,7 +30,7 @@ export class WithdrawDialogComponent implements OnInit {
     private consoleService: ConsoleService) {
 
     this.app = data.app;
-    this.userId = data.userId;
+    this.accountId = data.accountId;
 
     this.form = new FormGroup({
       amount: new FormControl('', Validators.compose([
@@ -80,7 +80,7 @@ export class WithdrawDialogComponent implements OnInit {
     this.withdrawalId = undefined;
     this.errorMessage = undefined;
 
-    if (!this.app || !this.userId) {
+    if (!this.app || !this.accountId) {
       this.errorMessage = 'Invalid input parameters.';
       return;
     }
@@ -99,7 +99,7 @@ export class WithdrawDialogComponent implements OnInit {
     const [withdrawal, error] = await this.consoleService.withdraw(
                                   this.app.appId,
                                   this.app.appSecret,
-                                  this.userId,
+                                  this.accountId,
                                   atomicUnits,
                                   sendAddress);
 

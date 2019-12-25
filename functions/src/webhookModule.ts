@@ -16,8 +16,7 @@ export type CallbackCode =  'deposit/confirming'      |
                             'deposit/succeeded'       |
                             'deposit/cancelled'       |
                             'withdrawal/succeeded'    |
-                            'withdrawal/failed'       |
-                            'user/updated'
+                            'withdrawal/failed'
 
 export interface Callback {
   code: CallbackCode;

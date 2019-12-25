@@ -5,8 +5,8 @@
       <td class="table-value"><copy-string-box [data]="deposit.id"></copy-string-box></td>
     </tr>
     <tr>
-      <td class="table-key">User ID</td>
-      <td class="table-value"><copy-string-box [data]="deposit.userId"></copy-string-box></td>
+      <td class="table-key">Account ID</td>
+      <td class="table-value"><copy-string-box [data]="deposit.accountId"></copy-string-box></td>
     </tr>
     <tr>
       <td class="table-key">Tx hash</td>
@@ -32,9 +32,9 @@
       <td class="table-key">cancelled</td>
       <td class="table-value">{{ deposit.cancelled }}</td>
     </tr>
-    <tr *ngIf="deposit.userCredited">
-      <td class="table-key">User credited</td>
-      <td class="table-value">{{ deposit.userCredited }}</td>
+    <tr *ngIf="deposit.accountCredited">
+      <td class="table-key">Account credited</td>
+      <td class="table-value">{{ deposit.accountCredited }}</td>
     </tr>
   </table>
 </div>
