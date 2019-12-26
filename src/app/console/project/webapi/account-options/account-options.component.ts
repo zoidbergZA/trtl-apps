@@ -2,13 +2,13 @@ import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 
 @Component({
   // tslint:disable-next-line:component-selector
-  selector: 'user-options',
-  templateUrl: './user-options.component.html',
-  styleUrls: ['./user-options.component.scss']
+  selector: 'account-options',
+  templateUrl: './account-options.component.html',
+  styleUrls: ['./account-options.component.scss']
 })
-export class UserOptionsComponent implements OnInit {
+export class AccountOptionsComponent implements OnInit {
 
-  @Input() userId: string | undefined;
+  @Input() accountId: string | undefined;
 
   @Output() depositRequest      = new EventEmitter<string>();
   @Output() withdraw            = new EventEmitter<string>();
@@ -23,50 +23,50 @@ export class UserOptionsComponent implements OnInit {
   }
 
   depositClick() {
-    if (!this.userId) {
+    if (!this.accountId) {
       return;
     }
 
-    this.depositRequest.emit(this.userId);
+    this.depositRequest.emit(this.accountId);
   }
 
   withdrawClick() {
-    if (!this.userId) {
+    if (!this.accountId) {
       return;
     }
 
-    this.withdraw.emit(this.userId);
+    this.withdraw.emit(this.accountId);
   }
 
   transferClick() {
-    if (!this.userId) {
+    if (!this.accountId) {
       return;
     }
 
-    this.transfer.emit(this.userId);
+    this.transfer.emit(this.accountId);
   }
 
   setWithdrawAddressClick() {
-    if (!this.userId) {
+    if (!this.accountId) {
       return;
     }
 
-    this.setWithdrawAddress.emit(this.userId);
+    this.setWithdrawAddress.emit(this.accountId);
   }
 
   deleteClick() {
-    if (!this.userId) {
+    if (!this.accountId) {
       return;
     }
 
-    this.delete.emit(this.userId);
+    this.delete.emit(this.accountId);
   }
 
   reactivateClick() {
-    if (!this.userId) {
+    if (!this.accountId) {
       return;
     }
 
-    this.reactivate.emit(this.userId);
+    this.reactivate.emit(this.accountId);
   }
 }

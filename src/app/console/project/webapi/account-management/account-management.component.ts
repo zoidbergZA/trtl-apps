@@ -9,11 +9,12 @@ import { combineLatest } from 'rxjs';
 import { switchMap, tap } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-user-management',
-  templateUrl: './user-management.component.html',
-  styleUrls: ['./user-management.component.scss']
+  // tslint:disable-next-line:component-selector
+  selector: 'account-management',
+  templateUrl: './account-management.component.html',
+  styleUrls: ['./account-management.component.scss']
 })
-export class UserManagementComponent implements OnInit {
+export class AccountManagementComponent implements OnInit {
 
   get app(): TurtleApp | undefined {
     return this._app;

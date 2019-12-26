@@ -28,15 +28,15 @@ import { WebapiComponent } from './console/project/webapi/webapi.component';
 import { HttpClientModule } from '@angular/common/http';
 import { TruncateAddressPipe } from './pipes/truncate-address';
 import { TurtleAmountPipe } from './pipes/trtl-amount';
-import { UserOptionsComponent } from './console/project/webapi/user-options/user-options.component';
+import { AccountOptionsComponent } from './console/project/webapi/account-options/account-options.component';
 import { DepositRequestDialogComponent } from './dialogs/deposit-request-dialog/deposit-request-dialog.component';
-import { UserDepositComponent } from './console/project/webapi/user-deposit/user-deposit.component';
+import { DepositComponent } from './console/project/webapi/account-deposit/account-deposit.component';
 import { GetStartedNodeComponent } from './getting-started/get-started-node/get-started-node.component';
 import { GetStartedUnityComponent } from './getting-started/get-started-unity/get-started-unity.component';
 import { GetStartedHttpComponent } from './getting-started/get-started-http/get-started-http.component';
 import { ViewSecretDialogComponent } from './dialogs/view-secret-dialog/view-secret-dialog.component';
 import { ClipboardModule } from 'ngx-clipboard';
-import { UserManagementComponent } from './console/project/webapi/user-management/user-management.component';
+import { AccountManagementComponent } from './console/project/webapi/account-management/account-management.component';
 import { DepositsViewComponent } from './console/project/webapi/deposits-view/deposits-view.component';
 import { DepositDetailsComponent } from './console/deposit-details/deposit-details.component';
 import { DepositDetailsDialogComponent } from './dialogs/deposit-details-dialog/deposit-details-dialog.component';
@@ -89,14 +89,14 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     WebapiComponent,
     TruncateAddressPipe,
     TurtleAmountPipe,
-    UserOptionsComponent,
+    AccountOptionsComponent,
     DepositRequestDialogComponent,
-    UserDepositComponent,
+    DepositComponent,
     GetStartedNodeComponent,
     GetStartedUnityComponent,
     GetStartedHttpComponent,
     ViewSecretDialogComponent,
-    UserManagementComponent,
+    AccountManagementComponent,
     DepositsViewComponent,
     DepositDetailsComponent,
     DepositDetailsDialogComponent,

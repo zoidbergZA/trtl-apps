@@ -4,11 +4,12 @@ import { FormGroup, FormControl, Validators } from '@angular/forms';
 import { TurtleApp } from 'shared/types';
 
 @Component({
-  selector: 'app-user-deposit',
-  templateUrl: './user-deposit.component.html',
-  styleUrls: ['./user-deposit.component.scss']
+  // tslint:disable-next-line:component-selector
+  selector: 'account-deposit',
+  templateUrl: './account-deposit.component.html',
+  styleUrls: ['./account-deposit.component.scss']
 })
-export class UserDepositComponent implements OnInit {
+export class DepositComponent implements OnInit {
 
   @Input() app: TurtleApp | undefined;
   @Input() userId: string | undefined;
