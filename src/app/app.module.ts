@@ -29,7 +29,6 @@ import { HttpClientModule } from '@angular/common/http';
 import { TruncateAddressPipe } from './pipes/truncate-address';
 import { TurtleAmountPipe } from './pipes/trtl-amount';
 import { AccountOptionsComponent } from './console/project/webapi/account-options/account-options.component';
-import { DepositRequestDialogComponent } from './dialogs/deposit-request-dialog/deposit-request-dialog.component';
 import { DepositComponent } from './console/project/webapi/account-deposit/account-deposit.component';
 import { GetStartedNodeComponent } from './getting-started/get-started-node/get-started-node.component';
 import { GetStartedUnityComponent } from './getting-started/get-started-unity/get-started-unity.component';
@@ -90,7 +89,6 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     TruncateAddressPipe,
     TurtleAmountPipe,
     AccountOptionsComponent,
-    DepositRequestDialogComponent,
     DepositComponent,
     GetStartedNodeComponent,
     GetStartedUnityComponent,
@@ -122,7 +120,6 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
-    DepositRequestDialogComponent,
     ViewSecretDialogComponent,
     DepositDetailsDialogComponent,
     WithdrawalDetailsDialogComponent,

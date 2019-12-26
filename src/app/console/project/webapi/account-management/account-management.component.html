@@ -44,13 +44,13 @@
     <ng-container matColumnDef="options">
       <mat-header-cell *matHeaderCellDef> Actions </mat-header-cell>
       <mat-cell *matCellDef="let element">
-        <user-options [userId]="element.id"
+        <account-options [accountId]="element.id"
           (withdraw)="accountWithdraw($event)"
           (transfer)="transfer($event)"
           (setWithdrawAddress)="setWithdrawAddress($event)"
           (delete)="accountDelete($event)"
           (reactivate)="accountReactivate($event)">
-        </user-options>
+        </account-options>
       </mat-cell>
     </ng-container>
     <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>

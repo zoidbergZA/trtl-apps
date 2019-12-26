@@ -1,8 +1,8 @@
-<button mat-icon-button aria-label="User options" [matMenuTriggerFor]="userOptions">
+<button mat-icon-button aria-label="User options" [matMenuTriggerFor]="accountOptions">
   <mat-icon>more_vert</mat-icon>
 </button>
 
-<mat-menu #userOptions="matMenu">
+<mat-menu #accountOptions="matMenu">
   <button mat-menu-item (click)="withdrawClick()">Withdraw</button>
   <button mat-menu-item (click)="transferClick()">Transfer</button>
   <button mat-menu-item (click)="setWithdrawAddressClick()">Set withdraw address</button>
