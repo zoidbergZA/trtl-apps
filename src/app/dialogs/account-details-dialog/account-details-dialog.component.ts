@@ -6,18 +6,18 @@ import { Observable } from 'rxjs';
 
 @Component({
   // tslint:disable-next-line:component-selector
-  selector: 'user-details-dialog',
-  templateUrl: './user-details-dialog.component.html',
-  styleUrls: ['./user-details-dialog.component.scss']
+  selector: 'account-details-dialog',
+  templateUrl: './account-details-dialog.component.html',
+  styleUrls: ['./account-details-dialog.component.scss']
 })
-export class UserDetailsDialogComponent implements OnInit {
+export class AccountDetailsDialogComponent implements OnInit {
 
   app: TurtleApp;
   accountId: string;
   appAccount$: Observable<Account | undefined>;
 
   constructor(
-    public dialogRef: MatDialogRef<UserDetailsDialogComponent>,
+    public dialogRef: MatDialogRef<AccountDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private consoleService: ConsoleService
   ) {

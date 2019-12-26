@@ -53,7 +53,7 @@ import { GettingStartedComponent } from './getting-started/getting-started.compo
 import { CopyStringBoxComponent } from './copy-string-box/copy-string-box.component';
 import { WithdrawalDetailsDialogComponent } from './dialogs/withdrawal-details-dialog/withdrawal-details-dialog.component';
 import { WithdrawalDetailsComponent } from './console/withdrawal-details/withdrawal-details.component';
-import { UserDetailsDialogComponent } from './dialogs/user-details-dialog/user-details-dialog.component';
+import { AccountDetailsDialogComponent } from './dialogs/account-details-dialog/account-details-dialog.component';
 import { DialogService } from './providers/dialog.service';
 import { TransferDetailsDialogComponent } from './dialogs/transfer-details-dialog/transfer-details-dialog.component';
 import { SupportComponent } from './support/support.component';
@@ -111,7 +111,7 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     CopyStringBoxComponent,
     WithdrawalDetailsDialogComponent,
     WithdrawalDetailsComponent,
-    UserDetailsDialogComponent,
+    AccountDetailsDialogComponent,
     TransferDetailsDialogComponent,
     SupportComponent,
     RecipientFormComponent,
@@ -121,7 +121,7 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     DocumentationComponent
   ],
   entryComponents: [
-    UserDetailsDialogComponent,
+    AccountDetailsDialogComponent,
     DepositRequestDialogComponent,
     ViewSecretDialogComponent,
     DepositDetailsDialogComponent,

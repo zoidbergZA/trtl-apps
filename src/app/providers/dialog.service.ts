@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material';
 import { TurtleApp } from 'shared/types';
-import { UserDetailsDialogComponent } from '../dialogs/user-details-dialog/user-details-dialog.component';
+import { AccountDetailsDialogComponent } from '../dialogs/account-details-dialog/account-details-dialog.component';
 import { DepositRequestDialogComponent } from '../dialogs/deposit-request-dialog/deposit-request-dialog.component';
 import { WithdrawDialogComponent } from '../dialogs/withdraw-dialog/withdraw-dialog.component';
 import { UserTransferDialogComponent } from '../dialogs/user-transfer-dialog/user-transfer-dialog.component';
@@ -21,7 +21,7 @@ export class DialogService {
   constructor(public dialog: MatDialog) { }
 
   openAccountDetailsDialog(accountId: string, app: TurtleApp) {
-    this.dialog.open(UserDetailsDialogComponent, {
+    this.dialog.open(AccountDetailsDialogComponent, {
       autoFocus: false,
       width: this.dialogWidth,
       data: { accountId, app }
