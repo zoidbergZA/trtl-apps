@@ -17,18 +17,18 @@
     }
   } ],
   "paths" : {
-    "/{appId}/users" : {
+    "/{appId}/accounts" : {
       "post" : {
         "security" : [ {
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "app" ],
-        "summary" : "Creates a new AppUser",
-        "description" : "Returns a AppUser",
+        "summary" : "Creates a new account",
+        "description" : "Returns the newly created account object",
         "parameters" : [ {
           "name" : "appId",
           "in" : "path",
-          "description" : "ID of the app creating the user",
+          "description" : "ID of the app creating the account",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -40,10 +40,10 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/AppUser"
+                  "$ref" : "#/components/schemas/Account"
                 },
                 "example" : {
-                  "userId" : "8RgwiWmgiYKQlUHWGaTW",
+                  "id" : "8RgwiWmgiYKQlUHWGaTW",
                   "appId" : "84U0IRP0rdC57AHfwRQc",
                   "balanceLocked" : 0,
                   "balanceUnlocked" : 0,
@@ -72,14 +72,14 @@
         }
       }
     },
-    "/{appId}/users/{userId}" : {
+    "/{appId}/accounts/{accountId}" : {
       "get" : {
         "security" : [ {
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "app" ],
-        "summary" : "Gets the AppUser with the given userId",
-        "description" : "Returns an AppUser",
+        "summary" : "Gets the Account with the given id",
+        "description" : "Returns an Account object",
         "parameters" : [ {
           "name" : "appId",
           "in" : "path",
@@ -89,9 +89,9 @@
             "type" : "string"
           }
         }, {
-          "name" : "userId",
+          "name" : "accountId",
           "in" : "path",
-          "description" : "The ID of the user to retrieve.",
+          "description" : "The ID of the account to retrieve.",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -103,10 +103,10 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/AppUser"
+                  "$ref" : "#/components/schemas/Account"
                 },
                 "example" : {
-                  "userId" : "8RgwiWmgiYKQlUHWGaTW",
+                  "id" : "8RgwiWmgiYKQlUHWGaTW",
                   "appId" : "84U0IRP0rdC57AHfwRQc",
                   "balanceLocked" : 0,
                   "balanceUnlocked" : 0,
@@ -142,7 +142,7 @@
       "get" : {
         "tags" : [ "service" ],
         "summary" : "Gets the node fee",
-        "description" : "Returns the current node fee charged on user withdrawals.",
+        "description" : "Returns the current node fee charged on account withdrawals.",
         "responses" : {
           "200" : {
             "description" : "successful operation",
@@ -236,14 +236,14 @@
         }
       }
     },
-    "/{appId}/users/{userId}/withdrawaddress" : {
+    "/{appId}/accounts/{accountId}/withdrawaddress" : {
       "put" : {
         "security" : [ {
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "app" ],
-        "summary" : "Set a user's withdraw address",
-        "description" : "Set the user's withdraw address. Note that integrated addresses are not allowed. Returns the newly set address if the operation succeeded.",
+        "summary" : "Set an account's withdraw address",
+        "description" : "Set the account withdraw address. Note that integrated addresses are not allowed. Returns the newly set address if the operation succeeded.",
         "parameters" : [ {
           "name" : "appId",
           "in" : "path",
@@ -253,9 +253,9 @@
             "type" : "string"
           }
         }, {
-          "name" : "userId",
+          "name" : "accountId",
           "in" : "path",
-          "description" : "ID of the user.",
+          "description" : "ID of the account.",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -347,7 +347,7 @@
                 "example" : {
                   "id" : "Ehr3Zzfkvc01Ir3n0nMN",
                   "appId" : "J3irXkH26gE4pZHYyWWW",
-                  "userId" : "8RgwiWmgiYKQlUHWGaTW",
+                  "accountId" : "8RgwiWmgiYKQlUHWGaTW",
                   "paymentId" : "fa8ecc78c8d3a56895a102d30b0dea629bb75075b57869fb0395b56f48a2ae21",
                   "depositAddress" : "TRTLv3wHDVyjcHXV2fHQ3cfSjjpCck9YjEEAw4jaAfn3Djrrz63bPCtWJNPW3CJhbg2BmnNidHMEo29geJc9QmXKNroz8NgLUc7",
                   "integratedAddress" : "TRTLuz6RCHAHdBfSy6kBC6HG3CpR9PpZe94a3bGdZuzBHxWc1GGniGv9tzdJ7JpvV5A53V8GoBCTvHRjsvQqwgRwHHrfsxfrDoVjcHXV2fHQ3cfSjjpCck9YjEEAw4jaAfn3Djrrz63bPCtWJNPW3CJhbg2BmnNidHMEo29geJc9QmXKNroz8JtDGhG",
@@ -356,7 +356,7 @@
                   "createdDate" : 1573251262062,
                   "blockHeight" : 2086619,
                   "status" : "completed",
-                  "userCredited" : true,
+                  "accountCredited" : true,
                   "cancelled" : false,
                   "lastUpdate" : 1573251954262
                 }
@@ -389,7 +389,7 @@
         } ],
         "tags" : [ "app" ],
         "summary" : "Transfer funds from the sender to 1 or more receivers",
-        "description" : "Transfers funds from the sender to the array of recipients. Returns the UserTransfer object if the operation succeeded.",
+        "description" : "Transfers funds from the sender to the array of recipients. Returns a Transfer object if the operation succeeded.",
         "parameters" : [ {
           "name" : "appId",
           "in" : "path",
@@ -409,7 +409,7 @@
                   "senderId" : {
                     "type" : "string",
                     "example" : "hUMUXEFN9amjQjXN9Km7",
-                    "description" : "ID of the user who is sending the funds"
+                    "description" : "ID of the account sending the funds"
                   },
                   "recipients" : {
                     "type" : "array",
@@ -417,10 +417,10 @@
                       "$ref" : "#/components/schemas/Recipient"
                     },
                     "example" : [ {
-                      "userId" : "DawR7cEvQjEWMBVmMkkn",
+                      "accountId" : "DawR7cEvQjEWMBVmMkkn",
                       "amount" : 300
                     }, {
-                      "userId" : "rwszORa1qaSXK0RbZ7F5",
+                      "accountId" : "rwszORa1qaSXK0RbZ7F5",
                       "amount" : 200
                     } ]
                   }
@@ -435,17 +435,17 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/UserTransfer"
+                  "$ref" : "#/components/schemas/Transfer"
                 },
                 "example" : {
                   "transferId" : "apHo3ySWJAZy6KwH704C",
                   "appId" : "tX0vd7xGAE9aUrKF6oel",
                   "senderId" : "hUMUXEFN9amjQjXN9Km7",
                   "recipients" : [ {
-                    "userId" : "DawR7cEvQjEWMBVmMkkn",
+                    "accountId" : "DawR7cEvQjEWMBVmMkkn",
                     "amount" : 300
                   }, {
-                    "userId" : "rwszORa1qaSXK0RbZ7F5",
+                    "accountId" : "rwszORa1qaSXK0RbZ7F5",
                     "amount" : 200
                   } ],
                   "timestamp" : 1575137353275
@@ -479,7 +479,7 @@
         } ],
         "tags" : [ "app" ],
         "summary" : "Gets the transfer with the given transfer ID",
-        "description" : "Returns a UserTransfer object",
+        "description" : "Returns a Transfer object",
         "parameters" : [ {
           "name" : "appId",
           "in" : "path",
@@ -503,17 +503,17 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/UserTransfer"
+                  "$ref" : "#/components/schemas/Transfer"
                 },
                 "example" : {
                   "id" : "apHo3ySWJAZy6KwH704C",
                   "appId" : "tX0vd7xGAE9aUrKF6oel",
                   "senderId" : "hUMUXEFN9amjQjXN9Km7",
                   "recipients" : [ {
-                    "userId" : "DawR7cEvQjEWMBVmMkkn",
+                    "accountId" : "DawR7cEvQjEWMBVmMkkn",
                     "amount" : 300
                   }, {
-                    "userId" : "rwszORa1qaSXK0RbZ7F5",
+                    "accountId" : "rwszORa1qaSXK0RbZ7F5",
                     "amount" : 200
                   } ],
                   "timestamp" : 1575137353275
@@ -546,8 +546,8 @@
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "app" ],
-        "summary" : "Withdraw user funds",
-        "description" : "Withdraws the given amount from the user's balance to their withdraw address, or alternatively to the optional sendAddress specified in the request body. Returns the Withdrawal object if the operation succeeded.",
+        "summary" : "Withdraw account funds",
+        "description" : "Withdraws the given amount from the account's balance to their withdraw address, or alternatively to the optional sendAddress specified in the request body. Returns the Withdrawal object if the operation succeeded.",
         "parameters" : [ {
           "name" : "appId",
           "in" : "path",
@@ -564,10 +564,10 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "userId" : {
+                  "accountId" : {
                     "type" : "string",
                     "example" : "8RgwiWmgiYKQlUHWGaTW",
-                    "description" : "ID of the user who is making the withdrawal"
+                    "description" : "ID of the account making the withdrawal"
                   },
                   "amount" : {
                     "type" : "integer",
@@ -576,7 +576,7 @@
                   },
                   "sendAddress" : {
                     "type" : "string",
-                    "description" : "Optional address where the funds will be sent. If none is provided, the user withdrawAddress will be used.",
+                    "description" : "Optional address where the funds will be sent. If none is provided, the account withdrawAddress will be used.",
                     "example" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he"
                   }
                 }
@@ -598,7 +598,7 @@
                   "status" : "confirming",
                   "blockHeight" : 0,
                   "appId" : "J3irXkH26gE4pZHYyWWW",
-                  "userId" : "8RgwiWmgiYKQlUHWGaTW",
+                  "account" : "8RgwiWmgiYKQlUHWGaTW",
                   "amount" : 200,
                   "fee" : 10,
                   "address" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he",
@@ -668,7 +668,7 @@
                   "status" : "confirming",
                   "blockHeight" : 0,
                   "appId" : "J3irXkH26gE4pZHYyWWW",
-                  "userId" : "8RgwiWmgiYKQlUHWGaTW",
+                  "accountId" : "8RgwiWmgiYKQlUHWGaTW",
                   "amount" : 200,
                   "fee" : 10,
                   "address" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he",
@@ -730,10 +730,10 @@
       }
     },
     "schemas" : {
-      "AppUser" : {
+      "Account" : {
         "type" : "object",
         "properties" : {
-          "userId" : {
+          "id" : {
             "type" : "string"
           },
           "appId" : {
@@ -774,7 +774,7 @@
           "appId" : {
             "type" : "string"
           },
-          "userId" : {
+          "accountId" : {
             "type" : "string"
           },
           "blockHeight" : {
@@ -801,7 +801,7 @@
           "createdDate" : {
             "type" : "integer"
           },
-          "userCredited" : {
+          "accountCredited" : {
             "type" : "boolean"
           },
           "lastUpdate" : {
@@ -812,7 +812,7 @@
           }
         }
       },
-      "UserTransfer" : {
+      "Transfer" : {
         "type" : "object",
         "properties" : {
           "id" : {
@@ -838,7 +838,7 @@
       "Recipient" : {
         "type" : "object",
         "properties" : {
-          "userId" : {
+          "accountId" : {
             "type" : "string"
           },
           "amount" : {
@@ -858,7 +858,7 @@
           "appId" : {
             "type" : "string"
           },
-          "userId" : {
+          "accountId" : {
             "type" : "string"
           },
           "amount" : {
