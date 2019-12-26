@@ -21,6 +21,7 @@
     "express": "^4.17.1",
     "firebase-admin": "^8.0.0",
     "firebase-functions": "^3.1.0",
+    "trtl-apps": "^0.5.0",
     "turtlecoin-wallet-backend": "^4.0.6"
   },
   "devDependencies": {
