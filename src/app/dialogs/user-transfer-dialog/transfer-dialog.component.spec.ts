@@ -1,20 +1,20 @@
 import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { UserTransferDialogComponent } from './user-transfer-dialog.component';
+import { TransferDialogComponent } from './transfer-dialog.component';
 
 describe('UserTranferDialogComponent', () => {
-  let component: UserTransferDialogComponent;
-  let fixture: ComponentFixture<UserTransferDialogComponent>;
+  let component: TransferDialogComponent;
+  let fixture: ComponentFixture<TransferDialogComponent>;
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ UserTransferDialogComponent ]
+      declarations: [ TransferDialogComponent ]
     })
     .compileComponents();
   }));
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(UserTransferDialogComponent);
+    fixture = TestBed.createComponent(TransferDialogComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

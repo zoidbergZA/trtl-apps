@@ -43,7 +43,7 @@ import { DepositDetailsDialogComponent } from './dialogs/deposit-details-dialog/
 import { SetAddressDialogComponent } from './dialogs/set-address-dialog/set-address-dialog.component';
 import { CurrencyMaskModule } from 'ng2-currency-mask';
 import { CurrencyMaskConfig, CURRENCY_MASK_CONFIG } from 'ng2-currency-mask/src/currency-mask.config';
-import { UserTransferDialogComponent } from './dialogs/user-transfer-dialog/user-transfer-dialog.component';
+import { TransferDialogComponent } from './dialogs/user-transfer-dialog/transfer-dialog.component';
 import { WithdrawDialogComponent } from './dialogs/withdraw-dialog/withdraw-dialog.component';
 import { WithdrawalsViewComponent } from './console/project/webapi/withdrawals-view/withdrawals-view.component';
 import { TransfersViewComponent } from './console/project/webapi/transfers-view/transfers-view.component';
@@ -101,7 +101,7 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     DepositDetailsComponent,
     DepositDetailsDialogComponent,
     SetAddressDialogComponent,
-    UserTransferDialogComponent,
+    TransferDialogComponent,
     WithdrawDialogComponent,
     WithdrawalsViewComponent,
     TransfersViewComponent,
@@ -128,7 +128,7 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     WithdrawalDetailsDialogComponent,
     TransferDetailsDialogComponent,
     SetAddressDialogComponent,
-    UserTransferDialogComponent,
+    TransferDialogComponent,
     WithdrawDialogComponent,
     EditStringDialogComponent,
     SetWebhookDialogComponent,

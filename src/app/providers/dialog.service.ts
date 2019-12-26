@@ -4,7 +4,7 @@ import { TurtleApp } from 'shared/types';
 import { AccountDetailsDialogComponent } from '../dialogs/account-details-dialog/account-details-dialog.component';
 import { DepositRequestDialogComponent } from '../dialogs/deposit-request-dialog/deposit-request-dialog.component';
 import { WithdrawDialogComponent } from '../dialogs/withdraw-dialog/withdraw-dialog.component';
-import { UserTransferDialogComponent } from '../dialogs/user-transfer-dialog/user-transfer-dialog.component';
+import { TransferDialogComponent } from '../dialogs/user-transfer-dialog/transfer-dialog.component';
 import { SetAddressDialogComponent } from '../dialogs/set-address-dialog/set-address-dialog.component';
 import { DepositDetailsDialogComponent } from '../dialogs/deposit-details-dialog/deposit-details-dialog.component';
 import { WithdrawalDetailsDialogComponent } from '../dialogs/withdrawal-details-dialog/withdrawal-details-dialog.component';
@@ -69,7 +69,7 @@ export class DialogService {
   }
 
   openTransferDialog(accountId: string, app: TurtleApp) {
-    this.dialog.open(UserTransferDialogComponent, {
+    this.dialog.open(TransferDialogComponent, {
       autoFocus: false,
       width: this.dialogWidth,
       data: { accountId, app }

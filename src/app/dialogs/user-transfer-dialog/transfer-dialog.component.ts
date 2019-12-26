@@ -6,11 +6,11 @@ import { ServiceError } from 'trtl-apps';
 
 @Component({
   // tslint:disable-next-line:component-selector
-  selector: 'user-transfer-dialog',
-  templateUrl: './user-transfer-dialog.component.html',
-  styleUrls: ['./user-transfer-dialog.component.scss']
+  selector: 'transfer-dialog',
+  templateUrl: './transfer-dialog.component.html',
+  styleUrls: ['./transfer-dialog.component.scss']
 })
-export class UserTransferDialogComponent implements OnInit {
+export class TransferDialogComponent implements OnInit {
 
   app: TurtleApp;
   accountId: string;
@@ -21,7 +21,7 @@ export class UserTransferDialogComponent implements OnInit {
   recipients: Recipient[];
 
   constructor(
-    public dialogRef: MatDialogRef<UserTransferDialogComponent>,
+    public dialogRef: MatDialogRef<TransferDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private consoleService: ConsoleService) {
 
