@@ -28,6 +28,11 @@ export interface ServiceConfig {
   serviceHalted: boolean;
 }
 
+export interface ServiceConfigUpdate {
+  daemonHost?: string;
+  daemonPort?: number;
+}
+
 export interface ServiceNode {
   id: string;
   name: string;

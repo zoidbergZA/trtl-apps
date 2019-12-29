@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin';
 import * as WalletManager from './walletManager';
 import * as axios from 'axios';
-import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus } from './types';
+import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate } from './types';
 import { sleep } from './utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
 import { SubWalletInfo } from '../../shared/types';
@@ -175,7 +175,36 @@ export async function updateMasterWallet(): Promise<void> {
 }
 
 export async function checkNodeSwap(): Promise<void> {
-  return Promise.resolve();
+  const nodesSnaphot = await admin.firestore()
+                        .collection('nodes')
+                        .where('online', '==', true)
+                        .orderBy('priority', 'desc')
+                        .get();
+
+  if (nodesSnaphot.size === 0) {
+    return;
+  }
+
+  const [serviceConfig, configError] = await getServiceConfig();
+
+  if (!serviceConfig) {
+    console.log((configError as ServiceError).message);
+    return;
+  }
+
+  const currentNodeUrl  = serviceConfig.daemonHost;
+  const recommendedNode = nodesSnaphot.docs[0].data() as ServiceNode;
+
+  if (currentNodeUrl !== recommendedNode.url) {
+    console.log(`changing service node from ${currentNodeUrl} to: ${recommendedNode.url}`);
+
+    const updateObject: ServiceConfigUpdate = {
+      daemonHost: recommendedNode.url,
+      daemonPort: recommendedNode.port
+    }
+
+    await admin.firestore().doc(`globals/config`).update(updateObject);
+  }
 }
 
 export async function updateServiceNodes(): Promise<void> {
@@ -185,6 +214,10 @@ export async function updateServiceNodes(): Promise<void> {
 
     const serviceNodes = serviceNodesSnapshot.docs.map(d => d.data() as ServiceNode);
     const nodeStatuses = availableNodesResponse.data.nodes as NodeStatus[];
+
+    if (serviceNodes.length === 0 || nodeStatuses.length === 0) {
+      return;
+    }
 
     console.log(`service nodes: #${serviceNodesSnapshot.size}, available nodes: #${nodeStatuses.length}`);
 
