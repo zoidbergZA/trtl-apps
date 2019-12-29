@@ -332,7 +332,7 @@ async function accountWithdraw(request: any, response: any): Promise<void> {
   const isValidAddress = backendValidateAddress(sendAddress, false);
 
   if (!isValidAddress) {
-    response.status(400).send(new ServiceError('app/invalid-withdraw-address', 'Invalid send address.'));
+    response.status(400).send(new ServiceError('app/invalid-withdraw-address'));
     return;
   }
 

@@ -67,7 +67,7 @@ export class ServiceError {
       case 'app/account-not-found':
         return 'App account not found';
       case 'app/invalid-withdraw-address':
-        return 'Account does not have a withdraw address set.';
+        return 'Invalid send address.';
       case 'app/deposit-not-found':
         return 'Deposit not found';
       case 'app/withdrawal-not-found':
