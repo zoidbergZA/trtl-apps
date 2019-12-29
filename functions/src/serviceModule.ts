@@ -1,10 +1,11 @@
 import * as admin from 'firebase-admin';
 import * as WalletManager from './walletManager';
-import { ServiceConfig } from './types';
+import * as axios from 'axios';
+import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus } from './types';
 import { sleep } from './utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
 import { SubWalletInfo } from '../../shared/types';
-import { minUnclaimedSubWallets } from './constants';
+import { minUnclaimedSubWallets, availableNodesEndpoint } from './constants';
 import { ServiceError } from './serviceError';
 
 export async function boostrapService(): Promise<[string | undefined, undefined | ServiceError]> {
@@ -25,37 +26,48 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
     serviceHalted:          false                     // If true, the service is disables and doesn't process transactions
   }
 
-  // // TODO: set default node list in firestore
-  // const nodes: NodeInfo[] = [
-  //   {
-  //     name: 'TurtlePay Blockchain Cache - SSL',
-  //     url: 'blockapi.turtlepay.io',
-  //     port: 443,
-  //     ssl: true,
-  //     cache: true,
-  //     priority: 10
-  //   },
-  //   {
-  //     name: 'TurtlePay Blockchain Cache',
-  //     url: 'node.trtlpay.com',
-  //     port: 80,
-  //     ssl: false,
-  //     cache: true,
-  //     priority: 9
-  //   },
-  //   {
-  //     name: 'Hashvault.pro turtle node',
-  //     url: 'nodes.hashvault.pro',
-  //     port: 11898,
-  //     ssl: false,
-  //     cache: false,
-  //     priority: 8
-  //   }
-  // ];
+  const nodes: ServiceNode[] = [
+  {
+    id: 'node1',
+    name: 'TurtlePay Blockchain Cache - SSL',
+    url: 'blockapi.turtlepay.io',
+    port: 443,
+    ssl: true,
+    cache: true,
+    fee: 0,
+    availability: 0,
+    online: false,
+    version:'',
+    priority: 100,
+    lastUpdateAt: 0
+  },
+  {
+    id: 'node2',
+    name: 'TurtlePay Blockchain Cache',
+    url: 'node.trtlpay.com',
+    port: 80,
+    ssl: false,
+    cache: true,
+    fee: 0,
+    availability: 0,
+    online: false,
+    version:'',
+    priority: 99,
+    lastUpdateAt: 0
+  }];
 
+  const batch = admin.firestore().batch();
+
+  nodes.forEach(node => {
+    const docRef = admin.firestore().collection('nodes').doc();
+    batch.set(docRef, node);
+  });
+
+  await batch.commit();
   await admin.firestore().doc('globals/config').set(serviceConfig);
 
   console.log('service config created! creating master wallet...');
+
   return await WalletManager.createMasterWallet(serviceConfig);
 }
 
@@ -162,9 +174,55 @@ export async function updateMasterWallet(): Promise<void> {
   }
 }
 
-export async function updateDaemonInfo(): Promise<void> {
-
-  // TODO: update daemon info: fee, selected node, etc...
-
+export async function checkNodeSwap(): Promise<void> {
   return Promise.resolve();
+}
+
+export async function updateServiceNodes(): Promise<void> {
+  try {
+    const serviceNodesSnapshot    = await admin.firestore().collection('nodes').get();
+    const availableNodesResponse  = await axios.default.get(availableNodesEndpoint);
+
+    const serviceNodes = serviceNodesSnapshot.docs.map(d => d.data() as ServiceNode);
+    const nodeStatuses = availableNodesResponse.data.nodes as NodeStatus[];
+
+    console.log(`service nodes: #${serviceNodesSnapshot.size}, available nodes: #${nodeStatuses.length}`);
+
+    await doServiceNodeUpdates(serviceNodes, nodeStatuses);
+
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function doServiceNodeUpdates(serviceNodes: ServiceNode[], nodeStatuses: NodeStatus[]): Promise<any> {
+  const now   = Date.now();
+  const batch = admin.firestore().batch();
+
+  serviceNodes.forEach(serviceNode => {
+    const docRef = admin.firestore().doc(`nodes/${serviceNode.id}`);
+    const status = nodeStatuses.find(s => s.url === serviceNode.url);
+
+    const updateObject: ServiceNodeUpdate = {
+      lastUpdateAt: now,
+    };
+
+    if (status) {
+      updateObject.lastUpdateAt = status.timestamp;
+      updateObject.cache        = status.cache;
+      updateObject.fee          = status.fee.amount;
+      updateObject.availability = status.availability;
+      updateObject.name         = status.name;
+      updateObject.online       = status.online;
+      updateObject.ssl          = status.ssl;
+      updateObject.version      = status.version;
+    } else {
+      updateObject.availability = 0;
+      updateObject.online       = false;
+    }
+
+    batch.update(docRef, updateObject);
+  });
+
+  return batch.commit();
 }

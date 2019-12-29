@@ -28,11 +28,47 @@ export interface ServiceConfig {
   serviceHalted: boolean;
 }
 
-export interface NodeInfo {
+export interface ServiceNode {
+  id: string;
   name: string;
   url: string;
   port: number;
   ssl: boolean;
   cache: boolean;
+  fee: number;
+  availability: number;
+  online: boolean;
+  version: string;
   priority: number;
+  lastUpdateAt: number;
 }
+
+export interface ServiceNodeUpdate {
+  lastUpdateAt: number;
+  name?: string;
+  ssl?: boolean;
+  cache?: boolean;
+  fee?: number;
+  availability?: number;
+  online?: boolean;
+  version?: string;
+}
+
+export interface NodeStatus {
+  name:         string;
+  url:          string;
+  port:         number;
+  ssl:          boolean;
+  cache:        boolean;
+  fee:          FeeInfo;
+  availability: number;
+  online:       boolean;
+  version:      string;
+  timestamp:    number;
+}
+
+export interface FeeInfo {
+  address: string;
+  amount:  number;
+}
+

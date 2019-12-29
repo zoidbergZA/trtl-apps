@@ -172,7 +172,8 @@ exports.backupMasterWallet = functions.pubsub.schedule('every 6 hours').onRun(as
 });
 
 exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (context) => {
-  await ServiceModule.updateDaemonInfo();
+  await ServiceModule.updateServiceNodes();
+  await ServiceModule.checkNodeSwap();
 
   const updateDeposits    = DepositsModule.updateDeposits();
   const updateWithdrawals = WithdrawalsModule.updateWithdrawals();
