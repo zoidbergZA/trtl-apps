@@ -333,6 +333,7 @@ async function startWalletFromString(
     console.error('failed to decrypt master wallet!');
     return [undefined, new ServiceError('service/master-wallet-file', 'Failed to decrypt wallet string')];
   } else {
+    wallet.enableAutoOptimization(false);
     await wallet.start();
 
     return [wallet, undefined];
