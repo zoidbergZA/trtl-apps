@@ -8,8 +8,10 @@ import * as WithdrawalsModule from './withdrawalsModule';
 import * as WalletManager from './walletManager';
 import * as WebhooksModule from './webhookModule';
 import * as UsersModule from './usersModule';
+import * as Constants from './constants';
 import { api } from './requestHandlers';
-import { Deposit, Withdrawal } from '../../shared/types';
+import { Deposit, Withdrawal, TurtleApp } from '../../shared/types';
+import { ServiceError } from './serviceError';
 
 
 // =============================================================================
@@ -156,6 +158,78 @@ export const bootstrap = functions.https.onRequest(async (request, response) => 
 //     console.log(JSON.stringify(request.body));
 //     response.status(200).send('OK');
 // });
+
+export const rescanTest = functions.https.onRequest(async (request, response) => {
+  const adminSignature = request.get(Constants.serviceAdminRequestHeader);
+
+  if (!adminSignature !== functions.config().serviceadmin.password) {
+    response.status(403).send('bad request');
+    return;
+  }
+
+  const rescanHeight: number | undefined = Number(request.query.height);
+
+  console.log(`rescan from height: ${rescanHeight}`);
+
+  if (!rescanHeight) {
+    response.status(400).send('bad request');
+    return;
+  }
+
+  const [serviceWallet, error] = await WalletManager.getServiceWallet(false);
+
+  if (!serviceWallet) {
+    response.status(500).send((error as ServiceError).message);
+    return;
+  }
+
+  await serviceWallet.wallet.rewind(rescanHeight);
+
+  const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
+
+  if (!saveTimestamp) {
+    response.status(500).send((saveError as ServiceError).message);
+    return;
+  }
+
+  response.status(200).send(`OK! :: rewind saved at ${saveTimestamp}`);
+});
+
+export const getAppTxsTest = functions.https.onRequest(async (request, response) => {
+  const adminSignature = request.get(Constants.serviceAdminRequestHeader);
+
+  if (!adminSignature !== functions.config().serviceadmin.password) {
+    response.status(403).send('bad request');
+    return;
+  }
+
+  const appId: string | undefined = request.query.appId;
+
+  if (!appId) {
+    response.status(400).send('bad request');
+    return;
+  }
+
+  const docSnapshot = await admin.firestore().doc(`apps/${appId}`).get();
+
+  if (!docSnapshot.exists) {
+    response.status(404).send('app not found');
+    return;
+  }
+
+  const turtleApp = docSnapshot.data() as TurtleApp;
+
+  const [serviceWallet, error] = await WalletManager.getServiceWallet();
+
+  if (!serviceWallet) {
+    response.status(500).send((error as ServiceError).message);
+    return;
+  }
+
+  const transactions = serviceWallet.wallet.getTransactions(undefined, undefined, true, turtleApp.subWallet);
+
+  response.status(200).send(transactions);
+});
 
 
 // =============================================================================
