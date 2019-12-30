@@ -18,9 +18,10 @@ export class ConsoleService {
     private afFunctions: AngularFireFunctions,
     private firestore: AngularFirestore) { }
 
-  async createApp(appName: string): Promise<any> {
+  async createApp(appName: string, inviteCode?: string): Promise<any> {
     return this.afFunctions.httpsCallable('createApp')({
-      appName
+      appName,
+      inviteCode
     }).toPromise();
   }
 

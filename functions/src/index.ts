@@ -38,7 +38,7 @@ export const createApp = functions.https.onCall(async (data, context) => {
 
   const owner = context.auth.uid;
   const appName: string = data.appName;
-  const inviteCode: string | undefined = data.invitecode;
+  const inviteCode: string | undefined = data.inviteCode;
 
   if (!owner || !appName) {
     throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
