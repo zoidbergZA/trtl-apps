@@ -96,6 +96,7 @@ export async function getServiceWallet(
     // stoping current wallet instance
     if (masterWallet) {
       await masterWallet.stop();
+      masterWallet.removeAllListeners();
       masterWallet = undefined;
     }
 
@@ -143,6 +144,7 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
 
       // kill old instance
       await oldWallet.stop();
+      oldWallet.removeAllListeners();
 
       return [masterWallet, undefined];
     } else {
