@@ -24,14 +24,15 @@
       <ng-container matColumnDef="amount">
         <mat-header-cell *matHeaderCellDef> Amount </mat-header-cell>
         <mat-cell *matCellDef="let element">
-          <span> {{ element.amount | TRTL }} </span>
+          <span [ngClass]="{'failed':element.failed }"> {{ element.amount | TRTL }} </span>
         </mat-cell>
       </ng-container>
       <!-- status column -->
       <ng-container matColumnDef="status">
         <mat-header-cell *matHeaderCellDef> Status </mat-header-cell>
         <mat-cell *matCellDef="let element">
-          <p>{{ element.status }}</p>
+          <p *ngIf="!element.failed">{{ element.status }}</p>
+          <p *ngIf="element.failed" class="error-text">FAILED</p>
         </mat-cell>
       </ng-container>
       <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
