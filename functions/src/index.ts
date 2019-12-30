@@ -163,7 +163,12 @@ export const bootstrap = functions.https.onRequest(async (request, response) => 
 // =============================================================================
 
 
-exports.updateMasterWallet = functions.pubsub.schedule('every 5 minutes').onRun(async (context) => {
+const runtimeOpts: functions.RuntimeOptions = {
+  timeoutSeconds: 300,
+  memory: "1GB"
+}
+
+exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('every 5 minutes').onRun(async (context) => {
   await ServiceModule.updateMasterWallet();
 });
 
