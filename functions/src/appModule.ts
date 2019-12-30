@@ -26,12 +26,14 @@ export async function createApp(
   const [serviceConfig, serviceError] = await ServiceModule.getServiceConfig();
 
   if (!serviceConfig) {
+    console.log('failed to get service config.');
     return [undefined, serviceError];
   }
 
   const [wallet, walletError] = await WalletManager.getMasterWallet(serviceConfig);
 
   if (!wallet) {
+    console.log('failed to get service wallet');
     return [undefined, walletError];
   }
 
@@ -55,6 +57,7 @@ export async function createApp(
       const subWalletDoc = await txn.get(subWalletDocRef);
 
       if (!subWalletDoc.exists) {
+        console.log('subwallet document does not exist');
         throw new Error('subWallet document does not exist');
       }
 
@@ -97,6 +100,7 @@ export async function createApp(
   }
 
   if (app === undefined) {
+    console.log('unknown error while create app.');
     return [undefined, new ServiceError('service/create-app-failed')];
   } else {
     return [app, undefined];

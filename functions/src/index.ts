@@ -51,7 +51,7 @@ export const createApp = functions.https.onCall(async (data, context) => {
 
     return {
       error: true,
-      message: 'An error occured.'
+      message: 'Service currently unavailable.'
     }
   }
 
@@ -59,7 +59,7 @@ export const createApp = functions.https.onCall(async (data, context) => {
     if (!inviteCode) {
       return {
         error: true,
-        message: 'An error occured.'
+        message: 'Invitation code required.'
       }
     }
 
