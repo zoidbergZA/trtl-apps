@@ -116,17 +116,44 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
-  const syncInfoStart = WalletManager.getWalletSyncInfo(wallet);
+  const masterWalletInfoAtStart = await WalletManager.getMasterWalletInfo();
+
+  if (!masterWalletInfoAtStart) {
+    console.log('failed to get master wallet info at sync start!');
+    return;
+  }
+
+  const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
+  const syncInfoStart   = WalletManager.getWalletSyncInfo(wallet);
+  const balanceStart    = wallet.getBalance();
+
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
+  console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
   console.log('run sync job for 240s ...');
   await sleep(240 * 1000);
 
-  const syncInfoEnd = WalletManager.getWalletSyncInfo(wallet);
-  const processedCount = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
+  const masterWalletInfoAtEnd = await WalletManager.getMasterWalletInfo();
 
-  console.log(`sync info at end: ${JSON.stringify(syncInfoEnd)}`);
+  if (!masterWalletInfoAtEnd) {
+    console.log('failed to get master wallet info at sync end!');
+    return;
+  }
+
+  const lastSaveAtEnd = masterWalletInfoAtEnd.lastSaveAt;
+
+  if (lastSaveAtEnd !== lastSaveAtStart) {
+    console.log(`wallet has been saved during sync! skipping master wallet update save.`);
+    return;
+  }
+
+  const syncInfoEnd     = WalletManager.getWalletSyncInfo(wallet);
+  const processedCount  = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
+  const balanceEnd      = wallet.getBalance();
+
   console.log(`blocks processed: ${processedCount}`);
+  console.log(`sync info at end: ${JSON.stringify(syncInfoEnd)}`);
+  console.log(`total balance at end: ${JSON.stringify(balanceEnd)}`);
 
   // check if we should create more subWallets
   const unclaimedSubWallets = await WalletManager.getSubWalletInfos(true);
