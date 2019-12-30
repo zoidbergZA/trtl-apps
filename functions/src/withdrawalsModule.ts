@@ -25,6 +25,12 @@ export async function processWithdrawRequest(
 
   console.log(`account [${appAccount.id}] withdraw amount: ${amount}, fee: ${fee}`);
 
+  const [totalUnlocked, totalLocked] = serviceWallet.wallet.getBalance();
+  const [appUnlocked, appLocked] = serviceWallet.wallet.getBalance([app.subWallet]);
+
+  console.log(`master wallet total unlocked: ${totalUnlocked}, total locked: ${totalLocked}`);
+  console.log(`app wallet total unlocked: ${appUnlocked}, total locked: ${appLocked}`);
+
   if (appAccount.balanceUnlocked < totalAmount) {
     return [undefined, new ServiceError('transfer/insufficient-funds')];
   }
