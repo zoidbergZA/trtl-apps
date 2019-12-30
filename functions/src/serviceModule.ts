@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin';
 import * as WalletManager from './walletManager';
 import * as axios from 'axios';
-import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate } from './types';
+import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from './types';
 import { sleep } from './utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
 import { SubWalletInfo } from '../../shared/types';
@@ -23,7 +23,8 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
     txConfirmations:        6,                        // Amount of blocks needed to confirm a deposit/withdrawal
     withdrawTimoutBlocks:   20,                       // Amount of blocks since a withdrawal tx was lost before it is considered failed
     waitForSyncTimeout:     20000,                    // Max time is miliseconds for the master wallet to sync
-    serviceHalted:          false                     // If true, the service is disables and doesn't process transactions
+    serviceHalted:          false,                    // If true, the service is disables and doesn't process transactions
+    inviteOnly:             true                      // An invitation code is required to create an app
   }
 
   const nodes: ServiceNode[] = [
@@ -97,6 +98,18 @@ export async function getServiceConfig(): Promise<[ServiceConfig | undefined, un
 
   const config = configDoc.data() as ServiceConfig;
   return [config, undefined];
+}
+
+export async function validateInviteCode(code: string): Promise<boolean> {
+  const snapshot = await admin.firestore().doc(`appInvites/${code}`).get();
+
+  if (!snapshot.exists) {
+    return false;
+  }
+
+  const invite = snapshot.data() as AppInviteCode;
+
+  return !invite.claimed;
 }
 
 export async function updateMasterWallet(): Promise<void> {

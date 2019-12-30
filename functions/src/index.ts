@@ -10,6 +10,7 @@ import * as WebhooksModule from './webhookModule';
 import * as UsersModule from './usersModule';
 import { api } from './requestHandlers';
 import { Deposit, Withdrawal } from '../../shared/types';
+import { ServiceError } from './serviceError';
 
 
 // =============================================================================
@@ -37,9 +38,39 @@ export const createApp = functions.https.onCall(async (data, context) => {
 
   const owner = context.auth.uid;
   const appName: string = data.appName;
+  const inviteCode: string | undefined = data.invitecode;
 
   if (!owner || !appName) {
     throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+  }
+
+  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
+
+  if (!serviceConfig) {
+    console.log((configError as ServiceError).message);
+
+    return {
+      error: true,
+      message: 'An error occured.'
+    }
+  }
+
+  if (serviceConfig.inviteOnly) {
+    if (!inviteCode) {
+      return {
+        error: true,
+        message: 'An error occured.'
+      }
+    }
+
+    const isValidCode = await ServiceModule.validateInviteCode(inviteCode);
+
+    if (!isValidCode) {
+      return {
+        error: true,
+        message: 'Invalid invitation code.'
+      }
+    }
   }
 
   const [app, appError] = await AppModule.createApp(owner, appName);

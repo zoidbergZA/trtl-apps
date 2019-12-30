@@ -8,7 +8,8 @@ import * as Utils from '../../shared/utils';
 
 export async function createApp(
   owner: string,
-  appName: string) : Promise<[TurtleApp | undefined, undefined | ServiceError]> {
+  appName: string,
+  inviteCode?: string) : Promise<[TurtleApp | undefined, undefined | ServiceError]> {
 
   const validName = Utils.validateAppName(appName);
 
@@ -81,6 +82,14 @@ export async function createApp(
 
       txn.create(appDocRef, app);
       txn.update(subWalletDocRef, subWalletInfoUpdate);
+
+      if (inviteCode) {
+        const inviteCodeRef = admin.firestore().doc(`appInvites/${inviteCode}`);
+
+        txn.update(inviteCodeRef, {
+          claimed: true
+        })
+      }
     });
   } catch (error) {
     console.error(error);

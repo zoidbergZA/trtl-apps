@@ -32,6 +32,7 @@ export interface ServiceConfig {
   daemonPort: number;
   nodeFee: number;
   serviceHalted: boolean;
+  inviteOnly: boolean;
 }
 
 export interface ServiceConfigUpdate {
@@ -85,3 +86,8 @@ export interface FeeInfo {
   amount:  number;
 }
 
+export interface AppInviteCode {
+  code: string;
+  createdAt: number;
+  claimed: boolean;
+}
