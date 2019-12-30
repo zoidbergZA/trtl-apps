@@ -93,13 +93,19 @@ export async function getServiceWallet(
   console.log(`sync successful? [${synced}], sync time: ${syncSeconds}(s)`);
 
   if (!synced) {
+    // stoping current wallet instance
+    if (masterWallet) {
+      await masterWallet.stop();
+      masterWallet = undefined;
+    }
+
     return [undefined, new ServiceError('service/master-wallet-sync-failed')];
   }
 
   return [serviceWallet, undefined];
 }
 
-export async function getMasterWallet(serviceConfig: ServiceConfig): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
+export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart = false): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
   if (masterWallet) {
     const daemonInfo = masterWallet.getDaemonConnectionInfo();
     let restartNeeded = false;
@@ -113,7 +119,7 @@ export async function getMasterWallet(serviceConfig: ServiceConfig): Promise<[Wa
       restartNeeded = true;
     }
 
-    if (restartNeeded) {
+    if (restartNeeded || forceRestart) {
       console.log(`master wallet restart needed, swapping to new instance...`);
 
       // load and swap to a new instance of the master wallet
@@ -187,10 +193,9 @@ export async function getSubWalletBalance(subWalletAddress: string): Promise<[bo
 }
 
 export async function waitForWalletSync(wallet: WalletBackend, timeout: number): Promise<boolean> {
-  const [wHeight,, nHeight] = wallet.getSyncStatus();
+  const [walletHeightStart,, networkHeightStart] = wallet.getSyncStatus();
 
-  if (wHeight >= nHeight) {
-    // console.log(`wallet synced! Wallet height: ${wHeight}, Network height: ${nHeight}`);
+  if (walletHeightStart >= networkHeightStart) {
     return Promise.resolve(true);
   }
 
@@ -205,7 +210,12 @@ export async function waitForWalletSync(wallet: WalletBackend, timeout: number):
     });
   });
 
-  const p2 = sleep(timeout).then(_ => { return Promise.resolve(false); });
+  const p2 = sleep(timeout).then(_ => {
+    const [wHeight,, nHeight] = wallet.getSyncStatus();
+    const synced = (nHeight - wHeight) <= 2;
+
+    return Promise.resolve(synced);
+  });
 
   return Promise.race([p1, p2]);
 }

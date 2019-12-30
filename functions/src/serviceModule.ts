@@ -92,20 +92,23 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
-  const [wallet, walletError] = await WalletManager.getMasterWallet(serviceConfig);
+  const [wallet, walletError] = await WalletManager.getMasterWallet(serviceConfig, true);
 
   if (!wallet) {
     console.error((walletError as ServiceError).message);
     return;
   }
 
-  console.log('run sync job for 30s ...');
-  await sleep(30 * 1000);
+  const [walletHeightStart,, networkHeightStart] = wallet.getSyncStatus();
+  console.log(`wallet height [${walletHeightStart}] is ${networkHeightStart - walletHeightStart} blocks behind network height`);
 
-  const [unlockedBalance, lockedBalance] = wallet.getBalance();
-  const [walletBlockCount,, networkBlockCount] = wallet.getSyncStatus();
-  console.log(`unlocked balance: ${unlockedBalance}, locked balance: ${lockedBalance}`);
-  console.log(`wallet is ${networkBlockCount - walletBlockCount} blocks behind network height`);
+  console.log('run sync job for 240s ...');
+  await sleep(240 * 1000);
+
+  const [walletHeightEnd,, networkHeightEnd] = wallet.getSyncStatus();
+  const heightDelta = networkHeightEnd - walletHeightEnd;
+
+  console.log(`wallet height [${walletHeightEnd}] is ${heightDelta} blocks behind network height`);
 
   // check if we should create more subWallets
   const unclaimedSubWallets = await WalletManager.getSubWalletInfos(true);
@@ -126,12 +129,14 @@ export async function updateMasterWallet(): Promise<void> {
     }
   }
 
-  const optimizeStartAt = Date.now();
-  const [numberOfTransactionsSent, ] = await wallet.optimize();
-  const optimizeEndAt = Date.now();
-  const optimizeSeconds = (optimizeEndAt - optimizeStartAt) * 0.001;
+  if (heightDelta <= 2) {
+    const optimizeStartAt = Date.now();
+    const [numberOfTransactionsSent, ] = await wallet.optimize();
+    const optimizeEndAt = Date.now();
+    const optimizeSeconds = (optimizeEndAt - optimizeStartAt) * 0.001;
 
-  console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
+    console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
+  }
 
   const [, saveError] = await WalletManager.saveMasterWallet(wallet);
 
