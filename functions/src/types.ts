@@ -17,6 +17,12 @@ export interface WalletInfoUpdate {
   lastBackupAt?: number;
 }
 
+export interface WalletSyncInfo {
+  walletHeight: number,
+  networkHeight: number;
+  heightDelta: number;
+}
+
 export interface ServiceConfig {
   txConfirmations: number;
   txScanDepth: number;
@@ -46,6 +52,7 @@ export interface ServiceNode {
   version: string;
   priority: number;
   lastUpdateAt: number;
+  lastDropAt: number;
 }
 
 export interface ServiceNodeUpdate {
@@ -57,6 +64,7 @@ export interface ServiceNodeUpdate {
   availability?: number;
   online?: boolean;
   version?: string;
+  lastDropAt?: number;
 }
 
 export interface NodeStatus {

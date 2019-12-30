@@ -8,7 +8,7 @@ import * as os from 'os';
 import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-backend';
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
-import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate } from './types';
+import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate, WalletSyncInfo } from './types';
 import { SubWalletInfo } from '../../shared/types';
 
 let masterWallet: WalletBackend | undefined;
@@ -193,9 +193,11 @@ export async function getSubWalletBalance(subWalletAddress: string): Promise<[bo
 }
 
 export async function waitForWalletSync(wallet: WalletBackend, timeout: number): Promise<boolean> {
-  const [walletHeightStart,, networkHeightStart] = wallet.getSyncStatus();
+  const syncInfoStart = getWalletSyncInfo(wallet);
 
-  if (walletHeightStart >= networkHeightStart) {
+  console.log(`wait for sync => sync info at start: ${JSON.stringify(syncInfoStart)}`);
+
+  if (syncInfoStart.heightDelta <= 2) {
     return Promise.resolve(true);
   }
 
@@ -210,9 +212,22 @@ export async function waitForWalletSync(wallet: WalletBackend, timeout: number):
     });
   });
 
-  const p2 = sleep(timeout).then(_ => {
-    const [wHeight,, nHeight] = wallet.getSyncStatus();
-    const synced = (nHeight - wHeight) <= 2;
+  const p2 = sleep(timeout).then(async (_) => {
+    const syncInfoAfterWait = getWalletSyncInfo(wallet);
+    const synced            = syncInfoAfterWait.heightDelta <= 2;
+    const blocksProcessed   = syncInfoAfterWait.walletHeight - syncInfoStart.walletHeight;
+
+    console.log(`wait for sync => height delta after max wait time: ${JSON.stringify(syncInfoAfterWait)}`);
+    console.log(`blocks processed while waiting: ${blocksProcessed}`);
+
+    if (!synced) {
+      if (blocksProcessed < 2) {
+        const currentNode = wallet.getDaemonConnectionInfo().host;
+        console.log(`current node ${currentNode} not processing blocks, calling drop node...`);
+
+        await ServiceModule.dropCurrentNode(currentNode);
+      }
+    }
 
     return Promise.resolve(synced);
   });
@@ -321,6 +336,17 @@ export async function getSubWalletInfos(onlyUnclaimed = false): Promise<SubWalle
   }
 
   return subWalletDocs.docs.map(d => d.data() as SubWalletInfo);
+}
+
+export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
+  const [walletHeight,, networkHeight] = wallet.getSyncStatus();
+  const delta = networkHeight - walletHeight;
+
+  return {
+    walletHeight: walletHeight,
+    networkHeight: networkHeight,
+    heightDelta: delta
+  };
 }
 
 async function startWalletFromString(

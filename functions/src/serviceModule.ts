@@ -39,7 +39,8 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
     online: false,
     version:'',
     priority: 100,
-    lastUpdateAt: 0
+    lastUpdateAt: 0,
+    lastDropAt: 0
   },
   {
     id: 'node2',
@@ -53,7 +54,23 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
     online: false,
     version:'',
     priority: 99,
-    lastUpdateAt: 0
+    lastUpdateAt: 0,
+    lastDropAt: 0
+  },
+  {
+    id: 'node3',
+    name: 'Bot.Tips Blockchain Cache',
+    url: 'trtl.bot.tips',
+    port: 80,
+    ssl: false,
+    cache: true,
+    fee: 0,
+    availability: 0,
+    online: false,
+    version:'',
+    priority: 98,
+    lastUpdateAt: 0,
+    lastDropAt: 0
   }];
 
   const batch = admin.firestore().batch();
@@ -99,16 +116,17 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
-  const [walletHeightStart,, networkHeightStart] = wallet.getSyncStatus();
-  console.log(`wallet height [${walletHeightStart}] is ${networkHeightStart - walletHeightStart} blocks behind network height`);
+  const syncInfoStart = WalletManager.getWalletSyncInfo(wallet);
+  console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
 
   console.log('run sync job for 240s ...');
   await sleep(240 * 1000);
 
-  const [walletHeightEnd,, networkHeightEnd] = wallet.getSyncStatus();
-  const heightDelta = networkHeightEnd - walletHeightEnd;
+  const syncInfoEnd = WalletManager.getWalletSyncInfo(wallet);
+  const processedCount = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
 
-  console.log(`wallet height [${walletHeightEnd}] is ${heightDelta} blocks behind network height`);
+  console.log(`sync info at end: ${JSON.stringify(syncInfoEnd)}`);
+  console.log(`blocks processed: ${processedCount}`);
 
   // check if we should create more subWallets
   const unclaimedSubWallets = await WalletManager.getSubWalletInfos(true);
@@ -129,7 +147,7 @@ export async function updateMasterWallet(): Promise<void> {
     }
   }
 
-  if (heightDelta <= 2) {
+  if (syncInfoEnd.heightDelta <= 2) {
     const optimizeStartAt = Date.now();
     const [numberOfTransactionsSent, ] = await wallet.optimize();
     const optimizeEndAt = Date.now();
@@ -179,7 +197,28 @@ export async function updateMasterWallet(): Promise<void> {
   }
 }
 
-export async function checkNodeSwap(): Promise<void> {
+export async function dropCurrentNode(currentNodeUrl: string): Promise<void> {
+  console.log(`dropping current service node: ${currentNodeUrl}`);
+
+  const [serviceConfig, configError] = await getServiceConfig();
+
+  if (!serviceConfig) {
+    console.log((configError as ServiceError).message);
+    return;
+  }
+
+  if (serviceConfig.daemonHost !== currentNodeUrl) {
+    console.log(`current service node already changed, skipping drop node.`);
+    return;
+  }
+
+  const currentNode = await getServiceNodeByUrl(currentNodeUrl);
+
+  if (!currentNode) {
+    console.log(`unable to find service node by url: [${currentNodeUrl}], skipping drop node.`);
+    return;
+  }
+
   const nodesSnaphot = await admin.firestore()
                         .collection('nodes')
                         .where('online', '==', true)
@@ -190,6 +229,59 @@ export async function checkNodeSwap(): Promise<void> {
     return;
   }
 
+  const nodes = nodesSnaphot.docs.map(d => d.data() as ServiceNode);
+  const now = Date.now();
+
+  // only consider nodes that have not dropped in the last 30 minutes
+  const candidateNodes = nodes.filter(n => ((n.lastDropAt + 30 * 60 * 1000) < now) && n.url !== currentNodeUrl);
+
+  if (candidateNodes.length === 0) {
+    console.log('no candidate nodes available, skipping drop node.');
+    return;
+  }
+
+  const newNode = candidateNodes[0];
+
+  const configUpdate: ServiceConfigUpdate = {
+    daemonHost: newNode.url,
+    daemonPort: newNode.port
+  }
+
+  const droppedNodeUpdate: ServiceNodeUpdate = {
+    lastUpdateAt: now,
+    lastDropAt: now
+  }
+
+  const configPromise = admin.firestore().doc(`globals/config`).update(configUpdate);
+  const nodePromise   = admin.firestore().doc(`nodes/${currentNode.id}`).update(droppedNodeUpdate);
+
+  try {
+    await Promise.all([configPromise, nodePromise]);
+
+    console.log(`node: ${currentNodeUrl} dropped, new node: ${newNode.url}`);
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+export async function checkNodeSwap(): Promise<void> {
+  const nodesSnaphot = await admin.firestore()
+                        .collection('nodes')
+                        .where('online', '==', true)
+                        .orderBy('priority', 'desc')
+                        .get();
+
+  const nodes = nodesSnaphot.docs.map(d => d.data() as ServiceNode);
+  const now = Date.now();
+
+  // only consider nodes that have not dropped in the last 60 minutes
+  const candidateNodes = nodes.filter(n => (n.lastDropAt + 60 * 60 * 1000) < now);
+
+  if (candidateNodes.length === 0) {
+    return;
+  }
+
+  const recommendedNode = candidateNodes[0];
   const [serviceConfig, configError] = await getServiceConfig();
 
   if (!serviceConfig) {
@@ -197,8 +289,7 @@ export async function checkNodeSwap(): Promise<void> {
     return;
   }
 
-  const currentNodeUrl  = serviceConfig.daemonHost;
-  const recommendedNode = nodesSnaphot.docs[0].data() as ServiceNode;
+  const currentNodeUrl = serviceConfig.daemonHost;
 
   if (currentNodeUrl !== recommendedNode.url) {
     console.log(`changing service node from ${currentNodeUrl} to: ${recommendedNode.url}`);
@@ -231,6 +322,16 @@ export async function updateServiceNodes(): Promise<void> {
   } catch (error) {
     console.error(error);
   }
+}
+
+async function getServiceNodeByUrl(url: string): Promise<ServiceNode | undefined> {
+  const snapshot = await admin.firestore().collection('nodes').where('url', '==', url).get();
+
+  if (snapshot.size !== 1) {
+    return undefined;
+  }
+
+  return snapshot.docs[0].data() as ServiceNode;
 }
 
 function doServiceNodeUpdates(serviceNodes: ServiceNode[], nodeStatuses: NodeStatus[]): Promise<any> {
