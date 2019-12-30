@@ -143,8 +143,10 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-  console.log('run sync job for 240s ...');
-  await sleep(240 * 1000);
+  const syncSeconds = syncInfoStart.heightDelta < 60 ? 30 : 240;
+
+  console.log(`run sync job for ${syncSeconds}s ...`);
+  await sleep(syncSeconds * 1000);
 
   const masterWalletInfoAtEnd = await WalletManager.getMasterWalletInfo();
 
