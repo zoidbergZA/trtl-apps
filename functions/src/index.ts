@@ -1,6 +1,7 @@
 import * as express from 'express';
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
+import * as Constants from './constants';
 import * as AppModule from './appModule';
 import * as ServiceModule from './serviceModule';
 import * as DepositsModule from './depositsModule';
@@ -166,11 +167,10 @@ export const endpoints = functions.https.onRequest(expressApp);
 
 export const bootstrap = functions.https.onRequest(async (request, response) => {
   cors(request, response, () => {
-    const reqMasterPassword     = request.query.masterpass;
-    const configMasterPassword  = functions.config().serviceadmin.password;
+    const adminSignature = request.get(Constants.serviceAdminRequestHeader);
 
-    if (reqMasterPassword !== configMasterPassword) {
-      response.status(401).send('invalid master password!');
+    if (!adminSignature !== functions.config().serviceadmin.password) {
+      response.status(403).send('unauthorized request.');
       return;
     }
 
