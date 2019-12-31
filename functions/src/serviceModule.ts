@@ -21,7 +21,7 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
     nodeFee:                10,                       // Fee to use when sending transaction to the node
     txScanDepth:            2 * 60 * 24 * 7,          // Scan transactions up to aprox 7 days in the past
     txConfirmations:        6,                        // Amount of blocks needed to confirm a deposit/withdrawal
-    withdrawTimoutBlocks:   20,                       // Amount of blocks since a withdrawal tx was lost before it is considered failed
+    withdrawTimoutBlocks:   2 * 60 * 24 * 4,          // Amount of blocks since a confirming withdrawal tx was not found before it is considered failed
     waitForSyncTimeout:     20000,                    // Max time is miliseconds for the master wallet to sync
     serviceHalted:          false,                    // If true, the service is disables and doesn't process transactions
     inviteOnly:             true                      // An invitation code is required to create an app

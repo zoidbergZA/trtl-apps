@@ -1,6 +1,6 @@
 import { ServiceError } from "./serviceError";
 import { ServiceUser, Account, TurtleApp } from "../../shared/types";
-import { generateRandomPaymentId } from './utils';
+import { generateRandomPaymentId, generateRandomSignatureSegement } from './utils';
 import { createIntegratedAddress } from 'turtlecoin-wallet-backend';
 import * as admin from 'firebase-admin';
 
@@ -32,21 +32,23 @@ export async function createServiceUser(userRecord: admin.auth.UserRecord): Prom
 }
 
 export async function createAppAccount(app: TurtleApp): Promise<[Account | undefined, undefined | ServiceError]> {
-  const accountDoc        = admin.firestore().collection(`apps/${app.appId}/accounts`).doc();
-  const timestamp         = Date.now();
-  const paymentId         = generateRandomPaymentId();
-  const integratedAddress = createIntegratedAddress(app.subWallet, paymentId);
+  const accountDoc            = admin.firestore().collection(`apps/${app.appId}/accounts`).doc();
+  const timestamp             = Date.now();
+  const paymentId             = generateRandomPaymentId();
+  const spendSignaturePrefix  = generateRandomSignatureSegement();
+  const integratedAddress     = createIntegratedAddress(app.subWallet, paymentId);
 
   const account: Account = {
-    id:                 accountDoc.id,
-    appId:              app.appId,
-    balanceLocked:      0,
-    balanceUnlocked:    0,
-    createdAt:          timestamp,
-    deleted:            false,
-    paymentId:          paymentId,
-    depositAddress:     integratedAddress,
-    depositQrCode:      `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=turtlecoin://${integratedAddress}`
+    id:                   accountDoc.id,
+    appId:                app.appId,
+    balanceLocked:        0,
+    balanceUnlocked:      0,
+    createdAt:            timestamp,
+    deleted:              false,
+    paymentId:            paymentId,
+    spendSignaturePrefix: spendSignaturePrefix,
+    depositAddress:       integratedAddress,
+    depositQrCode:        `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=turtlecoin://${integratedAddress}`
   }
 
   try {
