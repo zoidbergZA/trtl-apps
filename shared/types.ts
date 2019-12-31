@@ -50,11 +50,15 @@ export interface TurtleApp {
   webhook?: string;
   createdAt: number;
   disabled: boolean;
+  lastAuditAt: number;
+  lastAuditPassed: boolean;
 }
 
 export interface TurtleAppUpdate {
   webhook?: string;
   disabled?: boolean;
+  lastAuditAt?: number;
+  lastAuditPassed?: boolean;
 }
 
 export interface Transfer {

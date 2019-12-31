@@ -1,10 +1,12 @@
 import { ServiceError } from './serviceError';
-import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate } from '../../shared/types';
+import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, DepositStatus, Deposit, Withdrawal } from '../../shared/types';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import * as ServiceModule from './serviceModule';
 import * as WalletManager from './walletManager';
 import * as Utils from '../../shared/utils';
+import { AppAuditResult } from './types';
+import { WalletBackend } from 'turtlecoin-wallet-backend';
 
 export async function createApp(
   owner: string,
@@ -68,14 +70,16 @@ export async function createApp(
       }
 
       app = {
-        owner:      owner,
-        appId:      appId,
-        name:       appName,
-        appSecret:  appSecret,
-        subWallet:  subWalletInfo.address,
-        publicKey:  subWalletInfo.publicSpendKey,
-        createdAt:  timestamp,
-        disabled:   false
+        owner:          owner,
+        appId:          appId,
+        name:           appName,
+        appSecret:      appSecret,
+        subWallet:      subWalletInfo.address,
+        publicKey:      subWalletInfo.publicSpendKey,
+        createdAt:      timestamp,
+        disabled:       false,
+        lastAuditAt:      0,
+        lastAuditPassed:  true
       }
 
       const subWalletInfoUpdate: SubWalletInfoUpdate = {
@@ -163,5 +167,138 @@ export async function setAppWebhook(
   } catch (error) {
     console.error(error);
     return [undefined, new ServiceError('service/unknown-error', error.toString())];
+  }
+}
+
+export async function runAppAudits(): Promise<void> {
+  const querySnapshot = await admin.firestore()
+                        .collectionGroup('apps')
+                        .orderBy('lastAuditAt', 'asc')
+                        .limit(3)
+                        .get();
+
+  if (querySnapshot.size === 0) {
+    return;
+  }
+
+  const [serviceWallet, walletError] = await WalletManager.getServiceWallet();
+
+  if (!serviceWallet) {
+    console.log((walletError as ServiceError).message);
+    return;
+  }
+
+  const apps = querySnapshot.docs.map(d => d.data() as TurtleApp);
+  const audits = apps.map(app => auditApp(app, serviceWallet.wallet));
+
+  await Promise.all(audits);
+}
+
+async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
+  console.log(`starting audit for app: ${app.appId}`);
+
+  const appTransactions   = wallet.getTransactions(undefined, undefined, false, app.subWallet);
+  let auditSucceeded      = true;
+
+  // check for missing deposits
+  const completedDeposits = await getDepositsWithStatus(app.appId, 'completed');
+  const missingDeposits: Deposit[] = [];
+
+  completedDeposits.forEach(deposit => {
+    if (!appTransactions.find(tx => tx.hash === deposit.txHash)) {
+      missingDeposits.push(deposit);
+    }
+  });
+
+  if (missingDeposits.length > 0) {
+    console.error(`app ${app.appId} has ${missingDeposits.length} missing deposits!`);
+    auditSucceeded = false;
+  }
+
+  // check for missing withdrawal
+  const successfulWithdrawals = await getSuccessfulWithdrawals(app.appId);
+  const missingWithdrawals: Withdrawal[] = [];
+
+  successfulWithdrawals.forEach(withdrawal => {
+    if (!appTransactions.find(tx => tx.hash === withdrawal.txHash)) {
+      missingWithdrawals.push(withdrawal);
+    }
+  });
+
+  if (missingWithdrawals.length > 0) {
+    console.error(`app ${app.appId} has ${missingWithdrawals.length} missing withdrawals!`);
+    auditSucceeded = false;
+  }
+
+  const auditResult: AppAuditResult = {
+    appId: app.appId,
+    timestamp: Date.now(),
+    passed: auditSucceeded,
+    missingDepositsCount: missingDeposits.length,
+    missingWithdrawalsCount: missingWithdrawals.length
+  }
+
+  if (missingDeposits.length > 0) {
+    const missingHashes: string[] = [];
+
+    missingDeposits.forEach(d => {
+      if (d.txHash) {
+        missingHashes.push(d.txHash);
+      }
+    });
+
+    auditResult.missingDepositHashes = missingHashes;
+  }
+
+  if (missingWithdrawals.length > 0) {
+    const missingHashes: string[] = [];
+
+    missingWithdrawals.forEach(w => {
+      if (w.txHash) {
+        missingHashes.push(w.txHash);
+      }
+    });
+
+    auditResult.missingWithdrawalHashes = missingHashes;
+  }
+
+  console.log(`app ${app.appId} audit completed, passed: ${auditResult.passed}`);
+
+  const appUpdate: TurtleAppUpdate = {
+    lastAuditAt: Date.now(),
+    lastAuditPassed: auditResult.passed
+  }
+
+  await admin.firestore().doc(`apps/${app.appId}`).update(appUpdate);
+
+  return auditResult;
+}
+
+async function getDepositsWithStatus(appId: string, status: DepositStatus): Promise<Deposit[]> {
+  try {
+    const querySnapshot = await admin.firestore()
+                            .collection(`apps/${appId}/deposits`)
+                            .where('status', '==', status)
+                            .get();
+
+    return querySnapshot.docs.map(d => d.data() as Deposit);
+  } catch (error) {
+    console.log(error);
+    return [];
+  }
+}
+
+async function getSuccessfulWithdrawals(appId: string): Promise<Withdrawal[]> {
+  try {
+    const querySnapshot = await admin.firestore()
+                            .collection(`apps/${appId}/withdrawals`)
+                            .where('status', '==', 'completed')
+                            .where('failed', '==', false)
+                            .get();
+
+    return querySnapshot.docs.map(d => d.data() as Withdrawal);
+  } catch (error) {
+    console.log(error);
+    return [];
   }
 }
