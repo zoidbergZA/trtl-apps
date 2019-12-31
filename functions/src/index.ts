@@ -214,7 +214,7 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
-exports.backupMasterWallet = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
+exports.backupMasterWallet = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
   await WalletManager.backupMasterWallet();
 });
 
