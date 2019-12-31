@@ -174,14 +174,17 @@ export const bootstrap = functions.https.onRequest(async (request, response) => 
       return;
     }
 
-    return ServiceModule.boostrapService().then(mnemonicSeed => {
+    return ServiceModule.boostrapService().then(result => {
+      const mnemonicSeed = result[0];
+      const serviceError = result[1];
+
       if (mnemonicSeed) {
         response.status(200).send({
           error: false,
           mnemonicSeed: mnemonicSeed
         });
       } else {
-        response.status(405).send('error bootstrapping service');
+        response.status(405).send((serviceError as ServiceError).message);
       }
     }).catch(error => {
       response.status(405).send(error);
