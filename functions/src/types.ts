@@ -100,4 +100,9 @@ export interface AppAuditResult {
   missingDepositHashes?: string[];
   missingWithdrawalsCount: number;
   missingWithdrawalHashes?: string[];
+  walletLockedBalance: number;
+  walletUnlockedBalance: number;
+  depositsTotal: number,
+  withdrawalsTotal: number,
+  appBalance: number;
 }

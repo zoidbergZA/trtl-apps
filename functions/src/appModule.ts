@@ -170,11 +170,11 @@ export async function setAppWebhook(
   }
 }
 
-export async function runAppAudits(): Promise<void> {
+export async function runAppAudits(appCount: number): Promise<void> {
   const querySnapshot = await admin.firestore()
                         .collectionGroup('apps')
                         .orderBy('lastAuditAt', 'asc')
-                        .limit(3)
+                        .limit(appCount)
                         .get();
 
   if (querySnapshot.size === 0) {
@@ -197,7 +197,7 @@ export async function runAppAudits(): Promise<void> {
 async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
   console.log(`starting audit for app: ${app.appId}`);
 
-  const appTransactions   = wallet.getTransactions(undefined, undefined, false, app.subWallet);
+  const appTransactions   = wallet.getTransactions(undefined, undefined, true, app.subWallet);
   let auditSucceeded      = true;
 
   // check for missing deposits
@@ -230,12 +230,21 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     auditSucceeded = false;
   }
 
+  const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
+  const depositsTotal = completedDeposits.map(d => d.amount).reduce((prev, next) => prev + next, 0);
+  const withdrawalsTotal = successfulWithdrawals.map(w => w.amount).reduce((prev, next) => prev + next, 0);
+
   const auditResult: AppAuditResult = {
     appId: app.appId,
     timestamp: Date.now(),
     passed: auditSucceeded,
     missingDepositsCount: missingDeposits.length,
-    missingWithdrawalsCount: missingWithdrawals.length
+    missingWithdrawalsCount: missingWithdrawals.length,
+    walletLockedBalance: lockedBalance,
+    walletUnlockedBalance: unlockedBalance,
+    depositsTotal: depositsTotal,
+    withdrawalsTotal: withdrawalsTotal,
+    appBalance: depositsTotal - withdrawalsTotal
   }
 
   if (missingDeposits.length > 0) {
@@ -262,6 +271,8 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     auditResult.missingWithdrawalHashes = missingHashes;
   }
 
+  console.log(JSON.stringify(wallet.getTransactions(undefined, undefined, true, app.subWallet)));
+
   console.log(`app ${app.appId} audit completed, passed: ${auditResult.passed}`);
 
   const appUpdate: TurtleAppUpdate = {
@@ -269,6 +280,7 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     lastAuditPassed: auditResult.passed
   }
 
+  await admin.firestore().collection('appAudits').add(auditResult);
   await admin.firestore().doc(`apps/${app.appId}`).update(appUpdate);
 
   return auditResult;
