@@ -169,7 +169,7 @@ export const bootstrap = functions.https.onRequest(async (request, response) => 
   cors(request, response, () => {
     const adminSignature = request.get(Constants.serviceAdminRequestHeader);
 
-    if (!adminSignature !== functions.config().serviceadmin.password) {
+    if (adminSignature !== functions.config().serviceadmin.password) {
       response.status(403).send('unauthorized request.');
       return;
     }
