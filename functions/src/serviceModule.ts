@@ -77,7 +77,7 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
   const batch = admin.firestore().batch();
 
   nodes.forEach(node => {
-    const docRef = admin.firestore().collection('nodes').doc();
+    const docRef = admin.firestore().doc(`nodes/${node.id}`);
     batch.set(docRef, node);
   });
 
