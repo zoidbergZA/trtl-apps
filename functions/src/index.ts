@@ -244,7 +244,7 @@ exports.auditApps = functions.pubsub.schedule('every 6 hours').onRun(async (cont
   await AppModule.runAppAudits(1);
 });
 
-exports.backupMasterWallet = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
+exports.backupMasterWallet = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
   await WalletManager.backupMasterWallet();
 });
 
