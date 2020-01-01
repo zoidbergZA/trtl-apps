@@ -98,7 +98,7 @@ export interface AppDepositUpdate {
   txHash?: string;
 }
 
-export type WithdrawStatus = 'pending' | 'confirming' | 'completed';
+export type WithdrawStatus = 'preparing' | 'pending' | 'confirming' | 'faulty' | 'completed';
 
 export interface Withdrawal {
   id: string;
@@ -107,6 +107,7 @@ export interface Withdrawal {
   accountId: string;
   amount: number;
   fee: number;
+  userDebited: boolean;
   address: string;
   timestamp: number;
   lastUpdate: number;
@@ -115,6 +116,7 @@ export interface Withdrawal {
   blockHeight: number;
   failed: boolean;
   txHash?: string;
+  nodeErrorCode?: number;
 }
 
 export interface WithdrawalUpdate {
@@ -124,4 +126,6 @@ export interface WithdrawalUpdate {
   blockHeight?: number;
   failed?: boolean;
   txHash?: string;
+  nodeErrorCode?: number;
+  userDebited?: boolean;
 }
