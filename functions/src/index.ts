@@ -74,7 +74,7 @@ export const createApp = functions.https.onCall(async (data, context) => {
     }
   }
 
-  const [app, appError] = await AppModule.createApp(owner, appName);
+  const [app, appError] = await AppModule.createApp(owner, appName, inviteCode);
   const result: any = {};
 
   if (appError) {
@@ -188,6 +188,31 @@ export const bootstrap = functions.https.onRequest(async (request, response) => 
       }
     }).catch(error => {
       response.status(405).send(error);
+    });
+  });
+});
+
+export const createInvitationsBatch = functions.https.onRequest(async (request, response) => {
+  cors(request, response, () => {
+    const adminSignature = request.get(Constants.serviceAdminRequestHeader);
+
+    if (adminSignature !== functions.config().serviceadmin.password) {
+      response.status(403).send('unauthorized request.');
+      return;
+    }
+
+    return ServiceModule.createInvitationsBatch(10).then(result => {
+      const invitesCount = result[0];
+      const serviceError = result[1];
+
+      if (invitesCount) {
+        response.status(200).send(`created ${invitesCount} new invitations.`);
+      } else {
+        response.status(500).send(serviceError as ServiceError);
+      }
+    }).catch(error => {
+      console.log(error);
+      response.status(500).send(new ServiceError('service/unknown-error'));
     });
   });
 });

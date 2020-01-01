@@ -89,6 +89,26 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
   return await WalletManager.createMasterWallet(serviceConfig);
 }
 
+export async function createInvitationsBatch(amount: number): Promise<[number | undefined, undefined | ServiceError]> {
+  const now = Date.now();
+  const batch = admin.firestore().batch();
+
+  for (let i = 0; i < amount; i++) {
+    const docRef = admin.firestore().collection(`appInvites`).doc();
+
+    const invite: AppInviteCode = {
+      code: docRef.id,
+      createdAt: now,
+      claimed: false
+    }
+
+    batch.set(docRef, invite);
+  }
+
+  await batch.commit();
+  return [amount, undefined];
+}
+
 export async function getServiceConfig(): Promise<[ServiceConfig | undefined, undefined | ServiceError]> {
   const configDoc = await admin.firestore().doc('globals/config').get();
 
