@@ -156,6 +156,12 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
+  const [walletHeight, ,] = wallet.getSyncStatus();
+  const rewindDistance    = 2 * 60; // rewind a bit to make sure we didn't miss any txs
+  const scanHeight        = walletHeight - rewindDistance;
+
+  await wallet.rewind(scanHeight);
+
   const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
   const syncInfoStart   = WalletManager.getWalletSyncInfo(wallet);
   const balanceStart    = wallet.getBalance();
@@ -163,7 +169,7 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-  const syncSeconds = syncInfoStart.heightDelta < 60 ? 30 : 240;
+  const syncSeconds = syncInfoStart.heightDelta < (rewindDistance + 10) ? 30 : 240;
 
   console.log(`run sync job for ${syncSeconds}s ...`);
   await sleep(syncSeconds * 1000);
