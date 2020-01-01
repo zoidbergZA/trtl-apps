@@ -7,6 +7,7 @@ import * as WalletManager from './walletManager';
 import * as Utils from '../../shared/utils';
 import { AppAuditResult } from './types';
 import { WalletBackend } from 'turtlecoin-wallet-backend';
+import { Transaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
 
 export async function createApp(
   owner: string,
@@ -70,14 +71,14 @@ export async function createApp(
       }
 
       app = {
-        owner:          owner,
-        appId:          appId,
-        name:           appName,
-        appSecret:      appSecret,
-        subWallet:      subWalletInfo.address,
-        publicKey:      subWalletInfo.publicSpendKey,
-        createdAt:      timestamp,
-        disabled:       false,
+        owner:            owner,
+        appId:            appId,
+        name:             appName,
+        appSecret:        appSecret,
+        subWallet:        subWalletInfo.address,
+        publicKey:        subWalletInfo.publicSpendKey,
+        createdAt:        timestamp,
+        disabled:         false,
         lastAuditAt:      0,
         lastAuditPassed:  true
       }
@@ -197,54 +198,88 @@ export async function runAppAudits(appCount: number): Promise<void> {
 async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
   console.log(`starting audit for app: ${app.appId}`);
 
-  const appTransactions   = wallet.getTransactions(undefined, undefined, true, app.subWallet);
-  let auditSucceeded      = true;
+  const appTransactions   = wallet.getTransactions(undefined, undefined, false, app.subWallet);
+  const allDeposits       = await getDeposits(app.appId);
+  const allWithdrawals    = await getWithdrawals(app.appId);
+  const summary           = '';
 
   // check for missing deposits
-  const completedDeposits = await getDepositsWithStatus(app.appId, 'completed');
+  const completedDeposits = allDeposits.filter(d => d.status === 'completed');
   const missingDeposits: Deposit[] = [];
 
   completedDeposits.forEach(deposit => {
     if (!appTransactions.find(tx => tx.hash === deposit.txHash)) {
+      summary.concat(`completed deposit with hash [${deposit.txHash}] missing from wallet. \n`);
       missingDeposits.push(deposit);
     }
   });
 
-  if (missingDeposits.length > 0) {
-    console.error(`app ${app.appId} has ${missingDeposits.length} missing deposits!`);
-    auditSucceeded = false;
-  }
-
   // check for missing withdrawal
-  const successfulWithdrawals = await getSuccessfulWithdrawals(app.appId);
+  const successfulWithdrawals = allWithdrawals.filter(w => w.status === 'completed' && !w.failed);
   const missingWithdrawals: Withdrawal[] = [];
 
   successfulWithdrawals.forEach(withdrawal => {
     if (!appTransactions.find(tx => tx.hash === withdrawal.txHash)) {
       missingWithdrawals.push(withdrawal);
+      summary.concat(`successful withdrawal with hash [${withdrawal.txHash}] missing from wallet. \n`);
     }
   });
 
-  if (missingWithdrawals.length > 0) {
-    console.error(`app ${app.appId} has ${missingWithdrawals.length} missing withdrawals!`);
-    auditSucceeded = false;
-  }
+  const depositTxs: Transaction[] = [];
+  const withdrawalTxs: Transaction[] = [];
+
+  appTransactions.forEach(tx => {
+    // we only consider the first transfer in the tx
+    const transferAmount = Array.from(tx.transfers).map(t => t[1])[0];
+
+    if (transferAmount > 0) {
+      depositTxs.push(tx);
+    } else {
+      withdrawalTxs.push(tx);
+    }
+  });
+
+  // check for unaccounted deposits
+  const unaccountedDepositHashes: string[] = [];
+
+  depositTxs.forEach(tx => {
+    if (!allDeposits.find(d => d.txHash === tx.hash)) {
+      unaccountedDepositHashes.push(tx.hash);
+      summary.concat(`wallet transaction with hash [${tx.hash}] not accounted for in deposits. \n`);
+    }
+  });
+
+  // check for unaccounted deposits
+  const unaccountedWithdrawalHashes: string[] = [];
+
+  withdrawalTxs.forEach(tx => {
+    if (!allWithdrawals.find(d => d.txHash === tx.hash)) {
+      unaccountedWithdrawalHashes.push(tx.hash);
+      summary.concat(`wallet transaction with hash [${tx.hash}] not accounted for in withdrawals. \n`);
+    }
+  });
 
   const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
   const depositsTotal = completedDeposits.map(d => d.amount).reduce((prev, next) => prev + next, 0);
   const withdrawalsTotal = successfulWithdrawals.map(w => w.amount).reduce((prev, next) => prev + next, 0);
 
   const auditResult: AppAuditResult = {
-    appId: app.appId,
-    timestamp: Date.now(),
-    passed: auditSucceeded,
-    missingDepositsCount: missingDeposits.length,
-    missingWithdrawalsCount: missingWithdrawals.length,
-    walletLockedBalance: lockedBalance,
-    walletUnlockedBalance: unlockedBalance,
-    depositsTotal: depositsTotal,
-    withdrawalsTotal: withdrawalsTotal,
-    appBalance: depositsTotal - withdrawalsTotal
+    appId:                      app.appId,
+    timestamp:                  Date.now(),
+    passed:                     true,
+    missingDepositsCount:       missingDeposits.length,
+    missingWithdrawalsCount:    missingWithdrawals.length,
+    uncountedDepositsCount:     unaccountedDepositHashes.length,
+    uncountedWithdrawalsCount:  unaccountedWithdrawalHashes.length,
+    walletLockedBalance:        lockedBalance,
+    walletUnlockedBalance:      unlockedBalance,
+    depositsTotal:              depositsTotal,
+    withdrawalsTotal:           withdrawalsTotal,
+    appBalance:                 depositsTotal - withdrawalsTotal
+  }
+
+  if (summary !== '') {
+    auditResult.summary = summary;
   }
 
   if (missingDeposits.length > 0) {
@@ -257,6 +292,7 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     });
 
     auditResult.missingDepositHashes = missingHashes;
+    auditResult.passed = false;
   }
 
   if (missingWithdrawals.length > 0) {
@@ -269,9 +305,18 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     });
 
     auditResult.missingWithdrawalHashes = missingHashes;
+    auditResult.passed = false;
   }
 
-  console.log(JSON.stringify(wallet.getTransactions(undefined, undefined, true, app.subWallet)));
+  if (unaccountedDepositHashes.length > 0) {
+    auditResult.uncountedDepositHashes = unaccountedDepositHashes;
+    auditResult.passed = false;
+  }
+
+  if (unaccountedWithdrawalHashes.length > 0) {
+    auditResult.uncountedWithdrawalHashes = unaccountedWithdrawalHashes;
+    auditResult.passed = false;
+  }
 
   console.log(`app ${app.appId} audit completed, passed: ${auditResult.passed}`);
 
@@ -286,11 +331,10 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
   return auditResult;
 }
 
-async function getDepositsWithStatus(appId: string, status: DepositStatus): Promise<Deposit[]> {
+async function getDeposits(appId: string): Promise<Deposit[]> {
   try {
     const querySnapshot = await admin.firestore()
                             .collection(`apps/${appId}/deposits`)
-                            .where('status', '==', status)
                             .get();
 
     return querySnapshot.docs.map(d => d.data() as Deposit);
@@ -300,12 +344,24 @@ async function getDepositsWithStatus(appId: string, status: DepositStatus): Prom
   }
 }
 
-async function getSuccessfulWithdrawals(appId: string): Promise<Withdrawal[]> {
+// async function getDepositsWithStatus(appId: string, status: DepositStatus): Promise<Deposit[]> {
+//   try {
+//     const querySnapshot = await admin.firestore()
+//                             .collection(`apps/${appId}/deposits`)
+//                             .where('status', '==', status)
+//                             .get();
+
+//     return querySnapshot.docs.map(d => d.data() as Deposit);
+//   } catch (error) {
+//     console.log(error);
+//     return [];
+//   }
+// }
+
+async function getWithdrawals(appId: string): Promise<Withdrawal[]> {
   try {
     const querySnapshot = await admin.firestore()
                             .collection(`apps/${appId}/withdrawals`)
-                            .where('status', '==', 'completed')
-                            .where('failed', '==', false)
                             .get();
 
     return querySnapshot.docs.map(d => d.data() as Withdrawal);
@@ -314,3 +370,18 @@ async function getSuccessfulWithdrawals(appId: string): Promise<Withdrawal[]> {
     return [];
   }
 }
+
+// async function getSuccessfulWithdrawals(appId: string): Promise<Withdrawal[]> {
+//   try {
+//     const querySnapshot = await admin.firestore()
+//                             .collection(`apps/${appId}/withdrawals`)
+//                             .where('status', '==', 'completed')
+//                             .where('failed', '==', false)
+//                             .get();
+
+//     return querySnapshot.docs.map(d => d.data() as Withdrawal);
+//   } catch (error) {
+//     console.log(error);
+//     return [];
+//   }
+// }
