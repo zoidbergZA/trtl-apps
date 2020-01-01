@@ -21,7 +21,7 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
     nodeFee:                10,                       // Fee to use when sending transaction to the node
     txScanDepth:            2 * 60 * 24 * 7,          // Scan transactions up to aprox 7 days in the past
     txConfirmations:        6,                        // Amount of blocks needed to confirm a deposit/withdrawal
-    withdrawTimoutBlocks:   20,                       // Amount of blocks since a withdrawal tx was lost before it is considered failed
+    withdrawTimoutBlocks:   2 * 60 * 24 * 4,          // Amount of blocks since a confirming withdrawal tx was not found before it is considered failed
     waitForSyncTimeout:     20000,                    // Max time is miliseconds for the master wallet to sync
     serviceHalted:          false,                    // If true, the service is disables and doesn't process transactions
     inviteOnly:             true                      // An invitation code is required to create an app
@@ -77,7 +77,7 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
   const batch = admin.firestore().batch();
 
   nodes.forEach(node => {
-    const docRef = admin.firestore().collection('nodes').doc();
+    const docRef = admin.firestore().doc(`nodes/${node.id}`);
     batch.set(docRef, node);
   });
 
@@ -87,6 +87,26 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
   console.log('service config created! creating master wallet...');
 
   return await WalletManager.createMasterWallet(serviceConfig);
+}
+
+export async function createInvitationsBatch(amount: number): Promise<[number | undefined, undefined | ServiceError]> {
+  const now = Date.now();
+  const batch = admin.firestore().batch();
+
+  for (let i = 0; i < amount; i++) {
+    const docRef = admin.firestore().collection(`appInvites`).doc();
+
+    const invite: AppInviteCode = {
+      code: docRef.id,
+      createdAt: now,
+      claimed: false
+    }
+
+    batch.set(docRef, invite);
+  }
+
+  await batch.commit();
+  return [amount, undefined];
 }
 
 export async function getServiceConfig(): Promise<[ServiceConfig | undefined, undefined | ServiceError]> {
@@ -136,6 +156,12 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
+  const [walletHeight, ,] = wallet.getSyncStatus();
+  const rewindDistance    = 2 * 60; // rewind a bit to make sure we didn't miss any txs
+  const scanHeight        = walletHeight - rewindDistance;
+
+  await wallet.rewind(scanHeight);
+
   const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
   const syncInfoStart   = WalletManager.getWalletSyncInfo(wallet);
   const balanceStart    = wallet.getBalance();
@@ -143,7 +169,7 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-  const syncSeconds = syncInfoStart.heightDelta < 60 ? 30 : 240;
+  const syncSeconds = syncInfoStart.heightDelta < (rewindDistance + 10) ? 30 : 240;
 
   console.log(`run sync job for ${syncSeconds}s ...`);
   await sleep(syncSeconds * 1000);

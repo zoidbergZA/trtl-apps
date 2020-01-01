@@ -1,6 +1,7 @@
 import * as express from 'express';
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
+import * as Constants from './constants';
 import * as AppModule from './appModule';
 import * as ServiceModule from './serviceModule';
 import * as DepositsModule from './depositsModule';
@@ -73,7 +74,7 @@ export const createApp = functions.https.onCall(async (data, context) => {
     }
   }
 
-  const [app, appError] = await AppModule.createApp(owner, appName);
+  const [app, appError] = await AppModule.createApp(owner, appName, inviteCode);
   const result: any = {};
 
   if (appError) {
@@ -139,6 +140,14 @@ exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/
   return null;
 });
 
+exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
+.onCreate(async (snapshot, context) => {
+  const state = snapshot.data() as Withdrawal;
+
+  await WithdrawalsModule.processPendingWithdrawal(state);
+  return null;
+});
+
 exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
 .onUpdate(async (change, context) => {
   const oldState  = change.before.data() as Withdrawal;
@@ -158,25 +167,52 @@ export const endpoints = functions.https.onRequest(expressApp);
 
 export const bootstrap = functions.https.onRequest(async (request, response) => {
   cors(request, response, () => {
-    const reqMasterPassword     = request.query.masterpass;
-    const configMasterPassword  = functions.config().serviceadmin.password;
+    const adminSignature = request.get(Constants.serviceAdminRequestHeader);
 
-    if (reqMasterPassword !== configMasterPassword) {
-      response.status(401).send('invalid master password!');
+    if (adminSignature !== functions.config().serviceadmin.password) {
+      response.status(403).send('unauthorized request.');
       return;
     }
 
-    return ServiceModule.boostrapService().then(mnemonicSeed => {
+    return ServiceModule.boostrapService().then(result => {
+      const mnemonicSeed = result[0];
+      const serviceError = result[1];
+
       if (mnemonicSeed) {
         response.status(200).send({
           error: false,
           mnemonicSeed: mnemonicSeed
         });
       } else {
-        response.status(405).send('error bootstrapping service');
+        response.status(405).send((serviceError as ServiceError).message);
       }
     }).catch(error => {
       response.status(405).send(error);
+    });
+  });
+});
+
+export const createInvitationsBatch = functions.https.onRequest(async (request, response) => {
+  cors(request, response, () => {
+    const adminSignature = request.get(Constants.serviceAdminRequestHeader);
+
+    if (adminSignature !== functions.config().serviceadmin.password) {
+      response.status(403).send('unauthorized request.');
+      return;
+    }
+
+    return ServiceModule.createInvitationsBatch(10).then(result => {
+      const invitesCount = result[0];
+      const serviceError = result[1];
+
+      if (invitesCount) {
+        response.status(200).send(`created ${invitesCount} new invitations.`);
+      } else {
+        response.status(500).send(serviceError as ServiceError);
+      }
+    }).catch(error => {
+      console.log(error);
+      response.status(500).send(new ServiceError('service/unknown-error'));
     });
   });
 });

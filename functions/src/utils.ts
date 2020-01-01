@@ -10,6 +10,11 @@ export function generateRandomPaymentId(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
+// a signature segment is 1/2 the length of a payment ID
+export function generateRandomSignatureSegement(): string {
+  return crypto.randomBytes(16).toString('hex');
+}
+
 /**
  * Returns a number whose value is limited to the given range.
  *
