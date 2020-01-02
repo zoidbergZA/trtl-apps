@@ -1,12 +1,14 @@
-import { ServiceError } from './serviceError';
-import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Deposit, Withdrawal } from '../../shared/types';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import * as ServiceModule from './serviceModule';
 import * as WalletManager from './walletManager';
 import * as Utils from '../../shared/utils';
+import { serviceChargesAccountId } from './constants';
+import { createIntegratedAddress, WalletBackend } from 'turtlecoin-wallet-backend';
+import { ServiceError } from './serviceError';
+import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Deposit, Withdrawal, Account } from '../../shared/types';
+import { generateRandomPaymentId, generateRandomSignatureSegement } from './utils';
 import { AppAuditResult } from './types';
-import { WalletBackend } from 'turtlecoin-wallet-backend';
 import { Transaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
 
 export async function createApp(
@@ -88,7 +90,25 @@ export async function createApp(
         appId: appId
       }
 
+      const paymentId           = generateRandomPaymentId();
+      const chargesAccountRef   = admin.firestore().doc(`apps/${appId}/serviceAccounts/${serviceChargesAccountId}`);
+      const integratedAddress   = createIntegratedAddress(app.subWallet, paymentId);
+
+      const chargesAccount: Account = {
+        id: serviceChargesAccountId,
+        appId: appId,
+        balanceLocked: 0,
+        balanceUnlocked: 0,
+        createdAt: timestamp,
+        deleted: false,
+        paymentId: paymentId,
+        spendSignaturePrefix: generateRandomSignatureSegement(),
+        depositAddress: integratedAddress,
+        depositQrCode: `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=turtlecoin://${integratedAddress}`
+      }
+
       txn.create(appDocRef, app);
+      txn.create(chargesAccountRef, chargesAccount);
       txn.update(subWalletDocRef, subWalletInfoUpdate);
 
       if (inviteCode) {

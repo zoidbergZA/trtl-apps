@@ -34,7 +34,6 @@ export interface ServiceConfig {
   serviceHalted: boolean;
   inviteOnly: boolean;
   serviceCharge: number;
-  serviceChargeAccount?: string;
 }
 
 export interface ServiceConfigUpdate {

@@ -137,19 +137,22 @@ export interface WithdrawalUpdate {
 }
 
 export type ServiceChargeType = 'withdrawal';
+export type ServiceChargeStatus = 'confirming' | 'processing' | 'completed';
 
 export interface ServiceCharge {
   id: string;
+  appId: string;
   type: ServiceChargeType;
   timestamp: number;
   amount: number;
-  serviceChargeAccountId: string;
   chargedAccountId: string;
   lastUpdate: number;
   cancelled: boolean;
+  status: ServiceChargeStatus;
 }
 
 export interface ServiceChargeUpdate {
-  lastUpdate?: number;
+  lastUpdate: number;
   cancelled?: boolean;
+  status?: ServiceChargeStatus;
 }

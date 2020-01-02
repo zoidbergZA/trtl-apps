@@ -4,8 +4,8 @@ import * as axios from 'axios';
 import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from './types';
 import { sleep } from './utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
-import { SubWalletInfo } from '../../shared/types';
-import { minUnclaimedSubWallets, availableNodesEndpoint } from './constants';
+import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate } from '../../shared/types';
+import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId } from './constants';
 import { ServiceError } from './serviceError';
 
 export async function boostrapService(): Promise<[string | undefined, undefined | ServiceError]> {
@@ -266,6 +266,22 @@ export async function updateMasterWallet(): Promise<void> {
   }
 }
 
+export async function processServiceCharges(): Promise<void> {
+  const processingDocs = await admin.firestore()
+                          .collectionGroup('serviceCharges')
+                          .where('status', '==', 'processing')
+                          .get();
+
+  if (processingDocs.size === 0) {
+    return;
+  }
+
+  const charges   = processingDocs.docs.map(d => d.data() as ServiceCharge);
+  const promises  = charges.map(c => processServiceCharge(c.appId, c.id));
+
+  await Promise.all(promises);
+}
+
 export async function dropCurrentNode(currentNodeUrl: string): Promise<void> {
   console.log(`dropping current service node: ${currentNodeUrl}`);
 
@@ -388,6 +404,58 @@ export async function updateServiceNodes(): Promise<void> {
 
     await doServiceNodeUpdates(serviceNodes, nodeStatuses);
 
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function processServiceCharge(appId: string, chargeId: string): Promise<void> {
+  try {
+    await admin.firestore().runTransaction(async (txn): Promise<any> => {
+      const chargeAccountDocRef = admin.firestore().doc(`apps/${appId}/serviceAccounts/${serviceChargesAccountId}`);
+      const chargeAccountDoc    = await txn.get(chargeAccountDocRef);
+
+      if (!chargeAccountDoc.exists) {
+        return Promise.reject('service charge account not found.');
+      }
+
+      const chargeAccount   = chargeAccountDoc.data() as Account;
+      const chargeDocRef    = admin.firestore().doc(`apps/${appId}/serviceCharges/${chargeId}`);
+      const chargeDoc       = await txn.get(chargeDocRef);
+
+      if (!chargeDoc.exists) {
+        return Promise.reject('service charge doc does not exist.');
+      }
+
+      const serviceCharge = chargeDoc.data() as ServiceCharge;
+
+      if (serviceCharge.status !== 'processing') {
+        console.error(`service charge [${serviceCharge.id}] in invalid state [${serviceCharge.status}], skipping processing.`);
+        return Promise.reject('service chargce has incorrect status');
+      }
+
+      if (serviceCharge.cancelled) {
+        const chargeAccountUpdate: AccountUpdate = {
+          balanceLocked: chargeAccount.balanceLocked - serviceCharge.amount,
+        }
+
+        txn.update(chargeAccountDocRef, chargeAccountUpdate);
+      } else {
+        const chargeAccountUpdate: AccountUpdate = {
+          balanceLocked:    chargeAccount.balanceLocked - serviceCharge.amount,
+          balanceUnlocked:  chargeAccount.balanceUnlocked + serviceCharge.amount
+        }
+
+        txn.update(chargeAccountDocRef, chargeAccountUpdate);
+      }
+
+      const chargeDocUpdate: ServiceChargeUpdate = {
+        lastUpdate: Date.now(),
+        status: 'completed'
+      }
+
+      txn.update(chargeDocRef, chargeDocUpdate);
+    });
   } catch (error) {
     console.error(error);
   }
