@@ -1,6 +1,5 @@
 import * as crypto from 'crypto';
 import * as admin from 'firebase-admin';
-import * as WalletManager from './walletManager';
 import * as AppModule from './appModule';
 import { ServiceError } from './serviceError';
 import { createCallback } from './webhookModule';
