@@ -7,7 +7,7 @@ import { ServiceError } from './serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
 import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate, ServiceCharge, ServiceChargeUpdate } from '../../shared/types';
 import { generateRandomSignatureSegement } from './utils';
-import { ServiceConfig } from './types';
+import { ServiceConfig, ServiceWallet } from './types';
 import { Transaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { WalletError } from 'turtlecoin-wallet-backend';
 
@@ -197,14 +197,7 @@ export async function getWithdrawRequest(
   }
 }
 
-export async function updateWithdrawals(): Promise<void> {
-  const [serviceWallet, error] = await WalletManager.getServiceWallet();
-
-  if (!serviceWallet) {
-    console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
-    return;
-  }
-
+export async function updateWithdrawals(serviceWallet: ServiceWallet): Promise<void> {
   const [walletHeight,,]  = serviceWallet.wallet.getSyncStatus();
   const scanHeight        = Math.max(0, serviceWallet.serviceConfig.txScanDepth);
 

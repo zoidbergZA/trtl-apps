@@ -251,12 +251,19 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
   await ServiceModule.updateServiceNodes();
   await ServiceModule.checkNodeSwap();
 
-  const updateDeposits    = DepositsModule.updateDeposits();
-  const updateWithdrawals = WithdrawalsModule.updateWithdrawals();
+  const [serviceWallet, error] = await WalletManager.getServiceWallet();
+
+  if (!serviceWallet) {
+    console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
+    return;
+  }
+
+  const updateDeposits    = DepositsModule.updateDeposits(serviceWallet);
+  const updateWithdrawals = WithdrawalsModule.updateWithdrawals(serviceWallet);
   const retryCallbacks    = WebhooksModule.retryCallbacks();
   const processCharges    = ServiceModule.processServiceCharges();
 
-  return Promise.all([updateDeposits, updateWithdrawals, retryCallbacks, processCharges]).catch(error => {
-    console.error(error);
+  return Promise.all([updateDeposits, updateWithdrawals, retryCallbacks, processCharges]).catch(e => {
+    console.error(e);
   });
 });

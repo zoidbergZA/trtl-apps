@@ -23,13 +23,7 @@ export async function getDeposit(
   }
 }
 
-export async function updateDeposits(): Promise<void> {
-  const [serviceWallet, error] = await WalletManager.getServiceWallet();
-  if (!serviceWallet) {
-    console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
-    return;
-  }
-
+export async function updateDeposits(serviceWallet: ServiceWallet): Promise<void> {
   const [walletHeight, ,] = serviceWallet.wallet.getSyncStatus();
   const scanHeight        = Math.max(0, walletHeight - serviceWallet.serviceConfig.txScanDepth);
 
