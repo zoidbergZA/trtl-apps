@@ -1,5 +1,5 @@
 import { ServiceError } from './serviceError';
-import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, DepositStatus, Deposit, Withdrawal } from '../../shared/types';
+import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Deposit, Withdrawal } from '../../shared/types';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import * as ServiceModule from './serviceModule';
@@ -239,43 +239,43 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     }
   });
 
-  // check for unaccounted deposits
-  const unaccountedDepositHashes: string[] = [];
+  // check for unprocessed deposits
+  const unprocessedDepositHashes: string[] = [];
 
   depositTxs.forEach(tx => {
     if (!allDeposits.find(d => d.txHash === tx.hash)) {
-      unaccountedDepositHashes.push(tx.hash);
+      unprocessedDepositHashes.push(tx.hash);
       summary.concat(`wallet transaction with hash [${tx.hash}] not accounted for in deposits. \n`);
     }
   });
 
-  // check for unaccounted deposits
-  const unaccountedWithdrawalHashes: string[] = [];
+  // check for unprocessed deposits
+  const unprocessedWithdrawalHashes: string[] = [];
 
   withdrawalTxs.forEach(tx => {
     if (!allWithdrawals.find(d => d.txHash === tx.hash)) {
-      unaccountedWithdrawalHashes.push(tx.hash);
+      unprocessedWithdrawalHashes.push(tx.hash);
       summary.concat(`wallet transaction with hash [${tx.hash}] not accounted for in withdrawals. \n`);
     }
   });
 
   const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
-  const depositsTotal = completedDeposits.map(d => d.amount).reduce((prev, next) => prev + next, 0);
-  const withdrawalsTotal = successfulWithdrawals.map(w => w.amount).reduce((prev, next) => prev + next, 0);
+  const totalCredited = completedDeposits.map(d => d.amount).reduce((prev, next) => prev + next, 0);
+  const totalDebited = successfulWithdrawals.map(w => w.amount + w.fee + w.serviceChargeAmount).reduce((prev, next) => prev + next, 0);
 
   const auditResult: AppAuditResult = {
-    appId:                      app.appId,
-    timestamp:                  Date.now(),
-    passed:                     true,
-    missingDepositsCount:       missingDeposits.length,
-    missingWithdrawalsCount:    missingWithdrawals.length,
-    uncountedDepositsCount:     unaccountedDepositHashes.length,
-    uncountedWithdrawalsCount:  unaccountedWithdrawalHashes.length,
-    walletLockedBalance:        lockedBalance,
-    walletUnlockedBalance:      unlockedBalance,
-    depositsTotal:              depositsTotal,
-    withdrawalsTotal:           withdrawalsTotal,
-    appBalance:                 depositsTotal - withdrawalsTotal
+    appId:                        app.appId,
+    timestamp:                    Date.now(),
+    passed:                       true,
+    missingDepositsCount:         missingDeposits.length,
+    missingWithdrawalsCount:      missingWithdrawals.length,
+    unprocessedDepositsCount:     unprocessedDepositHashes.length,
+    unprocessedWithdrawalsCount:  unprocessedWithdrawalHashes.length,
+    walletLockedBalance:          lockedBalance,
+    walletUnlockedBalance:        unlockedBalance,
+    totalCredited:                totalCredited,
+    totalDebited:                 totalDebited,
+    appBalance:                   totalCredited - totalDebited
   }
 
   if (summary !== '') {
@@ -308,13 +308,13 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     auditResult.passed = false;
   }
 
-  if (unaccountedDepositHashes.length > 0) {
-    auditResult.uncountedDepositHashes = unaccountedDepositHashes;
+  if (unprocessedDepositHashes.length > 0) {
+    auditResult.uncountedDepositHashes = unprocessedDepositHashes;
     auditResult.passed = false;
   }
 
-  if (unaccountedWithdrawalHashes.length > 0) {
-    auditResult.uncountedWithdrawalHashes = unaccountedWithdrawalHashes;
+  if (unprocessedWithdrawalHashes.length > 0) {
+    auditResult.uncountedWithdrawalHashes = unprocessedWithdrawalHashes;
     auditResult.passed = false;
   }
 
@@ -344,20 +344,6 @@ async function getDeposits(appId: string): Promise<Deposit[]> {
   }
 }
 
-// async function getDepositsWithStatus(appId: string, status: DepositStatus): Promise<Deposit[]> {
-//   try {
-//     const querySnapshot = await admin.firestore()
-//                             .collection(`apps/${appId}/deposits`)
-//                             .where('status', '==', status)
-//                             .get();
-
-//     return querySnapshot.docs.map(d => d.data() as Deposit);
-//   } catch (error) {
-//     console.log(error);
-//     return [];
-//   }
-// }
-
 async function getWithdrawals(appId: string): Promise<Withdrawal[]> {
   try {
     const querySnapshot = await admin.firestore()
@@ -370,18 +356,3 @@ async function getWithdrawals(appId: string): Promise<Withdrawal[]> {
     return [];
   }
 }
-
-// async function getSuccessfulWithdrawals(appId: string): Promise<Withdrawal[]> {
-//   try {
-//     const querySnapshot = await admin.firestore()
-//                             .collection(`apps/${appId}/withdrawals`)
-//                             .where('status', '==', 'completed')
-//                             .where('failed', '==', false)
-//                             .get();
-
-//     return querySnapshot.docs.map(d => d.data() as Withdrawal);
-//   } catch (error) {
-//     console.log(error);
-//     return [];
-//   }
-// }

@@ -24,7 +24,8 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
     withdrawTimoutBlocks:   2 * 60 * 24 * 4,          // Amount of blocks since a confirming withdrawal tx was not found before it is considered failed
     waitForSyncTimeout:     20000,                    // Max time is miliseconds for the master wallet to sync
     serviceHalted:          false,                    // If true, the service is disables and doesn't process transactions
-    inviteOnly:             true                      // An invitation code is required to create an app
+    inviteOnly:             true,                     // An invitation code is required to create an app
+    serviceCharge:          0                         // default service charge
   }
 
   const nodes: ServiceNode[] = [
@@ -169,7 +170,7 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-  const syncSeconds = syncInfoStart.heightDelta < (rewindDistance + 10) ? 30 : 240;
+  const syncSeconds = syncInfoStart.heightDelta < (rewindDistance + 20) ? 40 : 240;
 
   console.log(`run sync job for ${syncSeconds}s ...`);
   await sleep(syncSeconds * 1000);

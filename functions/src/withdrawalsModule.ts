@@ -4,7 +4,7 @@ import * as AppModule from './appModule';
 import * as ServiceModule from './serviceModule';
 import { ServiceError } from './serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
-import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate } from '../../shared/types';
+import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate, ServiceCharge, ServiceChargeUpdate } from '../../shared/types';
 import { generateRandomSignatureSegement } from './utils';
 import { ServiceConfig } from './types';
 import { Transaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
@@ -24,7 +24,11 @@ export async function processWithdrawRequest(
   }
 
   const fee = serviceConfig.nodeFee;
-  const totalAmount = amount + fee;
+  let totalAmount = amount + fee;
+
+  if (serviceConfig.serviceChargeAccount && serviceConfig.serviceCharge > 0) {
+    totalAmount += serviceConfig.serviceCharge;
+  }
 
   if (appAccount.balanceUnlocked < totalAmount) {
     return [undefined, new ServiceError('transfer/insufficient-funds')];
@@ -35,20 +39,21 @@ export async function processWithdrawRequest(
   const timestamp   = Date.now();
 
   const withdrawRequest: Withdrawal = {
-    id:                 withdrawDoc.id,
-    paymentId:          paymentId,
-    status:             'pending',
-    blockHeight:        0,
-    appId:              app.appId,
-    accountId:          appAccount.id,
-    amount:             amount,
-    fee:                fee,
-    address:            sendAddress,
-    requestedAtBlock:   0,
-    timestamp:          timestamp,
-    lastUpdate:         timestamp,
-    failed:             false,
-    userDebited:        true
+    id:                   withdrawDoc.id,
+    paymentId:            paymentId,
+    status:               'pending',
+    blockHeight:          0,
+    appId:                app.appId,
+    accountId:            appAccount.id,
+    amount:               amount,
+    fee:                  fee,
+    serviceChargeAmount:  serviceConfig.serviceCharge,
+    address:              sendAddress,
+    requestedAtBlock:     0,
+    timestamp:            timestamp,
+    lastUpdate:           timestamp,
+    failed:               false,
+    userDebited:          true
   };
 
   try {
@@ -58,11 +63,45 @@ export async function processWithdrawRequest(
       const account       = accountDoc.data() as Account;
 
       if (account.balanceUnlocked >= totalAmount) {
-        txn.update(accountDocRef, {
+        if (serviceConfig.serviceChargeAccount && withdrawRequest.serviceChargeAmount > 0) {
+          const serviceChargeDocRef = admin.firestore().collection(`apps/${app.appId}/serviceCharges`).doc();
+
+          const serviceCharge: ServiceCharge = {
+            id: serviceChargeDocRef.id,
+            type: 'withdrawal',
+            timestamp: timestamp,
+            amount: serviceConfig.serviceCharge,
+            serviceChargeAccountId: serviceConfig.serviceChargeAccount,
+            chargedAccountId: withdrawRequest.accountId,
+            lastUpdate: timestamp,
+            cancelled: false
+          }
+
+          const chargeAccountDocRef = admin.firestore().doc(`apps/${withdrawRequest.appId}/accounts/${serviceConfig.serviceChargeAccount}`);
+          const chargeAccountDoc    = await txn.get(chargeAccountDocRef);
+
+          if (!chargeAccountDoc.exists) {
+            return Promise.reject('service charge account not found.');
+          }
+
+          const chargeAccount = chargeAccountDoc.data() as Account;
+
+          const chargeAccountUpdate: AccountUpdate = {
+            balanceUnlocked: chargeAccount.balanceUnlocked + withdrawRequest.serviceChargeAmount
+          }
+
+          txn.update(chargeAccountDocRef, chargeAccountUpdate);
+          txn.create(serviceChargeDocRef, serviceCharge);
+
+          withdrawRequest.serviceChargeId = serviceCharge.id;
+        }
+
+        const accountUpdate: AccountUpdate = {
           balanceUnlocked: account.balanceUnlocked - totalAmount
-        });
+        }
 
         txn.create(withdrawDoc, withdrawRequest);
+        txn.update(accountDocRef, accountUpdate);
       } else {
         return Promise.reject('insufficient unlocked funds.');
       }
@@ -331,17 +370,63 @@ async function processConfirmingWithdrawal(
 }
 
 async function cancelFailedWithdrawal(appId: string, withdrawalId: string): Promise<void> {
-  // mark withdrawal as failed, credit the account with the withdrawal the amount + fee
-
   try {
-    await admin.firestore().runTransaction(async (txn) => {
+    await admin.firestore().runTransaction(async (txn): Promise<any> => {
       const withdrawalDocRef  = admin.firestore().doc(`apps/${appId}/withdrawals/${withdrawalId}`);
       const withdrawalDoc     = await txn.get(withdrawalDocRef);
+
+      if (!withdrawalDoc.exists) {
+        return Promise.reject('withdrawal doc does not exist.');
+      }
+
       const withdrawal        = withdrawalDoc.data() as Withdrawal;
-      const totalAmount       = withdrawal.amount + withdrawal.fee;
+      const totalAmount       = withdrawal.amount + withdrawal.fee + withdrawal.serviceChargeAmount;
+      const serviceChargeId   = withdrawal.serviceChargeId;
       const accountDocRef     = admin.firestore().doc(`apps/${appId}/accounts/${withdrawal.accountId}`);
       const accountDoc        = await txn.get(accountDocRef);
-      const account           = accountDoc.data() as Account;
+
+      if (!accountDoc.exists) {
+        return Promise.reject('account doc does not exist.');
+      }
+
+      const account = accountDoc.data() as Account;
+      let serviceCharge: ServiceCharge | undefined;
+
+      if (serviceChargeId) {
+        const chargeDocRef    = admin.firestore().doc(`apps/${appId}/serviceCharges/${serviceChargeId}`);
+        const chargeDoc       = await txn.get(chargeDocRef);
+
+        if (!chargeDoc.exists) {
+          return Promise.reject('service charge doc does not exist.');
+        }
+
+        serviceCharge = chargeDoc.data() as ServiceCharge;
+
+        if (serviceCharge.cancelled) {
+          return Promise.reject('service charge already cancelled.');
+        }
+
+        const chargeAccountDocRef    = admin.firestore().doc(`apps/${appId}/accounts/${serviceCharge.serviceChargeAccountId}`);
+        const chargeAccountDoc       = await txn.get(chargeAccountDocRef);
+
+        if (!chargeAccountDoc.exists) {
+          return Promise.reject('service charge account not found.');
+        }
+
+        const chargeAccount = chargeAccountDoc.data() as Account;
+
+        const chargeAccountUpdate: AccountUpdate = {
+          balanceUnlocked: chargeAccount.balanceUnlocked - withdrawal.serviceChargeAmount
+        }
+
+        const serviceChargeUpdate: ServiceChargeUpdate = {
+          lastUpdate: Date.now(),
+          cancelled: true
+        }
+
+        txn.update(chargeAccountDocRef, chargeAccountUpdate);
+        txn.update(chargeDocRef, serviceChargeUpdate);
+      }
 
       const withdrawalUpdate: WithdrawalUpdate = {
         status:       'completed',

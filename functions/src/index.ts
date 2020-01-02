@@ -239,9 +239,8 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
-// TODO: set to 1h after testing
-exports.auditApps = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
-  await AppModule.runAppAudits(1);
+exports.auditApps = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
+  await AppModule.runAppAudits(10);
 });
 
 exports.backupMasterWallet = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {

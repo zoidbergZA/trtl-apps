@@ -111,6 +111,8 @@ export interface Withdrawal {
   accountId: string;
   amount: number;
   fee: number;
+  serviceChargeAmount: number;
+  serviceChargeId?: string;
   userDebited: boolean;
   address: string;
   timestamp: number;
@@ -132,4 +134,22 @@ export interface WithdrawalUpdate {
   txHash?: string;
   nodeErrorCode?: number;
   userDebited?: boolean;
+}
+
+export type ServiceChargeType = 'withdrawal';
+
+export interface ServiceCharge {
+  id: string;
+  type: ServiceChargeType;
+  timestamp: number;
+  amount: number;
+  serviceChargeAccountId: string;
+  chargedAccountId: string;
+  lastUpdate: number;
+  cancelled: boolean;
+}
+
+export interface ServiceChargeUpdate {
+  lastUpdate?: number;
+  cancelled?: boolean;
 }

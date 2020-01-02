@@ -33,6 +33,8 @@ export interface ServiceConfig {
   nodeFee: number;
   serviceHalted: boolean;
   inviteOnly: boolean;
+  serviceCharge: number;
+  serviceChargeAccount?: string;
 }
 
 export interface ServiceConfigUpdate {
@@ -100,14 +102,14 @@ export interface AppAuditResult {
   missingDepositHashes?: string[];
   missingWithdrawalsCount: number;
   missingWithdrawalHashes?: string[];
-  uncountedDepositsCount: number;
+  unprocessedDepositsCount: number;
   uncountedDepositHashes?: string[];
-  uncountedWithdrawalsCount: number;
+  unprocessedWithdrawalsCount: number;
   uncountedWithdrawalHashes?: string[];
   walletLockedBalance: number;
   walletUnlockedBalance: number;
-  depositsTotal: number,
-  withdrawalsTotal: number,
+  totalCredited: number,
+  totalDebited: number,
   appBalance: number;
   summary?: string;
 }
