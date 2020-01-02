@@ -6,10 +6,10 @@
         <td class="table-key">Account ID</td>
         <td class="table-value">{{ accountId }}</td>
       </tr>
-      <tr>
+      <!-- <tr>
         <td class="table-key">Node fee</td>
         <td class="table-value"><span *ngIf="fee">{{ fee | TRTL }}</span><span *ngIf="!fee">?</span></td>
-      </tr>
+      </tr> -->
     </table>
     <p *ngIf="errorMessage" class="error-text">error: {{ errorMessage }}</p>
     <div *ngIf="!withdrawalId">

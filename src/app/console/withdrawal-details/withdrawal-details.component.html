@@ -27,6 +27,10 @@
       <td class="table-value">{{ withdrawal.fee | TRTL }}</td>
     </tr>
     <tr>
+      <td class="table-key">Service charge</td>
+      <td class="table-value">{{ withdrawal.serviceCharge | TRTL }}</td>
+    </tr>
+    <tr>
       <td class="table-key">Send address</td>
       <td class="table-value">
         <copy-string-box [data]="withdrawal.address"></copy-string-box>
