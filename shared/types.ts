@@ -102,6 +102,19 @@ export interface AppDepositUpdate {
   txHash?: string;
 }
 
+export type PreparedWithdrawalStatus = 'ready' | 'expired' | 'sent';
+
+export interface PreparedWithdrawal {
+  id: string;
+  appId: string;
+  accountId: string;
+  preparedTxJson: string;
+  timestamp: string;
+  status: PreparedWithdrawalStatus;
+  fee: number;
+  serviceCharge: number;
+}
+
 export type WithdrawStatus = 'preparing' | 'pending' | 'confirming' | 'faulty' | 'completed';
 
 export interface Withdrawal {
