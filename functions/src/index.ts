@@ -239,12 +239,21 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
-exports.auditApps = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  await AppModule.runAppAudits(10);
-});
+exports.dailyJobs = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
+  const [serviceWallet, error] = await WalletManager.getServiceWallet();
 
-exports.backupMasterWallet = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
-  await WalletManager.backupMasterWallet();
+  if (!serviceWallet) {
+    console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
+    return;
+  }
+
+  const jobs: Promise<any>[] = [];
+
+  jobs.push(WalletManager.backupMasterWallet());
+  jobs.push(AppModule.runAppAudits(10));
+  jobs.push(WithdrawalsModule.processLostWithdrawals(serviceWallet));
+
+  await Promise.all(jobs);
 });
 
 exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (context) => {

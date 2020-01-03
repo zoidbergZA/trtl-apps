@@ -183,7 +183,7 @@ export async function processPendingWithdrawal(withdrawal: Withdrawal): Promise<
   }
 }
 
-export async function getWithdrawRequest(
+export async function getWithdrawal(
   appId: string,
   withdrawalId: string): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
 
@@ -265,6 +265,58 @@ export async function updateWithdrawals(serviceWallet: ServiceWallet): Promise<v
   }
 }
 
+export async function processLostWithdrawals(serviceWallet: ServiceWallet): Promise<void> {
+  const withdrawalDocs = await admin.firestore()
+                          .collectionGroup('withdrawals')
+                          .where('status', '==', 'lost')
+                          .get();
+
+  if (withdrawalDocs.size === 0) {
+    return;
+  }
+
+  const lostWithdrawals = withdrawalDocs.docs.map(d => d.data() as Withdrawal);
+
+  const promises = lostWithdrawals.map(withdrawal =>
+                    processLostWithdrawal(withdrawal, serviceWallet));
+
+  await Promise.all(promises);
+}
+
+async function processLostWithdrawal(withdrawal: Withdrawal, serviceWallet: ServiceWallet): Promise<any> {
+  const [walletHeight, ,] = serviceWallet.wallet.getSyncStatus();
+
+  // a lost withdrawal can be safely cancelled based on some node error codes.
+  if (hasConfirmedFailureErrorCode(withdrawal, walletHeight, serviceWallet.serviceConfig)) {
+    return cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
+  }
+
+  const transactions = serviceWallet.wallet
+                        .getTransactions(undefined, undefined, false)
+                        .filter(tx => {
+                          const transfers = Array.from(tx.transfers.values());
+
+                          // transfers must contain at least one negative amount transfer
+                          return transfers.find(t => t < 0)
+                        });
+
+  // it can be completed if we find it's payment ID in the wallet and it has needed confirmations
+  const transaction = transactions.find(tx => tx.paymentID === withdrawal.paymentId);
+
+  if (transaction) {
+    const blockHeight = transaction.blockHeight;
+
+    if (blockHeight !== 0) {
+      const confirmationsNeeded = serviceWallet.serviceConfig.txConfirmations;
+      const completionHeight    = blockHeight + confirmationsNeeded;
+
+      if (walletHeight >= completionHeight) {
+        return processSuccessfulWithdrawal(withdrawal, transaction);
+      }
+    }
+  }
+}
+
 export async function processWithdrawalUpdate(
   oldState: Withdrawal,
   newState: Withdrawal): Promise<void> {
@@ -289,7 +341,7 @@ async function processFaultyWithdrawal(
   transactions: Transaction[],
   walletHeight: number): Promise<any> {
 
-  // a Faulty withdrawal can can recover to 'confirming' if we can find it's payment ID in the wallet tx's.
+  // a Faulty withdrawal can recover to 'confirming' if we can find it's payment ID in the wallet txs.
   const tx = transactions.find(t => t.paymentID === withdrawal.paymentId);
 
   if (tx) {
@@ -302,18 +354,38 @@ async function processFaultyWithdrawal(
     return await admin.firestore().doc(`apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`).update(updateObject);
   }
 
-  // Based on the error code we can check to safely mark withdrawals as failed sooner.
-  if (withdrawal.nodeErrorCode === 11) {
-    /* Amount + fee is greater than the total balance available in the
-       subwallets specified (or all wallets, if not specified) */
-
+  if (hasConfirmedFailureErrorCode(withdrawal, walletHeight, serviceConfig)) {
     await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
     return;
   }
 
-  // The withdrawal will be marked as failed after the wallet height exceeds withdrawTimoutBlocks
+  // The withdrawal will be marked as lost after the wallet height exceeds withdrawTimoutBlocks
   if (walletHeight > (withdrawal.requestedAtBlock + serviceConfig.withdrawTimoutBlocks)) {
-    await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
+    await markLostWithdrawal(withdrawal.appId, withdrawal.id);
+  }
+}
+
+function hasConfirmedFailureErrorCode(
+  withdrawal: Withdrawal,
+  walletHeight: number,
+  serviceConfig: ServiceConfig): boolean {
+
+  if (!withdrawal.nodeErrorCode) {
+    return false;
+  }
+
+  // give a little time to pick up the transaction in case of false-positive error code
+  if (walletHeight < (withdrawal.requestedAtBlock + serviceConfig.txConfirmations)) {
+    return false;
+  }
+
+  switch (withdrawal.nodeErrorCode) {
+    case 11:
+      /* Amount + fee is greater than the total balance available in the
+          subwallets specified (or all wallets, if not specified) */
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -323,55 +395,31 @@ async function processConfirmingWithdrawal(
   transactions: Transaction[],
   walletHeight: number): Promise<any> {
 
-  const withdrawalPath = `apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`;
-  const transaction = transactions.find(tx => tx.paymentID === withdrawal.paymentId);
+  const withdrawalPath  = `apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`;
+  const transaction     = transactions.find(tx => tx.paymentID === withdrawal.paymentId);
 
   if (transaction) {
-    const withdrawalUpdate: WithdrawalUpdate = {
-      lastUpdate: Date.now()
-    };
-
-    if (withdrawal.txHash !== transaction.hash) {
-      withdrawalUpdate.txHash = transaction.hash;
-    }
-
     const blockHeight = transaction.blockHeight;
 
-    if (withdrawal.blockHeight !== blockHeight) {
-      withdrawalUpdate.blockHeight = blockHeight;
-    }
-
     if (blockHeight !== 0) {
-      const confirmationsNeeded = serviceConfig.txConfirmations;
-      const completionHeight = blockHeight + confirmationsNeeded;
+      const completionHeight = blockHeight + serviceConfig.txConfirmations;
 
       if (walletHeight >= completionHeight) {
-        withdrawalUpdate.status = 'completed';
-
-        if (withdrawal.serviceChargeId) {
-          try {
-            const chargeUpdate: ServiceChargeUpdate = {
-              lastUpdate: Date.now(),
-              status: 'processing'
-            }
-
-            await admin.firestore()
-                        .doc(`apps/${withdrawal.appId}/serviceCharges/${withdrawal.serviceChargeId}`)
-                        .update(chargeUpdate);
-          } catch (error) {
-            console.error(`error updating withdrawal [${withdrawal.id}] service charge doc with id [${withdrawal.serviceChargeId}]!`);
-          }
-        }
+        return processSuccessfulWithdrawal(withdrawal, transaction);
       } else {
         // transaction is included in a block, waiting for confirmations.
+        if (withdrawal.txHash !== transaction.hash || withdrawal.blockHeight !== blockHeight) {
+          const withdrawalUpdate: WithdrawalUpdate = {
+            lastUpdate: Date.now(),
+            txHash: transaction.hash,
+            blockHeight: blockHeight
+          };
+
+          await admin.firestore().doc(withdrawalPath).update(withdrawalUpdate);
+        }
       }
     } else {
       // transaction not yet included in a block.
-    }
-
-    // if more than 'lastUpdate' key exists, something changed
-    if (Object.keys(withdrawalUpdate).length > 1) {
-      return admin.firestore().doc(withdrawalPath).update(withdrawalUpdate);
     }
   } else {
     // check if the withdrawal request failed
@@ -380,6 +428,77 @@ async function processConfirmingWithdrawal(
     if (walletHeight >= failureHeight) {
       return cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
     }
+  }
+}
+
+async function processSuccessfulWithdrawal(withdrawal: Withdrawal, transaction: Transaction): Promise<void> {
+  const [app, appError] = await AppModule.getApp(withdrawal.appId);
+
+  if (!app) {
+    console.error(`failed to find app for completed witdhrawal: ${(appError as ServiceError).message}`);
+    return;
+  }
+
+  // check amount
+  let txAmount = 0;
+
+  transaction.transfers.forEach((amount, publicKey) => {
+    if (publicKey === app.publicKey && amount < 0) {
+      txAmount += amount;
+    }
+  });
+
+  if (Math.abs(txAmount) !== withdrawal.amount + withdrawal.fee) {
+    console.error(`incorrect withdrawal amount! found amount [${Math.abs(txAmount)}], expected: [${withdrawal.amount}]`);
+    return
+  }
+
+  const withdrawalPath = `apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`;
+
+  const withdrawalUpdate: WithdrawalUpdate = {
+    lastUpdate:   Date.now(),
+    status:       'completed',
+    txHash:       transaction.hash,
+    blockHeight:  transaction.blockHeight
+  };
+
+  await admin.firestore().doc(withdrawalPath).update(withdrawalUpdate);
+
+  if (withdrawal.serviceChargeId) {
+    try {
+      const chargeUpdate: ServiceChargeUpdate = {
+        lastUpdate: Date.now(),
+        status: 'processing'
+      }
+
+      await admin.firestore()
+                  .doc(`apps/${withdrawal.appId}/serviceCharges/${withdrawal.serviceChargeId}`)
+                  .update(chargeUpdate);
+    } catch (error) {
+      console.error(`error updating withdrawal [${withdrawal.id}] service charge doc with id [${withdrawal.serviceChargeId}]!`);
+    }
+  }
+}
+
+async function markLostWithdrawal(appId: string, withdrawalId: string): Promise<void> {
+  try {
+    await admin.firestore().runTransaction(async (txn): Promise<any> => {
+      const withdrawalDocRef  = admin.firestore().doc(`apps/${appId}/withdrawals/${withdrawalId}`);
+      const withdrawalDoc     = await txn.get(withdrawalDocRef);
+
+      if (!withdrawalDoc.exists) {
+        return Promise.reject('withdrawal doc does not exist.');
+      }
+
+      const withdrawalUpdate: WithdrawalUpdate = {
+        status:       'lost',
+        lastUpdate:   Date.now()
+      }
+
+      txn.update(withdrawalDocRef, withdrawalUpdate);
+    });
+  } catch (error) {
+    console.error(error);
   }
 }
 

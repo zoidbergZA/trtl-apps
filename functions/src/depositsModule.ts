@@ -139,7 +139,7 @@ async function processDepositTransaction(tx: Transaction): Promise<Deposit | und
   let totalAmount = 0;
 
   tx.transfers.forEach((amount, publicKey) => {
-    if (publicKey === app.publicKey) {
+    if (publicKey === app.publicKey && amount > 0) {
       totalAmount += amount;
     }
   });

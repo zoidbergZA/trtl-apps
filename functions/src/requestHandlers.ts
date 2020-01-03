@@ -67,6 +67,10 @@ api.get('/:appId/deposits/:depositId', async (req, res) => {
   }
 });
 
+// api.post('/:appId/prepared_withdrawals/', async (req, res) => {
+//   // TODO: this endpoint should create and return new a prepared withdrawal for the account
+// });
+
 api.post('/:appId/withdrawals/', async (req, res) => {
   try {
     return accountWithdraw(req, res);
@@ -78,7 +82,7 @@ api.post('/:appId/withdrawals/', async (req, res) => {
 
 api.get('/:appId/withdrawals/:withdrawalId', async (req, res) => {
   try {
-    return getWithdrawalRequest(req, res);
+    return getWithdrawal(req, res);
   }
   catch (error) {
     console.error(error);
@@ -214,7 +218,7 @@ export async function getDeposit(request: any, response: any): Promise<void> {
   response.status(200).send(depositRequest);
 }
 
-export async function getWithdrawalRequest(request: any, response: any): Promise<void> {
+export async function getWithdrawal(request: any, response: any): Promise<void> {
   const [app, authError] = await authorizeAppRequest(request);
 
   if (!app) {
@@ -229,14 +233,14 @@ export async function getWithdrawalRequest(request: any, response: any): Promise
     return;
   }
 
-  const [withdrawRequest, serviceError] = await WithdrawalsModule.getWithdrawRequest(app.appId, withdrawalId);
+  const [withdrawal, serviceError] = await WithdrawalsModule.getWithdrawal(app.appId, withdrawalId);
 
-  if (!withdrawRequest) {
+  if (!withdrawal) {
     response.status(500).send(serviceError);
     return;
   }
 
-  response.status(200).send(withdrawRequest);
+  response.status(200).send(withdrawal);
 }
 
 async function appTransfer(request: any, response: any): Promise<void> {

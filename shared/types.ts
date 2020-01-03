@@ -115,7 +115,7 @@ export interface PreparedWithdrawal {
   serviceCharge: number;
 }
 
-export type WithdrawStatus = 'preparing' | 'pending' | 'confirming' | 'faulty' | 'completed';
+export type WithdrawStatus = 'preparing' | 'pending' | 'confirming' | 'faulty' | 'lost' | 'completed';
 
 export interface Withdrawal {
   id: string;
