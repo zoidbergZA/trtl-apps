@@ -260,10 +260,15 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
 
   const updateDeposits    = DepositsModule.updateDeposits(serviceWallet);
   const updateWithdrawals = WithdrawalsModule.updateWithdrawals(serviceWallet);
-  const retryCallbacks    = WebhooksModule.retryCallbacks();
-  const processCharges    = ServiceModule.processServiceCharges();
 
-  return Promise.all([updateDeposits, updateWithdrawals, retryCallbacks, processCharges]).catch(e => {
+  await Promise.all([updateDeposits, updateWithdrawals]).catch(e => {
+    console.error(e);
+  });
+
+  const retryCallbacks = WebhooksModule.retryCallbacks();
+  const processCharges = ServiceModule.processServiceCharges();
+
+  await Promise.all([retryCallbacks, processCharges]).catch(e => {
     console.error(e);
   });
 });
