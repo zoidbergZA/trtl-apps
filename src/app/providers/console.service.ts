@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireFunctions } from '@angular/fire/functions';
-import { TurtleApp, Account, Transfer, Recipient, Deposit, Withdrawal } from 'shared/types';
+import { TurtleApp, Account, Transfer, Recipient, Deposit, Withdrawal, WithdrawalPreview } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
@@ -171,20 +171,29 @@ export class ConsoleService {
     return await TA.transferMany(senderId, recipients);
   }
 
-  async getFee(appId: string, appSecret: string): Promise<[number | undefined, undefined | ServiceError]> {
+  // async getFee(appId: string, appSecret: string): Promise<[number | undefined, undefined | ServiceError]> {
+  //   TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
+  //   return await TA.getFee();
+  // }
+
+  async prepareWithdrawal(
+    appId: string,
+    appSecret: string,
+    accountId: string,
+    amount: number,
+    sendAddress?: string): Promise<[WithdrawalPreview | undefined, undefined | ServiceError]> {
+
     TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
-    return await TA.getFee();
+    return await TA.prepareWithdrawal(accountId, amount, sendAddress);
   }
 
   async withdraw(
     appId: string,
     appSecret: string,
-    accountId: string,
-    amount: number,
-    sendAddress?: string): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
+    preparedWithdrawalId: string): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
 
     TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
-    return await TA.withdraw(accountId, amount, sendAddress);
+    return await TA.withdraw(preparedWithdrawalId);
   }
 
   setAppAccountData(appId: string, appSecret: string, accountId: string, data: any): Promise<boolean> {

@@ -379,14 +379,14 @@ async function executePreparedWithdrawal(request: any, response: any): Promise<v
     return;
   }
 
-  const pendingWithdrawalId: string | undefined = request.body.pendingWithdrawalId;
+  const preparedWithdrawalId: string | undefined = request.body.preparedWithdrawalId;
 
-  if (!pendingWithdrawalId) {
+  if (!preparedWithdrawalId) {
     response.status(400).send(new ServiceError('request/invalid-params'));
     return;
   }
 
-  const [withdrawal, withdrawError] = await WithdrawalsModule.executePreparedWithdrawal(app.appId, pendingWithdrawalId);
+  const [withdrawal, withdrawError] = await WithdrawalsModule.executePreparedWithdrawal(app.appId, preparedWithdrawalId);
 
   if (!withdrawal) {
     response.status(500).send((withdrawError));

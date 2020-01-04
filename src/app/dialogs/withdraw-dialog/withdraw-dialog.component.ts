@@ -1,5 +1,5 @@
 import { Component, OnInit, Inject } from '@angular/core';
-import { TurtleApp } from 'shared/types';
+import { TurtleApp, WithdrawalPreview } from 'shared/types';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material';
 import { ConsoleService } from 'src/app/providers/console.service';
@@ -17,11 +17,11 @@ export class WithdrawDialogComponent implements OnInit {
   app: TurtleApp;
   accountId: string;
   busy = false;
+  withdrawalPreview: WithdrawalPreview | undefined;
   withdrawalId: string | undefined;
   errorMessage: string | undefined;
-  form: FormGroup;
+  prepareForm: FormGroup;
   amountAtomic: number | undefined;
-  fee: number | undefined;
   total: number | undefined;
 
   constructor(
@@ -32,55 +32,43 @@ export class WithdrawDialogComponent implements OnInit {
     this.app = data.app;
     this.accountId = data.accountId;
 
-    this.form = new FormGroup({
+    this.prepareForm = new FormGroup({
       amount: new FormControl('', Validators.compose([
         Validators.required
       ])),
       sendAddress: new FormControl()
     });
 
-    this.form.controls.amount.valueChanges.subscribe(v => {
+    this.prepareForm.controls.amount.valueChanges.subscribe(v => {
       this.amountAtomic = Utilities.getAtomicUnits(v);
-      this.calculateTotal();
     });
   }
 
   ngOnInit() {
-    this.consoleService.getFee(this.app.appId, this.app.appSecret).then(result => {
-      this.fee = result[0];
-      const feeError = result[1];
-
-      this.calculateTotal();
-
-      if (feeError !== undefined) {
-        console.log((feeError as ServiceError).message);
-      }
-    }).catch(error => {
-      console.log(`error service fetching fee: ${error}`);
-    });
   }
 
-  calculateTotal() {
-    if (this.amountAtomic && this.fee) {
-      this.total = this.amountAtomic + this.fee;
+  calculateTotal(withdrawalPreview: WithdrawalPreview) {
+    if (withdrawalPreview) {
+      this.total = withdrawalPreview.amount + withdrawalPreview.fee + withdrawalPreview.serviceCharge;
     } else {
       this.total = undefined;
     }
   }
 
-  onAmountChange(amount: number) {
-    console.log(amount);
-  }
+  // onAmountChange(amount: number) {
+  //   console.log(amount);
+  // }
 
   onCloseClick(): void {
     this.dialogRef.close();
   }
 
-  async onSubmit(data: any) {
-    this.withdrawalId = undefined;
-    this.errorMessage = undefined;
+  async onPrepareSubmit(data: any) {
+    this.withdrawalPreview  = undefined;
+    this.withdrawalId       = undefined;
+    this.errorMessage       = undefined;
 
-    if (!this.app || !this.accountId) {
+    if (!this.app || !this.accountId || !this.withdrawalPreview) {
       this.errorMessage = 'Invalid input parameters.';
       return;
     }
@@ -96,18 +84,44 @@ export class WithdrawDialogComponent implements OnInit {
 
     this.busy = true;
 
+    const [withdrawalPreview, error] = await this.consoleService.prepareWithdrawal(
+                                        this.app.appId,
+                                        this.app.appSecret,
+                                        this.accountId,
+                                        atomicUnits,
+                                        sendAddress);
+
+    this.busy = false;
+
+    if (!withdrawalPreview) {
+      this.errorMessage = (error as ServiceError).message;
+      return;
+    }
+
+    this.withdrawalPreview = withdrawalPreview;
+    this.calculateTotal(withdrawalPreview);
+  }
+
+  async onSendWithdrawal() {
+    if (!this.app || !this.accountId || !this.withdrawalPreview) {
+      this.errorMessage = 'Invalid input parameters.';
+      return;
+    }
+
+    this.withdrawalId = undefined;
+    this.errorMessage = undefined;
+    this.busy         = true;
+
     const [withdrawal, error] = await this.consoleService.withdraw(
-                                  this.app.appId,
-                                  this.app.appSecret,
-                                  this.accountId,
-                                  atomicUnits,
-                                  sendAddress);
+      this.app.appId,
+      this.app.appSecret,
+      this.withdrawalPreview.id);
 
     this.busy = false;
 
     if (!withdrawal) {
-      this.errorMessage = (error as ServiceError).message;
-      return;
+    this.errorMessage = (error as ServiceError).message;
+    return;
     }
 
     this.withdrawalId = withdrawal.id;
