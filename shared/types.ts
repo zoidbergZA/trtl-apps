@@ -119,6 +119,18 @@ export interface PreparedWithdrawal {
   paymentId: string;
 }
 
+// this type is the same as PreparedWithdrawal without some of the service-only information
+export interface WithdrawalPreview {
+  id: string;
+  appId: string;
+  accountId: string;
+  timestamp: number;
+  address: string;
+  amount: number;
+  fee: number;
+  serviceCharge: number;
+}
+
 export interface PreparedWithdrawalUpdate {
   lastUpdate: number;
   status?: PreparedWithdrawalStatus;

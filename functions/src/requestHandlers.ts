@@ -8,7 +8,7 @@ import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
 import * as TransfersModule from './transfersModule';
 import { validateAddress as backendValidateAddress } from 'turtlecoin-wallet-backend';
-import { TurtleApp, AccountUpdate, Recipient } from '../../shared/types';
+import { TurtleApp, AccountUpdate, Recipient, WithdrawalPreview } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
 export const api = express();
@@ -357,19 +357,18 @@ async function createPreparedWithdrawal(request: any, response: any): Promise<vo
   }
 
   // we remove some service-only information from the response
-  const responseObject = {
+  const withdrawalPreview: WithdrawalPreview = {
     id:             preparedWithdrawal.id,
     appId:          preparedWithdrawal.appId,
     accountId:      preparedWithdrawal.accountId,
     timestamp:      preparedWithdrawal.timestamp,
-    status:         preparedWithdrawal.status,
     address:        preparedWithdrawal.address,
     amount:         preparedWithdrawal.amount,
     fee:            preparedWithdrawal.fee,
     serviceCharge:  preparedWithdrawal.serviceCharge
   }
 
-  response.status(200).send(responseObject);
+  response.status(200).send(withdrawalPreview);
 }
 
 async function executePreparedWithdrawal(request: any, response: any): Promise<void> {
