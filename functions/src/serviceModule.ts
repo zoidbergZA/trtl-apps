@@ -18,7 +18,6 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
   const serviceConfig: ServiceConfig = {
     daemonHost:             'blockapi.turtlepay.io',  // Default daemon to connect to
     daemonPort:             443,                      // Port number of the daemon
-    nodeFee:                10,                       // Fee to use when sending transaction to the node
     txScanDepth:            2 * 60 * 24 * 7,          // Scan transactions up to aprox 7 days in the past
     txConfirmations:        6,                        // Amount of blocks needed to confirm a deposit/withdrawal
     withdrawTimoutBlocks:   2 * 60 * 24 * 4,          // Amount of blocks since a confirming withdrawal tx was not found before it is considered failed

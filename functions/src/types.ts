@@ -30,7 +30,6 @@ export interface ServiceConfig {
   waitForSyncTimeout: number;
   daemonHost: string;
   daemonPort: number;
-  nodeFee: number;
   serviceHalted: boolean;
   inviteOnly: boolean;
   serviceCharge: number;

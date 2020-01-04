@@ -109,10 +109,19 @@ export interface PreparedWithdrawal {
   appId: string;
   accountId: string;
   preparedTxJson: string;
-  timestamp: string;
+  timestamp: number;
+  lastUpdate: number;
   status: PreparedWithdrawalStatus;
+  address: string;
+  amount: number;
   fee: number;
   serviceCharge: number;
+  paymentId: string;
+}
+
+export interface PreparedWithdrawalUpdate {
+  lastUpdate: number;
+  status?: PreparedWithdrawalStatus;
 }
 
 export type WithdrawStatus = 'preparing' | 'pending' | 'confirming' | 'faulty' | 'lost' | 'completed';
@@ -134,6 +143,7 @@ export interface Withdrawal {
   requestedAtBlock: number;
   blockHeight: number;
   failed: boolean;
+  preparedWithdrawalId?: string;
   txHash?: string;
   nodeErrorCode?: number;
 }
