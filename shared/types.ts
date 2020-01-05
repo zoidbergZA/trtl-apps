@@ -117,6 +117,7 @@ export interface PreparedWithdrawal {
   fee: number;
   serviceCharge: number;
   paymentId: string;
+  txHash: string;
 }
 
 // this type is the same as PreparedWithdrawal without some of the service-only information
@@ -136,7 +137,7 @@ export interface PreparedWithdrawalUpdate {
   status?: PreparedWithdrawalStatus;
 }
 
-export type WithdrawStatus = 'preparing' | 'pending' | 'confirming' | 'faulty' | 'lost' | 'completed';
+export type WithdrawStatus = 'pending' | 'confirming' | 'faulty' | 'lost' | 'completed';
 
 export interface Withdrawal {
   id: string;
@@ -155,8 +156,8 @@ export interface Withdrawal {
   requestedAtBlock: number;
   blockHeight: number;
   failed: boolean;
-  preparedWithdrawalId?: string;
-  txHash?: string;
+  preparedWithdrawalId: string;
+  txHash: string;
   nodeErrorCode?: number;
 }
 

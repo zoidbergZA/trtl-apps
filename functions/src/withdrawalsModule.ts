@@ -62,7 +62,7 @@ export async function createPreparedWithdrawal(
   console.log(`send hash: ${sendResult.transactionHash}`);
   console.log(`send fee: ${sendResult.fee}`);
 
-  if (sendResult.success && sendResult.preparedTransaction && sendResult.fee !== undefined) {
+  if (sendResult.transactionHash && sendResult.preparedTransaction && sendResult.fee !== undefined) {
     const txFee     = sendResult.fee;
     const timestamp = Date.now();
 
@@ -70,18 +70,19 @@ export async function createPreparedWithdrawal(
     const preparedTxJson = JSON.stringify(sendResult.preparedTransaction);
 
     const preparedWithdrawal: PreparedWithdrawal = {
-      id: preparedDocRef.id,
-      appId: app.appId,
-      accountId: account.id,
+      id:             preparedDocRef.id,
+      appId:          app.appId,
+      accountId:      account.id,
       preparedTxJson: preparedTxJson,
-      timestamp: timestamp,
-      lastUpdate: timestamp,
-      status: 'ready',
-      address: address,
-      amount: amount,
-      fee: txFee,
-      serviceCharge: serviceCharge,
-      paymentId: paymentId
+      timestamp:      timestamp,
+      lastUpdate:     timestamp,
+      status:         'ready',
+      address:        address,
+      amount:         amount,
+      fee:            txFee,
+      serviceCharge:  serviceCharge,
+      paymentId:      paymentId,
+      txHash:         sendResult.transactionHash
     }
 
     try {
@@ -99,7 +100,7 @@ export async function createPreparedWithdrawal(
   }
 }
 
-export async function executePreparedWithdrawal(
+export async function processPreparedWithdrawal(
   appId: string,
   preparedWithdrawalId: string): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
 
@@ -149,6 +150,7 @@ export async function executePreparedWithdrawal(
   const withdrawal: Withdrawal = {
     id:                   withdrawDoc.id,
     paymentId:            preparedWithdrawal.paymentId,
+    txHash:               preparedWithdrawal.txHash,
     status:               'pending',
     blockHeight:          0,
     appId:                preparedWithdrawal.appId,
@@ -231,37 +233,9 @@ export async function executePreparedWithdrawal(
   return [withdrawal, undefined];
 }
 
-export async function processPendingWithdrawal(withdrawal: Withdrawal): Promise<void> {
-  const withdrawalDocRef = admin.firestore().doc(`apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`);
-
-  if (withdrawal.status !== 'pending') {
-    console.error(`new withdrawal request ${withdrawal.id} not in pending state, skipping further processing.`);
-    return;
-  }
-
-  if (!withdrawal.preparedWithdrawalId) {
-    console.error(`pending withdrawal [${withdrawal.id}] missing pendingWithdrawal id!`);
-    return;
-  }
-
-  const preparedWithdrawalDoc = await admin.firestore()
-                                .doc(`apps/${withdrawal.appId}/preparedWithdrawals/${withdrawal.preparedWithdrawalId}`)
-                                .get();
-
-  if (!preparedWithdrawalDoc.exists) {
-    console.error(`unabled to find prepared withdrawal with id: ${withdrawal.preparedWithdrawalId}`);
-    return;
-  }
-
-  const preparedWithdrawal = preparedWithdrawalDoc.data() as PreparedWithdrawal;
-  const preparedTransaction = JSON.parse(preparedWithdrawal.preparedTxJson) as PreparedTransaction;
-
-  if (!preparedTransaction) {
-    console.error(`unabled to deserialize prepared transaction JSON with id: ${withdrawal.preparedWithdrawalId}`);
-    return;
-  }
-
-  const [app, appError] = await AppModule.getApp(withdrawal.appId);
+export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): Promise<void> {
+  const withdrawalDocRef  = admin.firestore().doc(`apps/${pendingWithdrawal.appId}/withdrawals/${pendingWithdrawal.id}`);
+  const [app, appError]   = await AppModule.getApp(pendingWithdrawal.appId);
 
   if (!app) {
     console.log((appError as ServiceError).message);
@@ -275,30 +249,68 @@ export async function processPendingWithdrawal(withdrawal: Withdrawal): Promise<
     return;
   }
 
-  const [walletBlockCount, ,] = serviceWallet.wallet.getSyncStatus();
-
-
-  const confirmingUpdate: WithdrawalUpdate = {
-    lastUpdate: Date.now(),
-    status: 'confirming',
-    requestedAtBlock: walletBlockCount
-  }
+  let preparedTx: PreparedTransaction | undefined;
 
   try {
-    await withdrawalDocRef.update(confirmingUpdate);
+    preparedTx = await admin.firestore().runTransaction(async (txn): Promise<PreparedTransaction> => {
+      const preparedDocRef  = admin.firestore().doc(`apps/${pendingWithdrawal.appId}/preparedWithdrawals/${pendingWithdrawal.preparedWithdrawalId}`);
+      const preparedDoc     = await txn.get(preparedDocRef);
+      const withdrawalDoc   = await txn.get(withdrawalDocRef);
+
+      if (!preparedDoc.exists) {
+        const msg = `unabled to find prepared withdrawal with id: ${pendingWithdrawal.preparedWithdrawalId}`;
+        console.error(msg);
+        return Promise.reject(msg);
+      }
+
+      const preparedWithdrawal  = preparedDoc.data() as PreparedWithdrawal;
+      const preparedTransaction = JSON.parse(preparedWithdrawal.preparedTxJson) as PreparedTransaction;
+
+      if (!preparedTransaction) {
+        const msg = `unabled to deserialize prepared transaction JSON with id: ${pendingWithdrawal.preparedWithdrawalId}`;
+        console.error(msg);
+        return Promise.reject(msg);
+      }
+
+      if (!withdrawalDoc.exists) {
+        const msg = `withdrawal ${pendingWithdrawal.id} not found, skipping further processing.`;
+        console.error(msg);
+        return Promise.reject(msg);
+      }
+
+      const withdrawal = withdrawalDoc.data() as Withdrawal;
+
+      if (withdrawal.status !== 'pending') {
+        const msg = `new withdrawal request ${pendingWithdrawal.id} not in pending state, skipping further processing.`;
+        console.error(msg);
+        return Promise.reject(msg);
+      }
+
+      const [walletBlockCount, ,] = serviceWallet.wallet.getSyncStatus();
+
+      const confirmingUpdate: WithdrawalUpdate = {
+        lastUpdate: Date.now(),
+        status: 'confirming',
+        requestedAtBlock: walletBlockCount
+      }
+
+      txn.update(withdrawalDocRef, confirmingUpdate);
+
+      return Promise.resolve(preparedTransaction);
+    });
   } catch (error) {
     console.log(error);
     return;
   }
 
-  const sendResult = await serviceWallet.wallet.sendRawPreparedTransaction(preparedTransaction);
+  const sendResult = await serviceWallet.wallet.sendRawPreparedTransaction(preparedTx);
 
   const txSentUpdate: WithdrawalUpdate = {
     lastUpdate: Date.now()
   }
 
   if (sendResult.success) {
-    txSentUpdate.txHash = sendResult.transactionHash
+    console.log(`tx successfully sent with hash: ${sendResult.transactionHash}`);
   } else {
     console.log(sendResult.error);
 
@@ -388,6 +400,7 @@ export async function addUnprocessedWithdrawalByHash(
     appId:                appId,
     accountId:            account.id,
     amount:               preparedWithdrawal.amount,
+    preparedWithdrawalId: preparedWithdrawal.id,
     fee:                  txFee,
     serviceChargeAmount:  serviceChargeAmount,
     userDebited:          true,
