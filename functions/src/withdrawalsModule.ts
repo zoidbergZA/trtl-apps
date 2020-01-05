@@ -584,8 +584,7 @@ async function processFaultyWithdrawal(
   if (tx) {
     const updateObject: WithdrawalUpdate = {
       lastUpdate: Date.now(),
-      status: 'confirming',
-      txHash: tx.hash
+      status: 'confirming'
     }
 
     return await admin.firestore().doc(`apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`).update(updateObject);
@@ -645,10 +644,9 @@ async function processConfirmingWithdrawal(
         return processSuccessfulWithdrawal(withdrawal, transaction);
       } else {
         // transaction is included in a block, waiting for confirmations.
-        if (withdrawal.txHash !== transaction.hash || withdrawal.blockHeight !== blockHeight) {
+        if (withdrawal.blockHeight !== blockHeight) {
           const withdrawalUpdate: WithdrawalUpdate = {
             lastUpdate: Date.now(),
-            txHash: transaction.hash,
             blockHeight: blockHeight
           };
 
@@ -695,7 +693,6 @@ async function processSuccessfulWithdrawal(withdrawal: Withdrawal, transaction: 
   const withdrawalUpdate: WithdrawalUpdate = {
     lastUpdate:   Date.now(),
     status:       'completed',
-    txHash:       transaction.hash,
     blockHeight:  transaction.blockHeight
   };
 

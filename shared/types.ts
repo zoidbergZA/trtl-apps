@@ -167,7 +167,6 @@ export interface WithdrawalUpdate {
   requestedAtBlock?: number;
   blockHeight?: number;
   failed?: boolean;
-  txHash?: string;
   nodeErrorCode?: number;
   userDebited?: boolean;
 }
