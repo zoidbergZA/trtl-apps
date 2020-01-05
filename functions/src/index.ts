@@ -224,7 +224,7 @@ export const createInvitationsBatch = functions.https.onRequest(async (request, 
 //     response.status(200).send('OK');
 // });
 
-export const rewindTest = functions.https.onRequest(async (request, response) => {
+export const rewindMasterWallet = functions.https.onRequest(async (request, response) => {
   const adminSignature = request.get(Constants.serviceAdminRequestHeader);
 
   if (adminSignature !== functions.config().serviceadmin.password) {
