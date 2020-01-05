@@ -10,7 +10,7 @@ import * as WalletManager from './walletManager';
 import * as WebhooksModule from './webhookModule';
 import * as UsersModule from './usersModule';
 import { api } from './requestHandlers';
-import { Deposit, Withdrawal, TurtleApp } from '../../shared/types';
+import { Deposit, Withdrawal } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
 
@@ -260,41 +260,41 @@ export const rewindMasterWallet = functions.https.onRequest(async (request, resp
   response.status(200).send(`OK! :: rewind saved at ${saveTimestamp}`);
 });
 
-export const getAppTxsTest = functions.https.onRequest(async (request, response) => {
-  const adminSignature = request.get(Constants.serviceAdminRequestHeader);
+// export const getAppTxsTest = functions.https.onRequest(async (request, response) => {
+//   const adminSignature = request.get(Constants.serviceAdminRequestHeader);
 
-  if (!adminSignature !== functions.config().serviceadmin.password) {
-    response.status(403).send('bad request');
-    return;
-  }
+//   if (!adminSignature !== functions.config().serviceadmin.password) {
+//     response.status(403).send('bad request');
+//     return;
+//   }
 
-  const appId: string | undefined = request.query.appId;
+//   const appId: string | undefined = request.query.appId;
 
-  if (!appId) {
-    response.status(400).send('bad request');
-    return;
-  }
+//   if (!appId) {
+//     response.status(400).send('bad request');
+//     return;
+//   }
 
-  const docSnapshot = await admin.firestore().doc(`apps/${appId}`).get();
+//   const docSnapshot = await admin.firestore().doc(`apps/${appId}`).get();
 
-  if (!docSnapshot.exists) {
-    response.status(404).send('app not found');
-    return;
-  }
+//   if (!docSnapshot.exists) {
+//     response.status(404).send('app not found');
+//     return;
+//   }
 
-  const turtleApp = docSnapshot.data() as TurtleApp;
+//   const turtleApp = docSnapshot.data() as TurtleApp;
 
-  const [serviceWallet, error] = await WalletManager.getServiceWallet();
+//   const [serviceWallet, error] = await WalletManager.getServiceWallet();
 
-  if (!serviceWallet) {
-    response.status(500).send((error as ServiceError).message);
-    return;
-  }
+//   if (!serviceWallet) {
+//     response.status(500).send((error as ServiceError).message);
+//     return;
+//   }
 
-  const transactions = serviceWallet.wallet.getTransactions(undefined, undefined, true, turtleApp.subWallet);
+//   const transactions = serviceWallet.wallet.getTransactions(undefined, undefined, true, turtleApp.subWallet);
 
-  response.status(200).send(transactions);
-});
+//   response.status(200).send(transactions);
+// });
 
 
 // =============================================================================
@@ -311,7 +311,7 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
-exports.dailyJobs = functions.pubsub.schedule('every 24 hours').onRun(async (context) => {
+exports.maintenanceJobs = functions.pubsub.schedule('every 15 hours').onRun(async (context) => {
   const [serviceWallet, error] = await WalletManager.getServiceWallet();
 
   if (!serviceWallet) {

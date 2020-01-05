@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import * as ServiceModule from './serviceModule';
 import * as WalletManager from './walletManager';
+import * as WithdrawalsModule from './withdrawalsModule';
 import * as Utils from '../../shared/utils';
 import { serviceChargesAccountId } from './constants';
 import { createIntegratedAddress, WalletBackend } from 'turtlecoin-wallet-backend';
@@ -209,10 +210,33 @@ export async function runAppAudits(appCount: number): Promise<void> {
     return;
   }
 
-  const apps = querySnapshot.docs.map(d => d.data() as TurtleApp);
-  const audits = apps.map(app => auditApp(app, serviceWallet.wallet));
+  const apps        = querySnapshot.docs.map(d => d.data() as TurtleApp);
+  const auditsJobs  = apps.map(app => auditApp(app, serviceWallet.wallet));
+  const audits      = await Promise.all(auditsJobs);
 
-  await Promise.all(audits);
+  const addWithdrawalPromises: Promise<boolean>[] = [];
+
+  audits.forEach(audit => {
+    if (!audit.passed) {
+      if (audit.unprocessedWithdrawalHashes) {
+        audit.unprocessedWithdrawalHashes.forEach(hash => {
+          const promise = WithdrawalsModule.addUnprocessedWithdrawalByHash(serviceWallet, audit.appId, hash);
+          addWithdrawalPromises.push(promise);
+        });
+      }
+    }
+  });
+
+  if (addWithdrawalPromises.length > 0) {
+    console.log(`adding ${addWithdrawalPromises.length} unprocessed withdrawals by hash...`);
+    await Promise.all(addWithdrawalPromises);
+  }
+}
+
+export async function getAppAccounts(appId: string): Promise<Account[]> {
+  const accountDocs = await admin.firestore().collection(`apps/${appId}/accounts`).get();
+
+  return accountDocs.docs.map(d => d.data() as Account);
 }
 
 async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
@@ -329,12 +353,12 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
   }
 
   if (unprocessedDepositHashes.length > 0) {
-    auditResult.uncountedDepositHashes = unprocessedDepositHashes;
+    auditResult.unprocessedDepositHashes = unprocessedDepositHashes;
     auditResult.passed = false;
   }
 
   if (unprocessedWithdrawalHashes.length > 0) {
-    auditResult.uncountedWithdrawalHashes = unprocessedWithdrawalHashes;
+    auditResult.unprocessedWithdrawalHashes = unprocessedWithdrawalHashes;
     auditResult.passed = false;
   }
 

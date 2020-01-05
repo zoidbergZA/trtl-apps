@@ -5,7 +5,9 @@ import * as ServiceModule from './serviceModule';
 import { serviceChargesAccountId } from './constants';
 import { ServiceError } from './serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
-import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate, ServiceCharge, ServiceChargeUpdate, PreparedWithdrawal, PreparedWithdrawalUpdate } from '../../shared/types';
+import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate,
+  ServiceCharge, ServiceChargeUpdate, PreparedWithdrawal,
+  WithdrawStatus ,PreparedWithdrawalUpdate } from '../../shared/types';
 import { generateRandomSignatureSegement } from './utils';
 import { ServiceConfig, ServiceWallet } from './types';
 import { Transaction, PreparedTransaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
@@ -177,6 +179,7 @@ export async function executePreparedWithdrawal(
             id:                 serviceChargeDocRef.id,
             appId:              withdrawal.appId,
             type:               'withdrawal',
+            withdrawalId:       withdrawal.id,
             timestamp:          timestamp,
             amount:             serviceConfig.serviceCharge,
             chargedAccountId:   withdrawal.accountId,
@@ -304,6 +307,91 @@ export async function processPendingWithdrawal(withdrawal: Withdrawal): Promise<
   }
 
   await withdrawalDocRef.update(txSentUpdate);
+}
+
+// if for any reason a withdrawal was sent without creating a corresponding Withdrawal
+// object in firestore, it will get picked up and added here.
+export async function addUnprocessedWithdrawalByHash(
+  serviceWallet: ServiceWallet,
+  appId: string,
+  txHash: string): Promise<boolean> {
+
+  const transaction = serviceWallet.wallet.getTransaction(txHash);
+
+  if (!transaction) {
+    console.log(`unable to find tx with hash ${txHash} in wallet`);
+    return false;
+  }
+
+  const [app, appError] = await AppModule.getApp(appId);
+
+  if (!app) {
+    console.log((appError as ServiceError).message);
+    return false;
+  }
+
+  const appAccounts = await AppModule.getAppAccounts(appId);
+
+  // get the account of this tx hash by scanning spend prefix
+  const account = appAccounts.find(acc => transaction.paymentID.startsWith(acc.spendSignaturePrefix));
+
+  if (!account) {
+    console.error(`unable to find account that spent tx hash: ${txHash} in app ${appId}`);
+    return false;
+  }
+
+  const preparedWithdrawalDocs = await admin.firestore()
+                                  .collection(`apps/${appId}/preparedWithdrawals`)
+                                  .where('paymentId', '==', transaction.paymentID)
+                                  .get();
+
+  let address = 'unknown';
+
+  if (preparedWithdrawalDocs.size === 1) {
+    const preparedWithdrawal = preparedWithdrawalDocs.docs[0].data() as PreparedWithdrawal;
+
+    address = preparedWithdrawal.address;
+  }
+
+  const [walletHeight, ,] = serviceWallet.wallet.getSyncStatus();
+  const completed = transaction.blockHeight + serviceWallet.serviceConfig.txConfirmations > walletHeight;
+  const status: WithdrawStatus = completed ? 'completed' : 'confirming';
+
+  const timestamp       = Date.now();
+  const txFee           = transaction.fee;
+  let withdrawalAmount  = -txFee;
+
+  transaction.transfers.forEach((amount, publicKey) => {
+    if (publicKey === app.publicKey && amount < 0) {
+      withdrawalAmount -= amount; // we decrement to get a positive count
+    }
+  });
+
+  const withdrawalDocRef = admin.firestore().collection(`apps/${appId}/withdrawals`).doc();
+
+  const withdrawal: Withdrawal = {
+    id:                   withdrawalDocRef.id,
+    paymentId:            transaction.paymentID,
+    appId:                appId,
+    accountId:            account.id,
+    amount:               withdrawalAmount,
+    fee:                  txFee,
+    serviceChargeAmount:  0, // todo: see if we can find the service charge doc for this withdrawal
+    userDebited:          true,
+    address:              address,
+    timestamp:            timestamp,
+    lastUpdate:           timestamp,
+    status:               status,
+    requestedAtBlock:     walletHeight,
+    blockHeight:          transaction.blockHeight,
+    failed:               false,
+    txHash:               txHash
+  }
+
+  await withdrawalDocRef.set(withdrawal);
+
+  console.log(`added unprocessed withdrawal with hash ${txHash}, withdrawal id: ${withdrawal.id}`);
+  return true;
 }
 
 export async function getWithdrawal(

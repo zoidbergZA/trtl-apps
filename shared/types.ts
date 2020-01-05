@@ -184,6 +184,7 @@ export interface ServiceCharge {
   lastUpdate: number;
   cancelled: boolean;
   status: ServiceChargeStatus;
+  withdrawalId?: string;
 }
 
 export interface ServiceChargeUpdate {
