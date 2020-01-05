@@ -234,7 +234,7 @@ export const rewindMasterWallet = functions.https.onRequest(async (request, resp
 
   const rewindHeight: number | undefined = Number(request.query.height);
 
-  console.log(`rescan from height: ${rewindHeight}`);
+  console.log(`rewind to height: ${rewindHeight}`);
 
   if (!rewindHeight) {
     response.status(400).send('bad request');
