@@ -1,6 +1,5 @@
 import * as crypto from 'crypto';
 import * as admin from 'firebase-admin';
-import * as WalletManager from './walletManager';
 import * as AppModule from './appModule';
 import { ServiceError } from './serviceError';
 import { createCallback } from './webhookModule';
@@ -23,13 +22,7 @@ export async function getDeposit(
   }
 }
 
-export async function updateDeposits(): Promise<void> {
-  const [serviceWallet, error] = await WalletManager.getServiceWallet();
-  if (!serviceWallet) {
-    console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
-    return;
-  }
-
+export async function updateDeposits(serviceWallet: ServiceWallet): Promise<void> {
   const [walletHeight, ,] = serviceWallet.wallet.getSyncStatus();
   const scanHeight        = Math.max(0, walletHeight - serviceWallet.serviceConfig.txScanDepth);
 
@@ -146,7 +139,7 @@ async function processDepositTransaction(tx: Transaction): Promise<Deposit | und
   let totalAmount = 0;
 
   tx.transfers.forEach((amount, publicKey) => {
-    if (publicKey === app.publicKey) {
+    if (publicKey === app.publicKey && amount > 0) {
       totalAmount += amount;
     }
   });

@@ -8,7 +8,7 @@ import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
 import * as TransfersModule from './transfersModule';
 import { validateAddress as backendValidateAddress } from 'turtlecoin-wallet-backend';
-import { TurtleApp, AccountUpdate, Recipient } from '../../shared/types';
+import { TurtleApp, AccountUpdate, Recipient, WithdrawalPreview } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
 export const api = express();
@@ -67,9 +67,18 @@ api.get('/:appId/deposits/:depositId', async (req, res) => {
   }
 });
 
+api.post('/:appId/prepared_withdrawals/', async (req, res) => {
+  try {
+    return createPreparedWithdrawal(req, res);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(new ServiceError('service/unknown-error'));
+  }
+});
+
 api.post('/:appId/withdrawals/', async (req, res) => {
   try {
-    return accountWithdraw(req, res);
+    return executePreparedWithdrawal(req, res);
   } catch (error) {
     console.error(error);
     res.status(500).send(new ServiceError('service/unknown-error'));
@@ -78,7 +87,7 @@ api.post('/:appId/withdrawals/', async (req, res) => {
 
 api.get('/:appId/withdrawals/:withdrawalId', async (req, res) => {
   try {
-    return getWithdrawalRequest(req, res);
+    return getWithdrawal(req, res);
   }
   catch (error) {
     console.error(error);
@@ -105,14 +114,14 @@ api.get('/:appId/transfers/:transferId', async (req, res) => {
   }
 });
 
-api.get('/service/nodefee', async (req, res) => {
-  try {
-    return getNodeFee(req, res);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(new ServiceError('service/unknown-error'));
-  }
-});
+// api.get('/service/nodefee', async (req, res) => {
+//   try {
+//     return getNodeFee(req, res);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send(new ServiceError('service/unknown-error'));
+//   }
+// });
 
 api.get('/service/validateaddress', async (req, res) => {
   try {
@@ -214,7 +223,7 @@ export async function getDeposit(request: any, response: any): Promise<void> {
   response.status(200).send(depositRequest);
 }
 
-export async function getWithdrawalRequest(request: any, response: any): Promise<void> {
+export async function getWithdrawal(request: any, response: any): Promise<void> {
   const [app, authError] = await authorizeAppRequest(request);
 
   if (!app) {
@@ -229,14 +238,14 @@ export async function getWithdrawalRequest(request: any, response: any): Promise
     return;
   }
 
-  const [withdrawRequest, serviceError] = await WithdrawalsModule.getWithdrawRequest(app.appId, withdrawalId);
+  const [withdrawal, serviceError] = await WithdrawalsModule.getWithdrawal(app.appId, withdrawalId);
 
-  if (!withdrawRequest) {
+  if (!withdrawal) {
     response.status(500).send(serviceError);
     return;
   }
 
-  response.status(200).send(withdrawRequest);
+  response.status(200).send(withdrawal);
 }
 
 async function appTransfer(request: any, response: any): Promise<void> {
@@ -291,7 +300,7 @@ export async function getAccountTransfer(request: any, response: any): Promise<v
   response.status(200).send(transfer);
 }
 
-async function accountWithdraw(request: any, response: any): Promise<void> {
+async function createPreparedWithdrawal(request: any, response: any): Promise<void> {
   const [app, authError] = await authorizeAppRequest(request);
 
   if (!app) {
@@ -336,30 +345,67 @@ async function accountWithdraw(request: any, response: any): Promise<void> {
     return;
   }
 
-  const [withdrawRequest, withdrawError] = await WithdrawalsModule.processWithdrawRequest(
-                                            app,
-                                            appAccount,
-                                            amount,
-                                            sendAddress);
+  const [preparedWithdrawal, prepareError] = await WithdrawalsModule.createPreparedWithdrawal(
+                                              app,
+                                              appAccount,
+                                              amount,
+                                              sendAddress);
 
-  if (!withdrawRequest) {
+  if (!preparedWithdrawal) {
+    response.status(500).send(prepareError);
+    return;
+  }
+
+  // we remove some service-only information from the response
+  const withdrawalPreview: WithdrawalPreview = {
+    id:             preparedWithdrawal.id,
+    appId:          preparedWithdrawal.appId,
+    accountId:      preparedWithdrawal.accountId,
+    timestamp:      preparedWithdrawal.timestamp,
+    address:        preparedWithdrawal.address,
+    amount:         preparedWithdrawal.amount,
+    fee:            preparedWithdrawal.fee,
+    serviceCharge:  preparedWithdrawal.serviceCharge
+  }
+
+  response.status(200).send(withdrawalPreview);
+}
+
+async function executePreparedWithdrawal(request: any, response: any): Promise<void> {
+  const [app, authError] = await authorizeAppRequest(request);
+
+  if (!app) {
+    response.status(401).send((authError));
+    return;
+  }
+
+  const preparedWithdrawalId: string | undefined = request.body.preparedWithdrawalId;
+
+  if (!preparedWithdrawalId) {
+    response.status(400).send(new ServiceError('request/invalid-params'));
+    return;
+  }
+
+  const [withdrawal, withdrawError] = await WithdrawalsModule.executePreparedWithdrawal(app.appId, preparedWithdrawalId);
+
+  if (!withdrawal) {
     response.status(500).send((withdrawError));
     return;
   }
 
-  response.status(200).send(withdrawRequest);
+  response.status(200).send(withdrawal);
 }
 
-async function getNodeFee(request: any, response: any): Promise<void> {
-  const [serviceConfig, ] = await ServiceModule.getServiceConfig();
+// async function getNodeFee(request: any, response: any): Promise<void> {
+//   const [serviceConfig, ] = await ServiceModule.getServiceConfig();
 
-  if (!serviceConfig) {
-    response.status(500).send(new ServiceError('service/unknown-error'));
-    return;
-  }
+//   if (!serviceConfig) {
+//     response.status(500).send(new ServiceError('service/unknown-error'));
+//     return;
+//   }
 
-  response.status(200).send({ fee: serviceConfig.nodeFee });
-}
+//   response.status(200).send({ fee: serviceConfig.nodeFee });
+// }
 
 async function setWithdrawAddress(request: any, response: any): Promise<void> {
   const [app, error] = await authorizeAppRequest(request);

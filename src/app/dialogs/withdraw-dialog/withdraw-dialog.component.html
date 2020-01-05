@@ -6,39 +6,55 @@
         <td class="table-key">Account ID</td>
         <td class="table-value">{{ accountId }}</td>
       </tr>
-      <tr>
-        <td class="table-key">Node fee</td>
-        <td class="table-value"><span *ngIf="fee">{{ fee | TRTL }}</span><span *ngIf="!fee">?</span></td>
-      </tr>
     </table>
     <p *ngIf="errorMessage" class="error-text">error: {{ errorMessage }}</p>
     <div *ngIf="!withdrawalId">
-      <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+      <div *ngIf="!withdrawalPreview">
+        <form class="form-content" [formGroup]="prepareForm" (ngSubmit)="onPrepareSubmit(prepareForm.value)">
+          <div>
+            <mat-form-field appearance="outline" class="input-amount">
+              <mat-label>Amount</mat-label>
+              <input matInput currencyMask
+                formControlName="amount">
+            </mat-form-field>
+          </div>
+          <div>
+            <mat-form-field class="form-input">
+              <mat-label>send address (optional)</mat-label>
+              <input matInput type="text" formControlName="sendAddress">
+            </mat-form-field>
+          </div>
+          <table *ngIf="total">
+              <tr>
+                <td class="table-key">Total</td>
+                <td class="table-value">{{ total | TRTL }}</td>
+              </tr>
+            </table>
+          <div>
+            <button mat-stroked-button
+              type="submit"
+              [disabled]="!prepareForm.valid">continue</button>
+          </div>
+        </form>
+      </div>
+      <div *ngIf="withdrawalPreview">
+        <table>
+          <tr>
+            <td class="table-key">fee</td>
+            <td class="table-value"><span>{{ withdrawalPreview?.fee | TRTL }}</span></td>
+          </tr>
+          <tr>
+            <td class="table-key">service charge</td>
+            <td class="table-value"><span>{{ withdrawalPreview?.serviceCharge | TRTL }}</span></td>
+          </tr>
+        </table>
         <div>
-          <mat-form-field appearance="outline" class="input-amount">
-            <mat-label>Amount</mat-label>
-            <input matInput currencyMask
-              formControlName="amount">
-          </mat-form-field>
+          <div>
+            <button mat-stroked-button (click)="onSendWithdrawal()">
+              <mat-icon>send</mat-icon> send</button>
+          </div>
         </div>
-        <div>
-          <mat-form-field class="form-input">
-            <mat-label>send address (optional)</mat-label>
-            <input matInput type="text" formControlName="sendAddress">
-          </mat-form-field>
-        </div>
-        <table *ngIf="total">
-            <tr>
-              <td class="table-key">Total</td>
-              <td class="table-value">{{ total | TRTL }}</td>
-            </tr>
-          </table>
-        <div>
-          <button mat-stroked-button
-            type="submit"
-            [disabled]="!form.valid">withdraw</button>
-        </div>
-      </form>
+      </div>
     </div>
     <div *ngIf="withdrawalId">
       <p>Withdraw request successfully created.</p>

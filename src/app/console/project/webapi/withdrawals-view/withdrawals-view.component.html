@@ -24,7 +24,7 @@
       <ng-container matColumnDef="amount">
         <mat-header-cell *matHeaderCellDef> Amount </mat-header-cell>
         <mat-cell *matCellDef="let element">
-          <span [ngClass]="{'failed':element.failed }"> {{ element.amount | TRTL }} </span>
+          <span [ngClass]="{'failed':element.failed }"> {{ (element.amount + element.fee + element.serviceChargeAmount) | TRTL }} </span>
         </mat-cell>
       </ng-container>
       <!-- status column -->

@@ -12,6 +12,7 @@ export interface Account {
   createdAt: number;
   deleted: boolean;
   paymentId: string;
+  spendSignaturePrefix: string;
   depositAddress: string;
   depositQrCode: string;
   withdrawAddress?: string;
@@ -50,11 +51,15 @@ export interface TurtleApp {
   webhook?: string;
   createdAt: number;
   disabled: boolean;
+  lastAuditAt: number;
+  lastAuditPassed: boolean;
 }
 
 export interface TurtleAppUpdate {
   webhook?: string;
   disabled?: boolean;
+  lastAuditAt?: number;
+  lastAuditPassed?: boolean;
 }
 
 export interface Transfer {
@@ -97,7 +102,41 @@ export interface AppDepositUpdate {
   txHash?: string;
 }
 
-export type WithdrawStatus = 'confirming' | 'completed';
+export type PreparedWithdrawalStatus = 'ready' | 'expired' | 'sent';
+
+export interface PreparedWithdrawal {
+  id: string;
+  appId: string;
+  accountId: string;
+  preparedTxJson: string;
+  timestamp: number;
+  lastUpdate: number;
+  status: PreparedWithdrawalStatus;
+  address: string;
+  amount: number;
+  fee: number;
+  serviceCharge: number;
+  paymentId: string;
+}
+
+// this type is the same as PreparedWithdrawal without some of the service-only information
+export interface WithdrawalPreview {
+  id: string;
+  appId: string;
+  accountId: string;
+  timestamp: number;
+  address: string;
+  amount: number;
+  fee: number;
+  serviceCharge: number;
+}
+
+export interface PreparedWithdrawalUpdate {
+  lastUpdate: number;
+  status?: PreparedWithdrawalStatus;
+}
+
+export type WithdrawStatus = 'preparing' | 'pending' | 'confirming' | 'faulty' | 'lost' | 'completed';
 
 export interface Withdrawal {
   id: string;
@@ -106,6 +145,9 @@ export interface Withdrawal {
   accountId: string;
   amount: number;
   fee: number;
+  serviceChargeAmount: number;
+  serviceChargeId?: string;
+  userDebited: boolean;
   address: string;
   timestamp: number;
   lastUpdate: number;
@@ -113,13 +155,39 @@ export interface Withdrawal {
   requestedAtBlock: number;
   blockHeight: number;
   failed: boolean;
+  preparedWithdrawalId?: string;
   txHash?: string;
+  nodeErrorCode?: number;
 }
 
 export interface WithdrawalUpdate {
   lastUpdate: number;
   status?: WithdrawStatus;
+  requestedAtBlock?: number;
   blockHeight?: number;
   failed?: boolean;
   txHash?: string;
+  nodeErrorCode?: number;
+  userDebited?: boolean;
+}
+
+export type ServiceChargeType = 'withdrawal';
+export type ServiceChargeStatus = 'confirming' | 'processing' | 'completed';
+
+export interface ServiceCharge {
+  id: string;
+  appId: string;
+  type: ServiceChargeType;
+  timestamp: number;
+  amount: number;
+  chargedAccountId: string;
+  lastUpdate: number;
+  cancelled: boolean;
+  status: ServiceChargeStatus;
+}
+
+export interface ServiceChargeUpdate {
+  lastUpdate: number;
+  cancelled?: boolean;
+  status?: ServiceChargeStatus;
 }

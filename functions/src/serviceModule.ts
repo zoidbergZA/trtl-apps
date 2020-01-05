@@ -1,11 +1,11 @@
 import * as admin from 'firebase-admin';
 import * as WalletManager from './walletManager';
 import * as axios from 'axios';
-import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate } from './types';
+import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from './types';
 import { sleep } from './utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
-import { SubWalletInfo } from '../../shared/types';
-import { minUnclaimedSubWallets, availableNodesEndpoint } from './constants';
+import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate } from '../../shared/types';
+import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId } from './constants';
 import { ServiceError } from './serviceError';
 
 export async function boostrapService(): Promise<[string | undefined, undefined | ServiceError]> {
@@ -18,12 +18,13 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
   const serviceConfig: ServiceConfig = {
     daemonHost:             'blockapi.turtlepay.io',  // Default daemon to connect to
     daemonPort:             443,                      // Port number of the daemon
-    nodeFee:                10,                       // Fee to use when sending transaction to the node
     txScanDepth:            2 * 60 * 24 * 7,          // Scan transactions up to aprox 7 days in the past
     txConfirmations:        6,                        // Amount of blocks needed to confirm a deposit/withdrawal
-    withdrawTimoutBlocks:   20,                       // Amount of blocks since a withdrawal tx was lost before it is considered failed
+    withdrawTimoutBlocks:   2 * 60 * 24 * 4,          // Amount of blocks since a confirming withdrawal tx was not found before it is considered failed
     waitForSyncTimeout:     20000,                    // Max time is miliseconds for the master wallet to sync
-    serviceHalted:          false                     // If true, the service is disables and doesn't process transactions
+    serviceHalted:          false,                    // If true, the service is disables and doesn't process transactions
+    inviteOnly:             true,                     // An invitation code is required to create an app
+    serviceCharge:          0                         // default service charge
   }
 
   const nodes: ServiceNode[] = [
@@ -76,7 +77,7 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
   const batch = admin.firestore().batch();
 
   nodes.forEach(node => {
-    const docRef = admin.firestore().collection('nodes').doc();
+    const docRef = admin.firestore().doc(`nodes/${node.id}`);
     batch.set(docRef, node);
   });
 
@@ -88,6 +89,26 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
   return await WalletManager.createMasterWallet(serviceConfig);
 }
 
+export async function createInvitationsBatch(amount: number): Promise<[number | undefined, undefined | ServiceError]> {
+  const now = Date.now();
+  const batch = admin.firestore().batch();
+
+  for (let i = 0; i < amount; i++) {
+    const docRef = admin.firestore().collection(`appInvites`).doc();
+
+    const invite: AppInviteCode = {
+      code: docRef.id,
+      createdAt: now,
+      claimed: false
+    }
+
+    batch.set(docRef, invite);
+  }
+
+  await batch.commit();
+  return [amount, undefined];
+}
+
 export async function getServiceConfig(): Promise<[ServiceConfig | undefined, undefined | ServiceError]> {
   const configDoc = await admin.firestore().doc('globals/config').get();
 
@@ -97,6 +118,18 @@ export async function getServiceConfig(): Promise<[ServiceConfig | undefined, un
 
   const config = configDoc.data() as ServiceConfig;
   return [config, undefined];
+}
+
+export async function validateInviteCode(code: string): Promise<boolean> {
+  const snapshot = await admin.firestore().doc(`appInvites/${code}`).get();
+
+  if (!snapshot.exists) {
+    return false;
+  }
+
+  const invite = snapshot.data() as AppInviteCode;
+
+  return !invite.claimed;
 }
 
 export async function updateMasterWallet(): Promise<void> {
@@ -123,6 +156,12 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
+  const [walletHeight, ,] = wallet.getSyncStatus();
+  const rewindDistance    = 2 * 60; // rewind a bit to make sure we didn't miss any txs
+  const scanHeight        = walletHeight - rewindDistance;
+
+  await wallet.rewind(scanHeight);
+
   const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
   const syncInfoStart   = WalletManager.getWalletSyncInfo(wallet);
   const balanceStart    = wallet.getBalance();
@@ -130,8 +169,10 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-  console.log('run sync job for 240s ...');
-  await sleep(240 * 1000);
+  const syncSeconds = syncInfoStart.heightDelta < (rewindDistance + 20) ? 40 : 240;
+
+  console.log(`run sync job for ${syncSeconds}s ...`);
+  await sleep(syncSeconds * 1000);
 
   const masterWalletInfoAtEnd = await WalletManager.getMasterWalletInfo();
 
@@ -222,6 +263,22 @@ export async function updateMasterWallet(): Promise<void> {
       console.error(`error while adding new subWallets: ${error}`);
     }
   }
+}
+
+export async function processServiceCharges(): Promise<void> {
+  const processingDocs = await admin.firestore()
+                          .collectionGroup('serviceCharges')
+                          .where('status', '==', 'processing')
+                          .get();
+
+  if (processingDocs.size === 0) {
+    return;
+  }
+
+  const charges   = processingDocs.docs.map(d => d.data() as ServiceCharge);
+  const promises  = charges.map(c => processServiceCharge(c.appId, c.id));
+
+  await Promise.all(promises);
 }
 
 export async function dropCurrentNode(currentNodeUrl: string): Promise<void> {
@@ -346,6 +403,58 @@ export async function updateServiceNodes(): Promise<void> {
 
     await doServiceNodeUpdates(serviceNodes, nodeStatuses);
 
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function processServiceCharge(appId: string, chargeId: string): Promise<void> {
+  try {
+    await admin.firestore().runTransaction(async (txn): Promise<any> => {
+      const chargeAccountDocRef = admin.firestore().doc(`apps/${appId}/serviceAccounts/${serviceChargesAccountId}`);
+      const chargeAccountDoc    = await txn.get(chargeAccountDocRef);
+
+      if (!chargeAccountDoc.exists) {
+        return Promise.reject('service charge account not found.');
+      }
+
+      const chargeAccount   = chargeAccountDoc.data() as Account;
+      const chargeDocRef    = admin.firestore().doc(`apps/${appId}/serviceCharges/${chargeId}`);
+      const chargeDoc       = await txn.get(chargeDocRef);
+
+      if (!chargeDoc.exists) {
+        return Promise.reject('service charge doc does not exist.');
+      }
+
+      const serviceCharge = chargeDoc.data() as ServiceCharge;
+
+      if (serviceCharge.status !== 'processing') {
+        console.error(`service charge [${serviceCharge.id}] in invalid state [${serviceCharge.status}], skipping processing.`);
+        return Promise.reject('service chargce has incorrect status');
+      }
+
+      if (serviceCharge.cancelled) {
+        const chargeAccountUpdate: AccountUpdate = {
+          balanceLocked: chargeAccount.balanceLocked - serviceCharge.amount,
+        }
+
+        txn.update(chargeAccountDocRef, chargeAccountUpdate);
+      } else {
+        const chargeAccountUpdate: AccountUpdate = {
+          balanceLocked:    chargeAccount.balanceLocked - serviceCharge.amount,
+          balanceUnlocked:  chargeAccount.balanceUnlocked + serviceCharge.amount
+        }
+
+        txn.update(chargeAccountDocRef, chargeAccountUpdate);
+      }
+
+      const chargeDocUpdate: ServiceChargeUpdate = {
+        lastUpdate: Date.now(),
+        status: 'completed'
+      }
+
+      txn.update(chargeDocRef, chargeDocUpdate);
+    });
   } catch (error) {
     console.error(error);
   }

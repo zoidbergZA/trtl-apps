@@ -30,8 +30,9 @@ export interface ServiceConfig {
   waitForSyncTimeout: number;
   daemonHost: string;
   daemonPort: number;
-  nodeFee: number;
   serviceHalted: boolean;
+  inviteOnly: boolean;
+  serviceCharge: number;
 }
 
 export interface ServiceConfigUpdate {
@@ -85,3 +86,28 @@ export interface FeeInfo {
   amount:  number;
 }
 
+export interface AppInviteCode {
+  code: string;
+  createdAt: number;
+  claimed: boolean;
+}
+
+export interface AppAuditResult {
+  appId: string,
+  timestamp: number,
+  passed: boolean,
+  missingDepositsCount: number;
+  missingDepositHashes?: string[];
+  missingWithdrawalsCount: number;
+  missingWithdrawalHashes?: string[];
+  unprocessedDepositsCount: number;
+  uncountedDepositHashes?: string[];
+  unprocessedWithdrawalsCount: number;
+  uncountedWithdrawalHashes?: string[];
+  walletLockedBalance: number;
+  walletUnlockedBalance: number;
+  totalCredited: number,
+  totalDebited: number,
+  appBalance: number;
+  summary?: string;
+}

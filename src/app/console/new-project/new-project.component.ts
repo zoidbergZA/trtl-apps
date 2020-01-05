@@ -26,7 +26,8 @@ export class NewProjectComponent implements OnInit {
       appName: new FormControl('', Validators.compose([
         Validators.required,
         validateName
-      ]))
+      ])),
+      inviteCode: new FormControl()
     });
   }
 
@@ -37,7 +38,7 @@ export class NewProjectComponent implements OnInit {
     this.errorMessage = undefined;
     this.creatingApp = true;
 
-    this.consoleService.createApp(data.appName).then(response => {
+    this.consoleService.createApp(data.appName, data.inviteCode).then(response => {
       if (response.error) {
         this.errorMessage = response.message;
         this.snackbar.open('error creating app, please try again later.', undefined, { duration: 6000 });
@@ -49,7 +50,7 @@ export class NewProjectComponent implements OnInit {
     }).catch(error => {
       this.creatingApp = false;
       console.log(`error creating app: ${error}`);
-      this.snackbar.open('error creating app, please try again later.', undefined, { duration: 6000 });
+      // this.snackbar.open('error creating app, please try again later.', undefined, { duration: 6000 });
     });
   }
 
