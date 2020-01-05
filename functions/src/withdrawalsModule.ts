@@ -290,24 +290,20 @@ export async function processPendingWithdrawal(withdrawal: Withdrawal): Promise<
 
   const sendResult = await serviceWallet.wallet.sendRawPreparedTransaction(preparedTransaction);
 
-  if (sendResult.transactionHash) {
-    const hashUpdate: WithdrawalUpdate = {
-      lastUpdate: Date.now(),
-      txHash: sendResult.transactionHash
-    }
+  const txSentUpdate: WithdrawalUpdate = {
+    lastUpdate: Date.now()
+  }
 
-    await withdrawalDocRef.update(hashUpdate);
+  if (sendResult.success) {
+    txSentUpdate.txHash = sendResult.transactionHash
   } else {
     console.log(sendResult.error);
 
-    const faultUpdate: WithdrawalUpdate = {
-      lastUpdate: Date.now(),
-      status: 'faulty',
-      nodeErrorCode: sendResult.error.errorCode
-    }
-
-    await withdrawalDocRef.update(faultUpdate);
+    txSentUpdate.status = 'faulty';
+    txSentUpdate.nodeErrorCode = sendResult.error.errorCode;
   }
+
+  await withdrawalDocRef.update(txSentUpdate);
 }
 
 export async function getWithdrawal(

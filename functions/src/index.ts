@@ -332,13 +332,13 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
   await ServiceModule.updateServiceNodes();
   await ServiceModule.checkNodeSwap();
 
+  // note: perhaps we dont need to wait for sync here? will help if we triggered a rewind.
   const [serviceWallet, error] = await WalletManager.getServiceWallet();
 
   if (!serviceWallet) {
     console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
     return;
   }
-
 
   // const txs = serviceWallet.wallet.getTransactions(undefined, undefined, false);
   // console.log(`all txs:`);
