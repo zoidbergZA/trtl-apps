@@ -224,19 +224,19 @@ export const createInvitationsBatch = functions.https.onRequest(async (request, 
 //     response.status(200).send('OK');
 // });
 
-export const rescanTest = functions.https.onRequest(async (request, response) => {
+export const rewindTest = functions.https.onRequest(async (request, response) => {
   const adminSignature = request.get(Constants.serviceAdminRequestHeader);
 
-  if (!adminSignature !== functions.config().serviceadmin.password) {
+  if (adminSignature !== functions.config().serviceadmin.password) {
     response.status(403).send('bad request');
     return;
   }
 
-  const rescanHeight: number | undefined = Number(request.query.height);
+  const rewindHeight: number | undefined = Number(request.query.height);
 
-  console.log(`rescan from height: ${rescanHeight}`);
+  console.log(`rescan from height: ${rewindHeight}`);
 
-  if (!rescanHeight) {
+  if (!rewindHeight) {
     response.status(400).send('bad request');
     return;
   }
@@ -248,7 +248,7 @@ export const rescanTest = functions.https.onRequest(async (request, response) =>
     return;
   }
 
-  await serviceWallet.wallet.rewind(rescanHeight);
+  await serviceWallet.wallet.rewind(rewindHeight);
 
   const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
 
