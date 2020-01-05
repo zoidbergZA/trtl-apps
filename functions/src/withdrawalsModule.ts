@@ -43,6 +43,10 @@ export async function createPreparedWithdrawal(
     [address, amount]
   ];
 
+  const [balanceLocked, balanceUnlocked] = serviceWallet.wallet.getBalance([app.subWallet]);
+
+  console.log(`app balances => unlocked: ${balanceUnlocked}, locked: ${balanceLocked}`);
+
   const sendResult = await serviceWallet.wallet.sendTransactionAdvanced(
                       destinations,
                       undefined,
@@ -52,8 +56,12 @@ export async function createPreparedWithdrawal(
                       app.subWallet,
                       false);
 
-  if (sendResult.success && sendResult.preparedTransaction && sendResult.preparedTransaction.fee) {
-    const txFee     = sendResult.preparedTransaction.fee;
+  console.log(`send error: [${sendResult.error.errorCode}] ${sendResult.error.toString()}`);
+  console.log(`send hash: ${sendResult.transactionHash}`);
+  console.log(`send fee: ${sendResult.fee}`);
+
+  if (sendResult.success && sendResult.preparedTransaction && sendResult.fee !== undefined) {
+    const txFee     = sendResult.fee;
     const timestamp = Date.now();
 
     const preparedDocRef = admin.firestore().collection(`apps/${app.appId}/preparedWithdrawals`).doc();
@@ -83,8 +91,9 @@ export async function createPreparedWithdrawal(
 
     return [preparedWithdrawal, undefined];
   } else {
-    console.error(sendResult.error.toString());
-    return [undefined, new ServiceError('service/unknown-error')];
+    const sendErrorMessage = sendResult.error.toString();
+    console.log(`send error: [${sendResult.error.errorCode}] ${sendErrorMessage}`);
+    return [undefined, new ServiceError('service/unknown-error', sendErrorMessage)];
   }
 }
 
@@ -146,6 +155,7 @@ export async function executePreparedWithdrawal(
     fee:                  preparedWithdrawal.fee,
     serviceChargeAmount:  preparedWithdrawal.serviceCharge,
     address:              preparedWithdrawal.address,
+    preparedWithdrawalId: preparedWithdrawalId,
     requestedAtBlock:     0,
     timestamp:            timestamp,
     lastUpdate:           timestamp,

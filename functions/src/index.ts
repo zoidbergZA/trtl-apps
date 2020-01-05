@@ -267,6 +267,12 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
     return;
   }
 
+
+  // const txs = serviceWallet.wallet.getTransactions(undefined, undefined, false);
+  // console.log(`all txs:`);
+  // console.log(JSON.stringify(txs));
+
+
   const updateDeposits    = DepositsModule.updateDeposits(serviceWallet);
   const updateWithdrawals = WithdrawalsModule.updateWithdrawals(serviceWallet);
 
