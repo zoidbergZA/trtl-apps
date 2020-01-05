@@ -345,13 +345,18 @@ export async function addUnprocessedWithdrawalByHash(
                                   .where('paymentId', '==', transaction.paymentID)
                                   .get();
 
-  let address = 'unknown';
+  if (preparedWithdrawalDocs.size !== 1) {
+    // TODO: if we cant find the prepared withdrawal, a serious error orccured since
+    // only prepared withdrawals should be able to execute wallet transactions.
+    // consider disabling this app and investigate the issue.
 
-  if (preparedWithdrawalDocs.size === 1) {
-    const preparedWithdrawal = preparedWithdrawalDocs.docs[0].data() as PreparedWithdrawal;
-
-    address = preparedWithdrawal.address;
+    console.error(`unable to find prepared withdrawal that spent tx hash: ${txHash} in app ${appId}`);
+    return false;
   }
+
+  const preparedWithdrawal  = preparedWithdrawalDocs.docs[0].data() as PreparedWithdrawal;
+  const address             = preparedWithdrawal.address;
+  const serviceChargeAmount = preparedWithdrawal.serviceCharge;
 
   const [walletHeight, ,] = serviceWallet.wallet.getSyncStatus();
   const completed = transaction.blockHeight + serviceWallet.serviceConfig.txConfirmations > walletHeight;
@@ -367,6 +372,14 @@ export async function addUnprocessedWithdrawalByHash(
     }
   });
 
+  if (withdrawalAmount !== preparedWithdrawal.amount) {
+    // TODO: if the amounts dont match, a serious error orccured
+    // consider disabling this app and investigate the issue.
+
+    console.error(`amount in prepared withdrawal that spent tx hash: ${txHash} in app ${appId} does not match wallet tx`);
+    return false;
+  }
+
   const withdrawalDocRef = admin.firestore().collection(`apps/${appId}/withdrawals`).doc();
 
   const withdrawal: Withdrawal = {
@@ -374,9 +387,9 @@ export async function addUnprocessedWithdrawalByHash(
     paymentId:            transaction.paymentID,
     appId:                appId,
     accountId:            account.id,
-    amount:               withdrawalAmount,
+    amount:               preparedWithdrawal.amount,
     fee:                  txFee,
-    serviceChargeAmount:  0, // todo: see if we can find the service charge doc for this withdrawal
+    serviceChargeAmount:  serviceChargeAmount,
     userDebited:          true,
     address:              address,
     timestamp:            timestamp,

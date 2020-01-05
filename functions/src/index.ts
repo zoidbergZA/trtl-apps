@@ -311,7 +311,7 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
-exports.maintenanceJobs = functions.pubsub.schedule('every 15 hours').onRun(async (context) => {
+exports.maintenanceJobs = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
   const [serviceWallet, error] = await WalletManager.getServiceWallet();
 
   if (!serviceWallet) {
