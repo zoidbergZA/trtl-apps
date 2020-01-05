@@ -9,9 +9,8 @@ import * as WithdrawalsModule from './withdrawalsModule';
 import * as WalletManager from './walletManager';
 import * as WebhooksModule from './webhookModule';
 import * as UsersModule from './usersModule';
-import * as Constants from './constants';
 import { api } from './requestHandlers';
-import { Deposit, Withdrawal } from '../../shared/types';
+import { Deposit, Withdrawal, TurtleApp } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
 
