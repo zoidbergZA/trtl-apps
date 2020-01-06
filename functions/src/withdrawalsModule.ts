@@ -636,6 +636,9 @@ function hasConfirmedFailureErrorCode(
       /* Amount + fee is greater than the total balance available in the
           subwallets specified (or all wallets, if not specified) */
       return true;
+    case 57:
+      /* Prepared transaction is no longer valid, inputs have been consumed by other transactions. */
+      return true;
     default:
       return false;
   }
