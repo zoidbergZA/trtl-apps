@@ -10,7 +10,7 @@ import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate,
   WithdrawStatus ,PreparedWithdrawalUpdate } from '../../shared/types';
 import { generateRandomSignatureSegement } from './utils';
 import { ServiceConfig, ServiceWallet } from './types';
-import { Transaction, PreparedTransaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
+import { Transaction, PreparedTransaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 // import { WalletError } from 'turtlecoin-wallet-backend';
 
 export async function createPreparedWithdrawal(
@@ -303,7 +303,23 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
     return;
   }
 
-  const sendResult = await serviceWallet.wallet.sendRawPreparedTransaction(preparedTx);
+  let sendResult: SendTransactionResult | undefined;
+
+  try {
+    console.log('sending raw prepared tx...');
+    console.log(JSON.stringify(preparedTx));
+    sendResult = await serviceWallet.wallet.sendRawPreparedTransaction(preparedTx);
+
+  } catch (error) {
+    console.log(error);
+  }
+
+  if (!sendResult) {
+    console.log('no send result, cancelling withdrawal...');
+
+    await cancelFailedWithdrawal(pendingWithdrawal.appId, pendingWithdrawal.id);
+    return;
+  }
 
   const txSentUpdate: WithdrawalUpdate = {
     lastUpdate: Date.now()
