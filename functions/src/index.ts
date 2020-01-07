@@ -10,7 +10,7 @@ import * as WalletManager from './walletManager';
 import * as WebhooksModule from './webhookModule';
 import * as UsersModule from './usersModule';
 import { api } from './requestHandlers';
-import { Deposit, Withdrawal } from '../../shared/types';
+import { Deposit, Withdrawal, ServiceCharge } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
 
@@ -18,6 +18,16 @@ import { ServiceError } from './serviceError';
 //                              Initialization
 // =============================================================================
 
+import appInsights = require('applicationinsights');
+appInsights.setup(functions.config().azure.appinsights).start();
+
+appInsights.defaultClient.commonProperties = {
+	environment: 'STAGING'
+};
+
+export function insights() {
+  return appInsights.defaultClient;
+}
 
 const cors = require('cors')({ origin: true });
 admin.initializeApp();
@@ -155,6 +165,15 @@ exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdr
 
   await WithdrawalsModule.processWithdrawalUpdate(oldState, newState);
   return null;
+});
+
+exports.onServiceChargeUpdated = functions.firestore.document(`/apps/{appId}/serviceCharges/{chargeId}`)
+.onUpdate(async (change, context) => {
+  const charge = change.after.data() as ServiceCharge;
+
+  if (charge.status === 'completed' && !charge.cancelled) {
+    insights().trackMetric({name: "successfull service charge", value: charge.amount * 0.01});
+  }
 });
 
 

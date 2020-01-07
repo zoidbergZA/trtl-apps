@@ -1,6 +1,5 @@
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
-import * as ServiceModule from './serviceModule';
 import * as WalletManager from './walletManager';
 import * as WithdrawalsModule from './withdrawalsModule';
 import * as Utils from '../../shared/utils';
@@ -27,20 +26,6 @@ export async function createApp(
 
   if (querySnapshot.docs.length > 0) {
     return [undefined, new ServiceError('app/invalid-app-name', 'An app with the same name already exists.')];
-  }
-
-  const [serviceConfig, serviceError] = await ServiceModule.getServiceConfig();
-
-  if (!serviceConfig) {
-    console.log('failed to get service config.');
-    return [undefined, serviceError];
-  }
-
-  const [wallet, walletError] = await WalletManager.getMasterWallet(serviceConfig);
-
-  if (!wallet) {
-    console.log('failed to get service wallet');
-    return [undefined, walletError];
   }
 
   const unclaimedSubWallets = await WalletManager.getSubWalletInfos(true);
