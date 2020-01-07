@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin';
 import * as WalletManager from './walletManager';
 import * as AppModule from './appModule';
 import * as ServiceModule from './serviceModule';
+import { insights } from './index';
 import { serviceChargesAccountId } from './constants';
 import { ServiceError } from './serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
@@ -19,24 +20,17 @@ export async function createPreparedWithdrawal(
   amount: number,
   address: string
 ): Promise<[PreparedWithdrawal | undefined, undefined | ServiceError]> {
-  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
-
-  if (!serviceConfig) {
-    console.error(`failed to get service config: ${(configError as ServiceError)}`);
-    return [undefined, new ServiceError('service/unknown-error')];
-  }
-
-  const serviceCharge = serviceConfig.serviceCharge;
-
-  if (account.balanceUnlocked < (amount + serviceCharge)) {
-    return [undefined, new ServiceError('transfer/insufficient-funds')];
-  }
-
   const [serviceWallet, walletError] = await WalletManager.getServiceWallet();
 
   if (!serviceWallet) {
     console.error(`failed to get service wallet: ${(walletError as ServiceError)}`);
     return [undefined, new ServiceError('service/unknown-error')];
+  }
+
+  const serviceCharge = serviceWallet.serviceConfig.serviceCharge;
+
+  if (account.balanceUnlocked < (amount + serviceCharge)) {
+    return [undefined, new ServiceError('transfer/insufficient-funds')];
   }
 
   const paymentId = account.spendSignaturePrefix.concat(generateRandomSignatureSegement());
@@ -326,12 +320,23 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
   }
 
   if (sendResult.success) {
+    if (sendResult.fee) {
+      insights().trackMetric({name: "withdrawal tx fee", value: sendResult.fee * 0.01});
+    }
     console.log(`tx successfully sent with hash: ${sendResult.transactionHash}`);
   } else {
     console.log(sendResult.error);
 
     txSentUpdate.status = 'faulty';
     txSentUpdate.nodeErrorCode = sendResult.error.errorCode;
+
+    insights().trackEvent({
+      name: "withdrawal daemon error",
+      properties: {
+        errorCode: sendResult.error.errorCode.toString(),
+        errorMessage: sendResult.error.toString()
+      }
+    });
   }
 
   await withdrawalDocRef.update(txSentUpdate);
@@ -636,6 +641,11 @@ function hasConfirmedFailureErrorCode(
       /* Amount + fee is greater than the total balance available in the
           subwallets specified (or all wallets, if not specified) */
       return true;
+    case 31:
+      /* An error occured whilst the daemon processed the request. Possibly our
+       software is outdated, the daemon is faulty, or there is a programmer
+       error. Check your daemon logs for more info (set_log 4) */
+       return true;
     case 57:
       /* Prepared transaction is no longer valid, inputs have been consumed by other transactions. */
       return true;
