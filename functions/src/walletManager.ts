@@ -13,6 +13,7 @@ import { SubWalletInfo } from '../../shared/types';
 
 let masterWallet: WalletBackend | undefined;
 let masterWalletStartedAt: number | undefined;
+let masterWalletLastSaveAt: number | undefined;
 
 export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<[string | undefined, undefined | ServiceError]> {
   console.log('creating new master wallet...');
@@ -107,21 +108,40 @@ export async function getServiceWallet(
 }
 
 export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart = false): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
+  const walletInfo = await getMasterWalletInfo();
+
+  if(!walletInfo) {
+    return [undefined, new ServiceError('service/master-wallet-info')];
+  }
+
   if (masterWallet) {
+
     const daemonInfo = masterWallet.getDaemonConnectionInfo();
     let restartNeeded = false;
 
     if (daemonInfo.host !== serviceConfig.daemonHost || daemonInfo.port !== serviceConfig.daemonPort) {
+      console.log('daemon info changed, restart needed.');
       restartNeeded = true;
     }
 
     if (masterWalletStartedAt && Date.now() >= (masterWalletStartedAt + (1000 * 60 * 10))) {
       // 10 minutes is the max lifetime of a master wallet instance
+      console.log('max wallet instance time exceeded, restart needed.');
+      restartNeeded = true;
+    }
+
+    if (masterWalletLastSaveAt !== walletInfo.lastSaveAt)
+    {
+      console.log('wallet saved since last start, restart needed.');
       restartNeeded = true;
     }
 
     if (restartNeeded || forceRestart) {
-      console.log(`master wallet restart needed, swapping to new instance...`);
+      console.log(`starting new wallet instance...`);
+
+      await masterWallet.stop();
+      masterWallet.removeAllListeners();
+      masterWallet = undefined;
 
       // load and swap to a new instance of the master wallet
       const encryptedString = await getMasterWalletString();
@@ -136,15 +156,9 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
         return [undefined, error];
       }
 
-      // swap instances
-      const oldWallet = masterWallet;
       masterWallet = newWallet;
-      masterWalletStartedAt = Date.now();
+      masterWalletLastSaveAt = walletInfo.lastSaveAt;
       console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
-
-      // kill old instance
-      await oldWallet.stop();
-      oldWallet.removeAllListeners();
 
       return [masterWallet, undefined];
     } else {
@@ -163,7 +177,7 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
 
     if (wallet) {
       masterWallet = wallet;
-      masterWalletStartedAt = Date.now();
+      masterWalletLastSaveAt = walletInfo.lastSaveAt;
       console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
     }
 
@@ -374,6 +388,7 @@ async function startWalletFromString(
     wallet.enableAutoOptimization(false);
     await wallet.start();
 
+    masterWalletStartedAt = Date.now();
     return [wallet, undefined];
   }
 }

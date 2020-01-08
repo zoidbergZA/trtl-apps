@@ -1,4 +1,4 @@
-<h3>Withdraw</h3>
+<h3 class="center-text">Withdraw</h3>
 <div>
   <div *ngIf="!busy">
     <table>
@@ -40,6 +40,10 @@
       <div *ngIf="withdrawalPreview">
         <table>
           <tr>
+            <td class="table-key">amount</td>
+            <td class="table-value"><span>{{ withdrawalPreview?.amount | TRTL }}</span></td>
+          </tr>
+          <tr>
             <td class="table-key">fee</td>
             <td class="table-value"><span>{{ withdrawalPreview?.fee | TRTL }}</span></td>
           </tr>
@@ -51,8 +55,11 @@
         <div>
           <div>
             <button mat-stroked-button (click)="onSendWithdrawal()">
-              <mat-icon>send</mat-icon> send</button>
+              <mat-icon>send</mat-icon> confirm</button>
           </div>
+        </div>
+        <div *ngIf="!busy" style="display: flex; justify-content: flex-end">
+          <button mat-flat-button (click)="onCloseClick()">cancel</button>
         </div>
       </div>
     </div>
@@ -64,12 +71,15 @@
           <td class="table-value"><copy-string-box [data]="withdrawalId"></copy-string-box></td>
         </tr>
       </table>
+      <div *ngIf="!busy" style="display: flex; justify-content: flex-end">
+        <button mat-flat-button (click)="onCloseClick()">done</button>
+      </div>
     </div>
   </div>
-  <div *ngIf="!busy" style="display: flex; justify-content: flex-end">
-    <button mat-flat-button (click)="onCloseClick()">close</button>
-  </div>
-  <div *ngIf="busy">
-    <mat-spinner diameter="64"></mat-spinner>
+  <div *ngIf="busy" class="busy-container">
+    <div class="centered-content">
+      <mat-spinner diameter="64"></mat-spinner>
+    </div>
+    <p>{{ busyMessage }}</p>
   </div>
 </div>

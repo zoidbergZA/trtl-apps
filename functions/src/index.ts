@@ -251,7 +251,22 @@ export const rewindMasterWallet = functions.https.onRequest(async (request, resp
     return;
   }
 
-  const rewindHeight: number | undefined = Number(request.query.height);
+  const [serviceWallet, error] = await WalletManager.getServiceWallet(false);
+
+  if (!serviceWallet) {
+    response.status(500).send((error as ServiceError).message);
+    return;
+  }
+
+  let rewindHeight: number | undefined = Number(request.query.height);
+
+  const rewindDistance: number | undefined = Number(request.query.distance);
+
+  if (rewindDistance) {
+    const [wHeight, ,] = serviceWallet.wallet.getSyncStatus();
+
+    rewindHeight = wHeight - rewindDistance;
+  }
 
   console.log(`rewind to height: ${rewindHeight}`);
 
@@ -260,12 +275,6 @@ export const rewindMasterWallet = functions.https.onRequest(async (request, resp
     return;
   }
 
-  const [serviceWallet, error] = await WalletManager.getServiceWallet(false);
-
-  if (!serviceWallet) {
-    response.status(500).send((error as ServiceError).message);
-    return;
-  }
 
   await serviceWallet.wallet.rewind(rewindHeight);
 
@@ -351,7 +360,6 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
   await ServiceModule.updateServiceNodes();
   await ServiceModule.checkNodeSwap();
 
-  // note: perhaps we dont need to wait for sync here? will help if we triggered a rewind.
   const [serviceWallet, error] = await WalletManager.getServiceWallet();
 
   if (!serviceWallet) {

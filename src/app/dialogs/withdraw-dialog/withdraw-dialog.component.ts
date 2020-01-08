@@ -17,6 +17,7 @@ export class WithdrawDialogComponent implements OnInit {
   app: TurtleApp;
   accountId: string;
   busy = false;
+  busyMessage = '';
   withdrawalPreview: WithdrawalPreview | undefined;
   withdrawalId: string | undefined;
   errorMessage: string | undefined;
@@ -68,7 +69,8 @@ export class WithdrawDialogComponent implements OnInit {
     this.withdrawalId       = undefined;
     this.errorMessage       = undefined;
 
-    if (!this.app || !this.accountId || !this.withdrawalPreview) {
+    this.busyMessage = 'preparing transaction...';
+    if (!this.app || !this.accountId) {
       this.errorMessage = 'Invalid input parameters.';
       return;
     }
@@ -111,6 +113,7 @@ export class WithdrawDialogComponent implements OnInit {
     this.withdrawalId = undefined;
     this.errorMessage = undefined;
     this.busy         = true;
+    this.busyMessage  = 'sending transaction...';
 
     const [withdrawal, error] = await this.consoleService.withdraw(
       this.app.appId,
