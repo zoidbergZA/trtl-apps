@@ -655,7 +655,7 @@ function hasConfirmedFailureErrorCode(
         properties: {
           walletErrorCode: withdrawal.nodeErrorCode.toString(),
           withdrawalId: withdrawal.id,
-          timestamp: Date.now.toString()
+          timestamp: Date.now().toString()
         }
       });
       return false;
