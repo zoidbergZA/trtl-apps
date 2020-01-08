@@ -28,12 +28,7 @@ export async function updateDeposits(serviceWallet: ServiceWallet): Promise<void
 
   const transactions = serviceWallet.wallet
     .getTransactions(undefined, undefined, false)
-    .filter(tx => {
-      const transfers = Array.from(tx.transfers.values());
-
-      // tx must be above scan height and contain at least one positive amount transfer
-      return tx.blockHeight >= scanHeight && transfers.find(t => t > 0);
-    });
+    .filter(tx => tx.blockHeight >= scanHeight);
 
   const deposits = await getAllDeposits(scanHeight);
 
@@ -95,8 +90,6 @@ async function scanNewDeposits(transactions: Transaction[], deposits: Deposit[])
     };
   });
 
-  console.log(`new deposit tx count: ${newTxs.length}`);
-
   if (newTxs.length === 0) {
     return;
   }
@@ -143,6 +136,10 @@ async function processDepositTransaction(tx: Transaction): Promise<Deposit | und
       totalAmount += amount;
     }
   });
+
+  if (totalAmount <= 0) {
+    return undefined;
+  }
 
   const deposit = createDepositObject(
     depositId,

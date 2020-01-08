@@ -400,9 +400,14 @@ async function getMasterWalletString(): Promise<string | null> {
     return null;
   }
 
-  const bucket = admin.storage().bucket();
-  const f = bucket.file(masterWalletInfo.location);
+  try {
+    const bucket = admin.storage().bucket();
+    const f = bucket.file(masterWalletInfo.location);
 
-  const buffer = await f.download();
-  return buffer.toString();
+    const buffer = await f.download();
+    return buffer.toString();
+  } catch (error) {
+    console.error(`failed to read wallet file: ${error.message}`);
+    return null;
+  }
 }
