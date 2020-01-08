@@ -12,7 +12,7 @@ import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate,
 import { generateRandomSignatureSegement } from './utils';
 import { ServiceConfig, ServiceWallet } from './types';
 import { Transaction, PreparedTransaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
-// import { WalletError } from 'turtlecoin-wallet-backend';
+import { WalletErrorCode } from 'turtlecoin-wallet-backend';
 
 export async function createPreparedWithdrawal(
   app: TurtleApp,
@@ -637,19 +637,27 @@ function hasConfirmedFailureErrorCode(
   }
 
   switch (withdrawal.nodeErrorCode) {
-    case 11:
+    case WalletErrorCode.NOT_ENOUGH_BALANCE:
       /* Amount + fee is greater than the total balance available in the
           subwallets specified (or all wallets, if not specified) */
       return true;
-    case 31:
+    case WalletErrorCode.DAEMON_ERROR:
       /* An error occured whilst the daemon processed the request. Possibly our
        software is outdated, the daemon is faulty, or there is a programmer
        error. Check your daemon logs for more info (set_log 4) */
        return true;
-    case 57:
+    case WalletErrorCode.PREPARED_TRANSACTION_EXPIRED:
       /* Prepared transaction is no longer valid, inputs have been consumed by other transactions. */
       return true;
     default:
+      insights().trackEvent({
+        name: "unhandled wallet error",
+        properties: {
+          walletErrorCode: withdrawal.nodeErrorCode.toString(),
+          withdrawalId: withdrawal.id,
+          timestamp: Date.now.toString()
+        }
+      });
       return false;
   }
 }
