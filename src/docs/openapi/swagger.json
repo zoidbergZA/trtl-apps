@@ -138,47 +138,6 @@
         }
       }
     },
-    "/service/nodefee" : {
-      "get" : {
-        "tags" : [ "service" ],
-        "summary" : "Gets the node fee",
-        "description" : "Returns the current node fee charged on account withdrawals.",
-        "responses" : {
-          "200" : {
-            "description" : "successful operation",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "fee" : {
-                      "type" : "integer",
-                      "description" : "The current node fee."
-                    }
-                  }
-                },
-                "example" : {
-                  "fee" : 10
-                }
-              }
-            }
-          },
-          "401" : {
-            "$ref" : "#/components/responses/UnauthorizedError"
-          },
-          "500" : {
-            "description" : "Server error",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ServiceError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/service/validateaddress" : {
       "get" : {
         "tags" : [ "service" ],
@@ -540,14 +499,14 @@
         }
       }
     },
-    "/{appId}/withdrawals" : {
+    "/{appId}/prepared_withdrawals" : {
       "post" : {
         "security" : [ {
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "app" ],
-        "summary" : "Withdraw account funds",
-        "description" : "Withdraws the given amount from the account's balance to their withdraw address, or alternatively to the optional sendAddress specified in the request body. Returns the Withdrawal object if the operation succeeded.",
+        "summary" : "Prepare an account withdrawal preview",
+        "description" : "Prepares a withdrawal preview, which contains info about the fee for this transaction. Returns a PreparedWithdrawal object if the operation succeeded.",
         "parameters" : [ {
           "name" : "appId",
           "in" : "path",
@@ -567,7 +526,7 @@
                   "accountId" : {
                     "type" : "string",
                     "example" : "8RgwiWmgiYKQlUHWGaTW",
-                    "description" : "ID of the account making the withdrawal"
+                    "description" : "ID of the account making the withdrawal preview"
                   },
                   "amount" : {
                     "type" : "integer",
@@ -576,8 +535,82 @@
                   },
                   "sendAddress" : {
                     "type" : "string",
-                    "description" : "Optional address where the funds will be sent. If none is provided, the account withdrawAddress will be used.",
+                    "description" : "Address where the funds will be sent.",
                     "example" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PreparedWithdrawal"
+                },
+                "example" : {
+                  "id" : "601wK8qJjXQ3r5PBM16B",
+                  "appId" : "Qp7EwLQlLWDpspZT5IUE",
+                  "accountId" : "2eSGgHTvWSZQyd0SSH83",
+                  "amount" : 420,
+                  "fee" : 2000,
+                  "serviceCharge" : 10,
+                  "address" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he",
+                  "timestamp" : 1573675761789
+                }
+              }
+            }
+          },
+          "400" : {
+            "$ref" : "#/components/responses/BadRequest"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/UnauthorizedError"
+          },
+          "500" : {
+            "description" : "Server error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/{appId}/withdrawals" : {
+      "post" : {
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "app" ],
+        "summary" : "Withdraw account funds",
+        "description" : "Sends a prepared withdrawal. Returns the Withdrawal object if the operation succeeded.",
+        "parameters" : [ {
+          "name" : "appId",
+          "in" : "path",
+          "description" : "Your app ID.",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "required" : true,
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "preparedWithdrawalId" : {
+                    "type" : "string",
+                    "example" : "601wK8qJjXQ3r5PBM16B",
+                    "description" : "ID of the prepared withdrawal"
                   }
                 }
               }
@@ -595,17 +628,21 @@
                 "example" : {
                   "id" : "btpNERIyBgmg3gPFE5OA",
                   "paymentId" : "304044f69ca418575661375f0bc90b829f1fd12c2c181454d6dcabdcb81b683f",
-                  "status" : "confirming",
+                  "status" : "pending",
                   "blockHeight" : 0,
                   "appId" : "J3irXkH26gE4pZHYyWWW",
-                  "account" : "8RgwiWmgiYKQlUHWGaTW",
-                  "amount" : 200,
-                  "fee" : 10,
+                  "accountId" : "8RgwiWmgiYKQlUHWGaTW",
+                  "amount" : 420,
+                  "fee" : 2000,
+                  "serviceChargeAmount" : 10,
                   "address" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he",
                   "requestAtBlock" : 2015846,
                   "timestamp" : 1573675761789,
                   "lastUpdate" : 1573675761789,
-                  "failed" : false
+                  "failed" : false,
+                  "userDebited" : true,
+                  "retries" : 0,
+                  "serviceChargeId" : "p0LWRu3RRBKADIdOHpMD"
                 }
               }
             }
@@ -665,17 +702,21 @@
                 "example" : {
                   "id" : "btpNERIyBgmg3gPFE5OA",
                   "paymentId" : "304044f69ca418575661375f0bc90b829f1fd12c2c181454d6dcabdcb81b683f",
-                  "status" : "confirming",
+                  "status" : "pending",
                   "blockHeight" : 0,
                   "appId" : "J3irXkH26gE4pZHYyWWW",
                   "accountId" : "8RgwiWmgiYKQlUHWGaTW",
-                  "amount" : 200,
-                  "fee" : 10,
+                  "amount" : 420,
+                  "fee" : 2000,
+                  "serviceChargeAmount" : 10,
                   "address" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he",
                   "requestAtBlock" : 2015846,
                   "timestamp" : 1573675761789,
                   "lastUpdate" : 1573675761789,
-                  "failed" : false
+                  "failed" : false,
+                  "userDebited" : true,
+                  "retries" : 0,
+                  "serviceChargeId" : "p0LWRu3RRBKADIdOHpMD"
                 }
               }
             }
@@ -846,6 +887,35 @@
           }
         }
       },
+      "PreparedWithdrawal" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "appId" : {
+            "type" : "string"
+          },
+          "accountId" : {
+            "type" : "string"
+          },
+          "timestamp" : {
+            "type" : "integer"
+          },
+          "address" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "type" : "integer"
+          },
+          "fee" : {
+            "type" : "integer"
+          },
+          "serviceCharge" : {
+            "type" : "integer"
+          }
+        }
+      },
       "Withdrawal" : {
         "type" : "object",
         "properties" : {
@@ -866,6 +936,15 @@
           },
           "fee" : {
             "type" : "integer"
+          },
+          "serviceChargeAmount" : {
+            "type" : "integer"
+          },
+          "serviceChargeId" : {
+            "type" : "string"
+          },
+          "userDebited" : {
+            "type" : "boolean"
           },
           "address" : {
             "type" : "string"
@@ -888,8 +967,17 @@
           "failed" : {
             "type" : "boolean"
           },
+          "preparedWithdrawalId" : {
+            "type" : "string"
+          },
           "txHash" : {
             "type" : "string"
+          },
+          "daemonErrorCode" : {
+            "type" : "integer"
+          },
+          "retries" : {
+            "type" : "integer"
           }
         }
       },
