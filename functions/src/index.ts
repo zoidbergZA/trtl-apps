@@ -150,13 +150,13 @@ exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/
   return null;
 });
 
-exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
-.onCreate(async (snapshot, context) => {
-  const state = snapshot.data() as Withdrawal;
+// exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
+// .onCreate(async (snapshot, context) => {
+//   const state = snapshot.data() as Withdrawal;
 
-  await WithdrawalsModule.processPendingWithdrawal(state);
-  return null;
-});
+//   await WithdrawalsModule.processPendingWithdrawal(state);
+//   return null;
+// });
 
 exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
 .onUpdate(async (change, context) => {
@@ -172,7 +172,7 @@ exports.onServiceChargeUpdated = functions.firestore.document(`/apps/{appId}/ser
   const charge = change.after.data() as ServiceCharge;
 
   if (charge.status === 'completed' && !charge.cancelled) {
-    insights().trackMetric({name: "successfull service charge", value: charge.amount * 0.01});
+    insights().trackMetric({name: "successful service charge", value: charge.amount * 0.01});
   }
 });
 
@@ -287,42 +287,6 @@ export const rewindMasterWallet = functions.https.onRequest(async (request, resp
 
   response.status(200).send(`OK! :: rewind saved at ${saveTimestamp}`);
 });
-
-// export const getAppTxsTest = functions.https.onRequest(async (request, response) => {
-//   const adminSignature = request.get(Constants.serviceAdminRequestHeader);
-
-//   if (!adminSignature !== functions.config().serviceadmin.password) {
-//     response.status(403).send('bad request');
-//     return;
-//   }
-
-//   const appId: string | undefined = request.query.appId;
-
-//   if (!appId) {
-//     response.status(400).send('bad request');
-//     return;
-//   }
-
-//   const docSnapshot = await admin.firestore().doc(`apps/${appId}`).get();
-
-//   if (!docSnapshot.exists) {
-//     response.status(404).send('app not found');
-//     return;
-//   }
-
-//   const turtleApp = docSnapshot.data() as TurtleApp;
-
-//   const [serviceWallet, error] = await WalletManager.getServiceWallet();
-
-//   if (!serviceWallet) {
-//     response.status(500).send((error as ServiceError).message);
-//     return;
-//   }
-
-//   const transactions = serviceWallet.wallet.getTransactions(undefined, undefined, true, turtleApp.subWallet);
-
-//   response.status(200).send(transactions);
-// });
 
 
 // =============================================================================
