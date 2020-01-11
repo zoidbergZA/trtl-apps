@@ -120,6 +120,13 @@ export interface PreparedWithdrawal {
   txHash: string;
 }
 
+export interface PreparedWithdrawalUpdate {
+  lastUpdate: number;
+  status?: PreparedWithdrawalStatus;
+  txHash?: string;
+  preparedTxJson?: string;
+}
+
 // this type is the same as PreparedWithdrawal without some of the service-only information
 export interface WithdrawalPreview {
   id: string;
@@ -130,11 +137,6 @@ export interface WithdrawalPreview {
   amount: number;
   fee: number;
   serviceCharge: number;
-}
-
-export interface PreparedWithdrawalUpdate {
-  lastUpdate: number;
-  status?: PreparedWithdrawalStatus;
 }
 
 export type WithdrawStatus = 'pending' | 'confirming' | 'faulty' | 'lost' | 'completed';
@@ -159,6 +161,7 @@ export interface Withdrawal {
   preparedWithdrawalId: string;
   txHash: string;
   nodeErrorCode?: number;
+  retries: number;
 }
 
 export interface WithdrawalUpdate {
@@ -169,6 +172,8 @@ export interface WithdrawalUpdate {
   failed?: boolean;
   nodeErrorCode?: number;
   userDebited?: boolean;
+  txHash?: string;
+  retries?: number;
 }
 
 export type ServiceChargeType = 'withdrawal';
