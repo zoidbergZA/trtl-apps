@@ -13,6 +13,7 @@ import { generateRandomSignatureSegement } from './utils';
 import { ServiceConfig, ServiceWallet } from './types';
 import { Transaction, PreparedTransaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { WalletErrorCode } from 'turtlecoin-wallet-backend';
+import { FeeType } from 'turtlecoin-wallet-backend/dist/lib/FeeType';
 
 export async function createPreparedWithdrawal(
   app: TurtleApp,
@@ -38,10 +39,6 @@ export async function createPreparedWithdrawal(
   const destinations: [string, number][] = [
     [address, amount]
   ];
-
-  const [balanceLocked, balanceUnlocked] = serviceWallet.wallet.getBalance([app.subWallet]);
-
-  console.log(`app balances => unlocked: ${balanceUnlocked}, locked: ${balanceLocked}`);
 
   const sendResult = await serviceWallet.wallet.sendTransactionAdvanced(
                       destinations,
@@ -158,7 +155,8 @@ export async function processPreparedWithdrawal(
     timestamp:            timestamp,
     lastUpdate:           timestamp,
     failed:               false,
-    userDebited:          true
+    userDebited:          true,
+    retries:              0
   };
 
   try {
@@ -305,7 +303,7 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
     sendResult = await serviceWallet.wallet.sendRawPreparedTransaction(preparedTx);
 
   } catch (error) {
-    console.log(error);
+    console.log(`error trying to send tx for withdrawal ${pendingWithdrawal.id} => ${error}`);
   }
 
   if (!sendResult) {
@@ -323,9 +321,9 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
     if (sendResult.fee) {
       insights().trackMetric({name: "withdrawal tx fee", value: sendResult.fee * 0.01});
     }
-    console.log(`tx successfully sent with hash: ${sendResult.transactionHash}`);
+    console.log(`tx for withdrawal ${pendingWithdrawal.id} successfully sent with hash: ${sendResult.transactionHash}`);
   } else {
-    console.log(sendResult.error);
+    console.log(`${pendingWithdrawal.id} send error: ${sendResult.error}`);
 
     txSentUpdate.status = 'faulty';
     txSentUpdate.nodeErrorCode = sendResult.error.errorCode;
@@ -432,7 +430,8 @@ export async function addUnprocessedWithdrawalByHash(
     requestedAtBlock:     walletHeight,
     blockHeight:          transaction.blockHeight,
     failed:               false,
-    txHash:               txHash
+    txHash:               txHash,
+    retries:              0
   }
 
   await withdrawalDocRef.set(withdrawal);
@@ -468,8 +467,8 @@ export async function updateWithdrawals(serviceWallet: ServiceWallet): Promise<v
                           return tx.blockHeight >= scanHeight && transfers.find(t => t < 0)
                         });
 
-  // Retry 'pending' withdrawals that have not been updated in at least 5 mins.
-  const pendingCutoff = Date.now() - (5 * 60 * 1000);
+  // Retry 'pending' withdrawals that have not been updated in at least 1 min.
+  const pendingCutoff = Date.now() - (1 * 60 * 1000);
 
   const pendingDocs = await admin.firestore()
                       .collectionGroup('withdrawals')
@@ -478,8 +477,17 @@ export async function updateWithdrawals(serviceWallet: ServiceWallet): Promise<v
                       .get();
 
   if (pendingDocs.size > 0) {
-    const pendingWithdrawals      = pendingDocs.docs.map(d => d.data() as Withdrawal);
-    const processPendingPromises  = pendingWithdrawals.map(withdrawal => processPendingWithdrawal(withdrawal));
+    const pendingWithdrawals = pendingDocs.docs.map(d => d.data() as Withdrawal);
+    const processList: Withdrawal[] = [];
+
+    // process 1 withdrawal per app at a time
+    pendingWithdrawals.forEach(w => {
+      if (!processList.find(item => item.appId === item.appId)) {
+        processList.push(w);
+      }
+    });
+
+    const processPendingPromises = processList.map(withdrawal => processPendingWithdrawal(withdrawal));
 
     await Promise.all(processPendingPromises);
   }
@@ -496,7 +504,7 @@ export async function updateWithdrawals(serviceWallet: ServiceWallet): Promise<v
     const processFaultyPromises = faultyWithdrawals.map(withdrawal =>
                                     processFaultyWithdrawal(
                                       withdrawal,
-                                      serviceWallet.serviceConfig,
+                                      serviceWallet,
                                       transactions,
                                       walletHeight));
 
@@ -595,7 +603,7 @@ export async function processWithdrawalUpdate(
 
 async function processFaultyWithdrawal(
   withdrawal: Withdrawal,
-  serviceConfig: ServiceConfig,
+  serviceWallet: ServiceWallet,
   transactions: Transaction[],
   walletHeight: number): Promise<any> {
 
@@ -611,14 +619,106 @@ async function processFaultyWithdrawal(
     return await admin.firestore().doc(`apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`).update(updateObject);
   }
 
-  if (hasConfirmedFailureErrorCode(withdrawal, walletHeight, serviceConfig)) {
+  if (hasConfirmedFailureErrorCode(withdrawal, walletHeight, serviceWallet.serviceConfig)) {
+    // retry with a new prepared withdrawal
+    // TODO: refactor max retries var to service config
+    if (withdrawal.retries < 5) {
+      return await retryFaultyWithdrawal(withdrawal, serviceWallet);
+    }
+
+
     await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
     return;
   }
 
   // The withdrawal will be marked as lost after the wallet height exceeds withdrawTimoutBlocks
-  if (walletHeight > (withdrawal.requestedAtBlock + serviceConfig.withdrawTimoutBlocks)) {
+  if (walletHeight > (withdrawal.requestedAtBlock + serviceWallet.serviceConfig.withdrawTimoutBlocks)) {
     await markLostWithdrawal(withdrawal.appId, withdrawal.id);
+  }
+}
+
+async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: ServiceWallet): Promise<any> {
+  console.log(`retrying faulty withdrawal: ${withdrawal.id}`);
+
+  const withdrawalDocRef  = admin.firestore().doc(`apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`);
+  const preparedDocRef    = admin.firestore().doc(`apps/${withdrawal.appId}/preparedWithdrawals/${withdrawal.preparedWithdrawalId}`);
+  const preparedDoc       = await preparedDocRef.get();
+
+  if (!preparedDoc.exists) {
+    return [undefined, new ServiceError('app/prepared-withdrawal-not-found')];
+  }
+
+  const preparedWithdrawal = preparedDoc.data() as PreparedWithdrawal;
+
+  if (preparedWithdrawal.status !== 'sent') {
+    return [undefined, new ServiceError('app/invalid-prepared-withdrawal', `invalid status: ${preparedWithdrawal.status}`)];
+  }
+
+  const destinations: [string, number][] = [
+    [withdrawal.address, withdrawal.amount]
+  ];
+
+  const [app, appError] = await AppModule.getApp(withdrawal.appId);
+
+  if (!app) {
+    console.log(`app error: ${(appError as ServiceError).message}`);
+    return;
+  }
+
+  const fee = FeeType.FixedFee(preparedWithdrawal.fee);
+
+  const sendResult = await serviceWallet.wallet.sendTransactionAdvanced(
+                      destinations,
+                      undefined,
+                      fee,
+                      preparedWithdrawal.paymentId,
+                      [app.subWallet],
+                      app.subWallet,
+                      false);
+
+  if (!sendResult.success) {
+    const sendErrorMessage = sendResult.error.toString();
+    console.log(`send error: [${sendResult.error.errorCode}] ${sendErrorMessage}`);
+
+    const withdrawalUpdate: WithdrawalUpdate = {
+      lastUpdate: Date.now(),
+      retries: withdrawal.retries + 1
+    }
+
+    await withdrawalDocRef.update(withdrawalUpdate);
+
+    return [undefined, new ServiceError('service/unknown-error', sendErrorMessage)];
+  }
+
+  if (sendResult.transactionHash && sendResult.preparedTransaction && sendResult.fee !== undefined) {
+    const timestamp = Date.now();
+    const preparedTxJson = JSON.stringify(sendResult.preparedTransaction);
+
+    const preparedWithdrawalUpdate: PreparedWithdrawalUpdate = {
+      preparedTxJson: preparedTxJson,
+      lastUpdate:     timestamp,
+      txHash:         sendResult.transactionHash
+    }
+
+    const withdrawalUpdate: WithdrawalUpdate = {
+      lastUpdate: timestamp,
+      txHash: sendResult.transactionHash,
+      retries: withdrawal.retries + 1,
+      status: 'pending',
+      nodeErrorCode: 0
+    }
+
+    try {
+      const preparedPromise = preparedDocRef.update(preparedWithdrawalUpdate);
+      const withdrawalPromise = withdrawalDocRef.update(withdrawalUpdate);
+
+      await Promise.all([preparedPromise, withdrawalPromise]);
+
+      console.log(`retrying faulty withdrawal with new prepared tx, status has been reset to pending.`);
+    } catch (error) {
+      console.log(error);
+      return [undefined, new ServiceError('service/unknown-error')];
+    }
   }
 }
 
@@ -644,7 +744,8 @@ function hasConfirmedFailureErrorCode(
     case WalletErrorCode.DAEMON_ERROR:
       /* An error occured whilst the daemon processed the request. Possibly our
        software is outdated, the daemon is faulty, or there is a programmer
-       error. Check your daemon logs for more info (set_log 4) */
+       error. Check your daemon logs for more info. (set_log 4)
+       Often caused by trying to use already spent inputs */
        return true;
     case WalletErrorCode.PREPARED_TRANSACTION_EXPIRED:
       /* Prepared transaction is no longer valid, inputs have been consumed by other transactions. */
@@ -690,8 +791,6 @@ async function processConfirmingWithdrawal(
           await admin.firestore().doc(withdrawalPath).update(withdrawalUpdate);
         }
       }
-    } else {
-      // transaction not yet included in a block.
     }
   } else {
     // check if the withdrawal request failed
