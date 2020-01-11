@@ -1,7 +1,6 @@
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import * as WalletManager from './walletManager';
-import * as WithdrawalsModule from './withdrawalsModule';
 import * as Utils from '../../shared/utils';
 import { serviceChargesAccountId } from './constants';
 import { createIntegratedAddress, WalletBackend } from 'turtlecoin-wallet-backend';
@@ -9,7 +8,6 @@ import { ServiceError } from './serviceError';
 import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Deposit, Withdrawal, Account } from '../../shared/types';
 import { generateRandomPaymentId, generateRandomSignatureSegement } from './utils';
 import { AppAuditResult } from './types';
-import { Transaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
 
 export async function createApp(
   owner: string,
@@ -197,25 +195,8 @@ export async function runAppAudits(appCount: number): Promise<void> {
 
   const apps        = querySnapshot.docs.map(d => d.data() as TurtleApp);
   const auditsJobs  = apps.map(app => auditApp(app, serviceWallet.wallet));
-  const audits      = await Promise.all(auditsJobs);
 
-  const addWithdrawalPromises: Promise<boolean>[] = [];
-
-  audits.forEach(audit => {
-    if (!audit.passed) {
-      if (audit.unprocessedWithdrawalHashes) {
-        audit.unprocessedWithdrawalHashes.forEach(hash => {
-          const promise = WithdrawalsModule.addUnprocessedWithdrawalByHash(serviceWallet, audit.appId, hash);
-          addWithdrawalPromises.push(promise);
-        });
-      }
-    }
-  });
-
-  if (addWithdrawalPromises.length > 0) {
-    console.log(`adding ${addWithdrawalPromises.length} unprocessed withdrawals by hash...`);
-    await Promise.all(addWithdrawalPromises);
-  }
+  await Promise.all(auditsJobs);
 }
 
 export async function getAppAccounts(appId: string): Promise<Account[]> {
@@ -230,7 +211,7 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
   const appTransactions   = wallet.getTransactions(undefined, undefined, false, app.subWallet);
   const allDeposits       = await getDeposits(app.appId);
   const allWithdrawals    = await getWithdrawals(app.appId);
-  const summary           = '';
+  let summary             = '';
 
   // check for missing deposits
   const completedDeposits = allDeposits.filter(d => d.status === 'completed');
@@ -238,7 +219,7 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
 
   completedDeposits.forEach(deposit => {
     if (!appTransactions.find(tx => tx.hash === deposit.txHash)) {
-      summary.concat(`completed deposit with hash [${deposit.txHash}] missing from wallet. \n`);
+      summary = summary.concat(`completed deposit with hash [${deposit.txHash}] missing from wallet. \n`);
       missingDeposits.push(deposit);
     }
   });
@@ -250,56 +231,24 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
   successfulWithdrawals.forEach(withdrawal => {
     if (!appTransactions.find(tx => tx.hash === withdrawal.txHash)) {
       missingWithdrawals.push(withdrawal);
-      summary.concat(`successful withdrawal with hash [${withdrawal.txHash}] missing from wallet. \n`);
-    }
-  });
-
-  const depositTxs: Transaction[] = [];
-  const withdrawalTxs: Transaction[] = [];
-
-  appTransactions.forEach(tx => {
-    // we only consider the first transfer in the tx
-    const transferAmount = Array.from(tx.transfers).map(t => t[1])[0];
-
-    if (transferAmount > 0) {
-      depositTxs.push(tx);
-    } else {
-      withdrawalTxs.push(tx);
-    }
-  });
-
-  // check for unprocessed deposits
-  const unprocessedDepositHashes: string[] = [];
-
-  depositTxs.forEach(tx => {
-    if (!allDeposits.find(d => d.txHash === tx.hash)) {
-      unprocessedDepositHashes.push(tx.hash);
-      summary.concat(`wallet transaction with hash [${tx.hash}] not accounted for in deposits. \n`);
-    }
-  });
-
-  // check for unprocessed deposits
-  const unprocessedWithdrawalHashes: string[] = [];
-
-  withdrawalTxs.forEach(tx => {
-    if (!allWithdrawals.find(d => d.txHash === tx.hash)) {
-      unprocessedWithdrawalHashes.push(tx.hash);
-      summary.concat(`wallet transaction with hash [${tx.hash}] not accounted for in withdrawals. \n`);
+      summary = summary.concat(`successful withdrawal with hash [${withdrawal.txHash}] missing from wallet. \n`);
     }
   });
 
   const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
-  const totalCredited = completedDeposits.map(d => d.amount).reduce((prev, next) => prev + next, 0);
-  const totalDebited = successfulWithdrawals.map(w => w.amount + w.fee + w.serviceChargeAmount).reduce((prev, next) => prev + next, 0);
+
+  const totalCredited = completedDeposits
+                          .map(d => d.amount)
+                          .reduce((prev, next) => prev + next, 0);
+
+  const totalDebited = successfulWithdrawals
+                        .map(w => w.amount + w.fee + w.serviceChargeAmount)
+                        .reduce((prev, next) => prev + next, 0);
 
   const auditResult: AppAuditResult = {
     appId:                        app.appId,
     timestamp:                    Date.now(),
     passed:                       true,
-    missingDepositsCount:         missingDeposits.length,
-    missingWithdrawalsCount:      missingWithdrawals.length,
-    unprocessedDepositsCount:     unprocessedDepositHashes.length,
-    unprocessedWithdrawalsCount:  unprocessedWithdrawalHashes.length,
     walletLockedBalance:          lockedBalance,
     walletUnlockedBalance:        unlockedBalance,
     totalCredited:                totalCredited,
@@ -337,17 +286,8 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     auditResult.passed = false;
   }
 
-  if (unprocessedDepositHashes.length > 0) {
-    auditResult.unprocessedDepositHashes = unprocessedDepositHashes;
-    auditResult.passed = false;
-  }
-
-  if (unprocessedWithdrawalHashes.length > 0) {
-    auditResult.unprocessedWithdrawalHashes = unprocessedWithdrawalHashes;
-    auditResult.passed = false;
-  }
-
   console.log(`app ${app.appId} audit completed, passed: ${auditResult.passed}`);
+  console.log(summary);
 
   const appUpdate: TurtleAppUpdate = {
     lastAuditAt: Date.now(),

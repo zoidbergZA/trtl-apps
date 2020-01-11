@@ -96,14 +96,8 @@ export interface AppAuditResult {
   appId: string,
   timestamp: number,
   passed: boolean,
-  missingDepositsCount: number;
   missingDepositHashes?: string[];
-  missingWithdrawalsCount: number;
   missingWithdrawalHashes?: string[];
-  unprocessedDepositsCount: number;
-  unprocessedDepositHashes?: string[];
-  unprocessedWithdrawalsCount: number;
-  unprocessedWithdrawalHashes?: string[];
   walletLockedBalance: number;
   walletUnlockedBalance: number;
   totalCredited: number,
