@@ -184,7 +184,7 @@ export class ConsoleService {
     sendAddress?: string): Promise<[WithdrawalPreview | undefined, undefined | ServiceError]> {
 
     TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
-    return await TA.prepareWithdrawal(accountId, amount, sendAddress);
+    return await TA.withdrawalPreview(accountId, amount, sendAddress);
   }
 
   async withdraw(
