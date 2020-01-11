@@ -160,7 +160,7 @@ export interface Withdrawal {
   failed: boolean;
   preparedWithdrawalId: string;
   txHash: string;
-  nodeErrorCode?: number;
+  daemonErrorCode?: number;
   retries: number;
 }
 
@@ -170,7 +170,7 @@ export interface WithdrawalUpdate {
   requestedAtBlock?: number;
   blockHeight?: number;
   failed?: boolean;
-  nodeErrorCode?: number;
+  daemonErrorCode?: number;
   userDebited?: boolean;
   txHash?: string;
   retries?: number;

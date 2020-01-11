@@ -326,7 +326,7 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
     console.log(`${pendingWithdrawal.id} send error: ${sendResult.error}`);
 
     txSentUpdate.status = 'faulty';
-    txSentUpdate.nodeErrorCode = sendResult.error.errorCode;
+    txSentUpdate.daemonErrorCode = sendResult.error.errorCode;
 
     insights().trackEvent({
       name: "withdrawal daemon error",
@@ -605,7 +605,7 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
       txHash: sendResult.transactionHash,
       retries: withdrawal.retries + 1,
       status: 'pending',
-      nodeErrorCode: 0
+      daemonErrorCode: 0
     }
 
     try {
@@ -627,7 +627,7 @@ function hasConfirmedFailureErrorCode(
   walletHeight: number,
   serviceConfig: ServiceConfig): boolean {
 
-  if (!withdrawal.nodeErrorCode) {
+  if (!withdrawal.daemonErrorCode) {
     return false;
   }
 
@@ -636,7 +636,7 @@ function hasConfirmedFailureErrorCode(
     return false;
   }
 
-  switch (withdrawal.nodeErrorCode) {
+  switch (withdrawal.daemonErrorCode) {
     case WalletErrorCode.NOT_ENOUGH_BALANCE:
       /* Amount + fee is greater than the total balance available in the
           subwallets specified (or all wallets, if not specified) */
@@ -654,7 +654,7 @@ function hasConfirmedFailureErrorCode(
       insights().trackEvent({
         name: "unhandled wallet error",
         properties: {
-          walletErrorCode: withdrawal.nodeErrorCode.toString(),
+          walletErrorCode: withdrawal.daemonErrorCode.toString(),
           withdrawalId: withdrawal.id,
           timestamp: Date.now().toString()
         }
