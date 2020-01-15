@@ -5,15 +5,15 @@
 export const environment = {
   production: false,
   firebase: {
-    apiKey: 'AIzaSyAyp7nXcef8O4_exvfSf7PchQdIj_-erC4',
-    authDomain: 'trtlapps-staging.firebaseapp.com',
-    databaseURL: 'https://trtlapps-staging.firebaseio.com',
-    projectId: 'trtlapps-staging',
-    storageBucket: 'trtlapps-staging.appspot.com',
-    messagingSenderId: '376038776418',
-    appId: '1:376038776418:web:94ecd8c017f2e92daf3b3b'
+    apiKey: 'AIzaSyAC4N0O_xX0mUyZ_oBygS7DW12mxwTOSiI',
+    authDomain: 'trtlapps-development.firebaseapp.com',
+    databaseURL: 'https://trtlapps-development.firebaseio.com',
+    projectId: 'trtlapps-development',
+    storageBucket: 'trtlapps-development.appspot.com',
+    messagingSenderId: '238563466809',
+    appId: '1:238563466809:web:b533caf8d4fd78079637e8'
   },
-  apiBase: 'https://trtlapps-staging.web.app/api',
+  apiBase: 'https://trtlapps-development.web.app/api',
   donationAddress: 'TRTLv2fdtVVDjWKueQ1aAETchiGVWkDvi1ATNgqZ3nKc7biCLm7KzLYeCzfS46mWYNRe8JaMPcTGWAR874kkN2zQ7Mt16J1vzcA'
 };
 
