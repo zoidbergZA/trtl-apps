@@ -35,7 +35,13 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
   const daemon: IDaemon = new Daemon(serviceConfig.daemonHost, serviceConfig.daemonPort);
 
   try {
+
     masterWallet = WalletBackend.createWallet(daemon);
+    await masterWallet.start();
+
+    // give the new wallet time to sync
+    await sleep(20 * 1000);
+
     console.log(`successfully created new WalletBackend!`);
   } catch (error) {
     console.error(`error creating new WalletBackend: ${error}`);
