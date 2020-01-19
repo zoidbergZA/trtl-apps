@@ -242,7 +242,7 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
                           .reduce((prev, next) => prev + next, 0);
 
   const totalDebited = successfulWithdrawals
-                        .map(w => w.amount + w.fee + w.serviceChargeAmount)
+                        .map(w => w.amount + w.fees.txFee + w.fees.nodeFee + w.fees.serviceCharge)
                         .reduce((prev, next) => prev + next, 0);
 
   const auditResult: AppAuditResult = {

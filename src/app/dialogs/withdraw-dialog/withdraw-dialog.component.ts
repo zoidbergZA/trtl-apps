@@ -50,7 +50,9 @@ export class WithdrawDialogComponent implements OnInit {
 
   calculateTotal(withdrawalPreview: WithdrawalPreview) {
     if (withdrawalPreview) {
-      this.total = withdrawalPreview.amount + withdrawalPreview.fee + withdrawalPreview.serviceCharge;
+      const fees = withdrawalPreview.fees;
+
+      this.total = withdrawalPreview.amount + fees.txFee + fees.nodeFee + fees.serviceCharge;
     } else {
       this.total = undefined;
     }
@@ -96,6 +98,7 @@ export class WithdrawDialogComponent implements OnInit {
     this.busy = false;
 
     if (!withdrawalPreview) {
+      console.log(error);
       this.errorMessage = (error as ServiceError).message;
       return;
     }

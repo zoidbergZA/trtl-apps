@@ -23,12 +23,16 @@
       <td class="table-value">{{ withdrawal.amount | TRTL }}</td>
     </tr>
     <tr>
-      <td class="table-key">Fee</td>
-      <td class="table-value">{{ withdrawal.fee | TRTL }}</td>
+      <td class="table-key">TX fee</td>
+      <td class="table-value">{{ withdrawal.fees.txFee | TRTL }}</td>
+    </tr>
+    <tr>
+      <td class="table-key">Node fee</td>
+      <td class="table-value">{{ withdrawal.fees.nodeFee | TRTL }}</td>
     </tr>
     <tr>
       <td class="table-key">Service charge</td>
-      <td class="table-value">{{ withdrawal.serviceChargeAmount | TRTL }}</td>
+      <td class="table-value">{{ withdrawal.fees.serviceCharge | TRTL }}</td>
     </tr>
     <tr>
       <td class="table-key">Send address</td>

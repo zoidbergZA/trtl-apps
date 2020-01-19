@@ -44,12 +44,16 @@
             <td class="table-value"><span>{{ withdrawalPreview?.amount | TRTL }}</span></td>
           </tr>
           <tr>
-            <td class="table-key">fee</td>
-            <td class="table-value"><span>{{ withdrawalPreview?.fee | TRTL }}</span></td>
+            <td class="table-key">tx fee</td>
+            <td class="table-value"><span>{{ withdrawalPreview?.fees.txFee | TRTL }}</span></td>
+          </tr>
+          <tr>
+            <td class="table-key">node fee</td>
+            <td class="table-value"><span>{{ withdrawalPreview?.fees.nodeFee | TRTL }}</span></td>
           </tr>
           <tr>
             <td class="table-key">service charge</td>
-            <td class="table-value"><span>{{ withdrawalPreview?.serviceCharge | TRTL }}</span></td>
+            <td class="table-value"><span>{{ withdrawalPreview?.fees.serviceCharge | TRTL }}</span></td>
           </tr>
         </table>
         <div>
