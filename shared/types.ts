@@ -114,10 +114,15 @@ export interface PreparedWithdrawal {
   status: PreparedWithdrawalStatus;
   address: string;
   amount: number;
-  fee: number;
-  serviceCharge: number;
+  fees: Fees;
   paymentId: string;
   txHash: string;
+}
+
+export interface Fees {
+  txFee: number;
+  nodeFee: number;
+  serviceCharge: number;
 }
 
 export interface PreparedWithdrawalUpdate {
@@ -135,8 +140,7 @@ export interface WithdrawalPreview {
   timestamp: number;
   address: string;
   amount: number;
-  fee: number;
-  serviceCharge: number;
+  fees: Fees;
 }
 
 export type WithdrawStatus = 'pending' | 'confirming' | 'faulty' | 'lost' | 'completed';
@@ -147,8 +151,7 @@ export interface Withdrawal {
   appId: string;
   accountId: string;
   amount: number;
-  fee: number;
-  serviceChargeAmount: number;
+  fees: Fees;
   serviceChargeId?: string;
   userDebited: boolean;
   address: string;
