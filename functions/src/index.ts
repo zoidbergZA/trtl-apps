@@ -303,6 +303,24 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
+exports.warmupCloudWallet = functions.pubsub.schedule('every 2 hours').onRun(async (context) => {
+  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
+
+  if (!serviceConfig) {
+    console.log((configError as ServiceError).message);
+    return;
+  }
+
+  const [token, tokenError] = await WalletManager.getCloudWalletToken();
+
+  if (!token) {
+    console.log((tokenError as ServiceError).message);
+    return;
+  }
+
+  await WalletManager.warmupCloudWallet(token, serviceConfig);
+});
+
 exports.maintenanceJobs = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
   const [serviceWallet, error] = await WalletManager.getServiceWallet();
 
