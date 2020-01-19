@@ -1,3 +1,4 @@
+import axios from 'axios';
 import * as functions from 'firebase-functions';
 import * as ServiceModule from './serviceModule';
 import * as Constants from './constants';
@@ -8,8 +9,11 @@ import * as os from 'os';
 import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-backend';
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
-import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate, WalletSyncInfo } from './types';
+import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate, WalletSyncInfo,
+  WalletStatus, StartWalletRequest, PrepareTransactionRequest } from './types';
 import { SubWalletInfo } from '../../shared/types';
+import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
+const { google } = require('googleapis');
 
 let masterWallet: WalletBackend | undefined;
 let masterWalletStartedAt: number | undefined;
@@ -191,6 +195,59 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
   }
 }
 
+export async function prepareAccountTransaction(
+  serviceConfig: ServiceConfig,
+  appWallet: string,
+  accountId: string,
+  sendAddress: string,
+  paymentId: string,
+  amount: number): Promise<[SendTransactionResult | undefined, undefined | ServiceError]> {
+
+  const [token, jwtError] = await getCloudWalletToken();
+
+  if (!token) {
+    console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
+    return [undefined, jwtError];
+  }
+
+  const walletReady = await warmupCloudWallet(token, serviceConfig);
+
+  console.log(`wallet ready? ${walletReady}`);
+
+  if (!walletReady) {
+    return [undefined, new ServiceError('service/unknown-error', 'cloud wallet not ready.')];
+  }
+
+  const txRequest: PrepareTransactionRequest = {
+    subWallet: appWallet,
+    senderId: accountId,
+    sendAddress: sendAddress,
+    amount: amount,
+    paymentId: paymentId
+  }
+
+  const cloudWalletApi = getCloudWalletApiBase();
+  const endpoint = `${cloudWalletApi}/prepare_transaction`;
+
+  // const body: any = {
+  //   // preparedWithdrawalId: preparedWithdrawalId
+  // }
+
+  const reqConfig = {
+    headers: { Authorization: "Bearer " + token }
+  }
+
+  try {
+    const response = await axios.post(endpoint, txRequest, reqConfig);
+    const sendResult = response.data as SendTransactionResult;
+
+    console.log(sendResult);
+    return [sendResult, undefined];
+  } catch (error) {
+    return [undefined, error.response.data];
+  }
+}
+
  /**
  * Get the unlocked and locked balance for the subWallet address.
  * If the function failed, success will be false. if it succeeded the balances are returned
@@ -369,6 +426,79 @@ export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
     networkHeight: networkHeight,
     heightDelta: delta
   };
+}
+
+export async function warmupCloudWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
+  const cloudWalletApi = getCloudWalletApiBase();
+  const statusEndpoint = `${cloudWalletApi}/status`;
+
+  const reqConfig = {
+    headers: { Authorization: "Bearer " + jwtToken }
+  }
+
+  let status: WalletStatus | undefined;
+
+  try {
+    const statusResponse = await axios.get(statusEndpoint, reqConfig);
+    status = statusResponse.data as WalletStatus;
+  } catch (error) {
+    console.log(error);
+  }
+
+  if (!status) {
+    return false;
+  }
+
+  if (status.started || status.daemonHost === serviceConfig.daemonHost) {
+    return true;
+  }
+
+  console.log(`starting up coud wallet...`);
+
+  const startEndpoint = `${cloudWalletApi}/start`;
+
+  const startBody: StartWalletRequest = {
+    daemonHost: serviceConfig.daemonHost,
+    daemonPort: serviceConfig.daemonPort
+  }
+
+  try {
+    const startResponse = await axios.post(startEndpoint, startBody, reqConfig);
+    const walletStatus: WalletStatus = startResponse.data;
+
+    return walletStatus.started;
+  } catch (error) {
+    return false;
+  }
+}
+
+export async function getCloudWalletToken(): Promise<[string | undefined, undefined | ServiceError]> {
+  const client_email    = functions.config().cloudwallet.client_email;
+  const target_audience = functions.config().cloudwallet.target_audience;
+  const private_key_raw = functions.config().cloudwallet.private_key;
+  const private_key     = private_key_raw.replace(new RegExp("\\\\n", "\g"), "\n");
+
+  // configure a JWT auth client
+  const jwtClient = new google.auth.JWT(
+    client_email,
+    null,
+    private_key);
+
+  jwtClient.additionalClaims = {
+    target_audience: target_audience
+  }
+
+  try {
+    const response = await jwtClient.authorize();
+
+    return [response.id_token, undefined];
+  } catch (error) {
+    return [undefined, new ServiceError('service/unknown-error', error)];
+  }
+}
+
+function getCloudWalletApiBase(): string {
+  return functions.config().cloudwallet.api_base;
 }
 
 async function startWalletFromString(

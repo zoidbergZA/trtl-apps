@@ -8,11 +8,12 @@ import { ServiceError } from './serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
 import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate,
   ServiceCharge, ServiceChargeUpdate, PreparedWithdrawal,
-  PreparedWithdrawalUpdate } from '../../shared/types';
+  PreparedWithdrawalUpdate,
+  Fees} from '../../shared/types';
 import { generateRandomSignatureSegement } from './utils';
 import { ServiceConfig, ServiceWallet } from './types';
 import { Transaction, PreparedTransaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
-import { WalletErrorCode } from 'turtlecoin-wallet-backend';
+import { WalletErrorCode, WalletError } from 'turtlecoin-wallet-backend';
 import { FeeType } from 'turtlecoin-wallet-backend/dist/lib/FeeType';
 
 export async function createPreparedWithdrawal(
@@ -21,14 +22,14 @@ export async function createPreparedWithdrawal(
   amount: number,
   address: string
 ): Promise<[PreparedWithdrawal | undefined, undefined | ServiceError]> {
-  const [serviceWallet, walletError] = await WalletManager.getServiceWallet();
+  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
 
-  if (!serviceWallet) {
-    console.error(`failed to get service wallet: ${(walletError as ServiceError)}`);
+  if (!serviceConfig) {
+    console.error(`failed to get service wallet: ${(configError as ServiceError)}`);
     return [undefined, new ServiceError('service/unknown-error')];
   }
 
-  const serviceCharge = serviceWallet.serviceConfig.serviceCharge;
+  const serviceCharge = serviceConfig.serviceCharge;
 
   if (account.balanceUnlocked < (amount + serviceCharge)) {
     return [undefined, new ServiceError('transfer/insufficient-funds')];
@@ -36,29 +37,34 @@ export async function createPreparedWithdrawal(
 
   const paymentId = account.spendSignaturePrefix.concat(generateRandomSignatureSegement());
 
-  const destinations: [string, number][] = [
-    [address, amount]
-  ];
+  const [sendResult, serviceError] = await WalletManager.prepareAccountTransaction(
+                                    serviceConfig,
+                                    app.subWallet,
+                                    account.id,
+                                    address,
+                                    paymentId,
+                                    amount);
 
-  const sendResult = await serviceWallet.wallet.sendTransactionAdvanced(
-                      destinations,
-                      undefined,
-                      undefined,
-                      paymentId,
-                      [app.subWallet],
-                      app.subWallet,
-                      false);
+  if (!sendResult) {
+    console.log((serviceError as ServiceError));
+    return [undefined, serviceError];
+  }
 
-  console.log(`send error: [${sendResult.error.errorCode}] ${sendResult.error.toString()}`);
-  console.log(`send hash: ${sendResult.transactionHash}`);
-  console.log(`send fee: ${sendResult.fee}`);
+  if (sendResult.transactionHash
+      && sendResult.preparedTransaction
+      && sendResult.fee !== undefined
+      && sendResult.nodeFee !== undefined) {
 
-  if (sendResult.transactionHash && sendResult.preparedTransaction && sendResult.fee !== undefined) {
-    const txFee     = sendResult.fee;
-    const timestamp = Date.now();
+    const txFee           = sendResult.fee;
+    const timestamp       = Date.now();
+    const preparedDocRef  = admin.firestore().collection(`apps/${app.appId}/preparedWithdrawals`).doc();
+    const preparedTxJson  = JSON.stringify(sendResult.preparedTransaction);
 
-    const preparedDocRef = admin.firestore().collection(`apps/${app.appId}/preparedWithdrawals`).doc();
-    const preparedTxJson = JSON.stringify(sendResult.preparedTransaction);
+    const fees: Fees = {
+      txFee: txFee,
+      nodeFee: sendResult.nodeFee,
+      serviceCharge: serviceCharge
+    }
 
     const preparedWithdrawal: PreparedWithdrawal = {
       id:             preparedDocRef.id,
@@ -70,8 +76,7 @@ export async function createPreparedWithdrawal(
       status:         'ready',
       address:        address,
       amount:         amount,
-      fee:            txFee,
-      serviceCharge:  serviceCharge,
+      fees:           fees,
       paymentId:      paymentId,
       txHash:         sendResult.transactionHash
     }
@@ -80,12 +85,14 @@ export async function createPreparedWithdrawal(
       await preparedDocRef.create(preparedWithdrawal);
     } catch (error) {
       console.log(error);
-      return [undefined, new ServiceError('service/unknown-error')];
+      return [undefined, new ServiceError('service/unknown-error', sendResult.error.toString())];
     }
 
     return [preparedWithdrawal, undefined];
   } else {
-    const sendErrorMessage = sendResult.error.toString();
+    const e = new WalletError(sendResult.error.errorCode);
+
+    const sendErrorMessage = e.toString();
     console.log(`send error: [${sendResult.error.errorCode}] ${sendErrorMessage}`);
     return [undefined, new ServiceError('service/unknown-error', sendErrorMessage)];
   }
@@ -128,8 +135,9 @@ export async function processPreparedWithdrawal(
   }
 
   const withdrawalAccount   = withdrawalAccountDoc.data() as Account;
-  const serviceChargeAmount = serviceConfig.serviceCharge;
-  const totalAmount         = preparedWithdrawal.amount + preparedWithdrawal.fee + serviceChargeAmount;
+  const fees                = preparedWithdrawal.fees;
+  const totalFees           = fees.txFee + fees.nodeFee + fees.serviceCharge;
+  const totalAmount         = preparedWithdrawal.amount + totalFees;
 
   if (withdrawalAccount.balanceUnlocked < totalAmount) {
     return [undefined, new ServiceError('transfer/insufficient-funds')];
@@ -147,8 +155,7 @@ export async function processPreparedWithdrawal(
     appId:                preparedWithdrawal.appId,
     accountId:            preparedWithdrawal.accountId,
     amount:               preparedWithdrawal.amount,
-    fee:                  preparedWithdrawal.fee,
-    serviceChargeAmount:  preparedWithdrawal.serviceCharge,
+    fees:                 preparedWithdrawal.fees,
     address:              preparedWithdrawal.address,
     preparedWithdrawalId: preparedWithdrawalId,
     requestedAtBlock:     0,
@@ -166,7 +173,7 @@ export async function processPreparedWithdrawal(
       const account       = accountDoc.data() as Account;
 
       if (account.balanceUnlocked >= totalAmount) {
-        if (withdrawal.serviceChargeAmount > 0) {
+        if (withdrawal.fees.serviceCharge > 0) {
           const serviceChargeDocRef = admin.firestore().collection(`apps/${appId}/serviceCharges`).doc();
 
           const serviceCharge: ServiceCharge = {
@@ -192,7 +199,7 @@ export async function processPreparedWithdrawal(
           const chargeAccount = chargeAccountDoc.data() as Account;
 
           const chargeAccountUpdate: AccountUpdate = {
-            balanceLocked: chargeAccount.balanceLocked + withdrawal.serviceChargeAmount
+            balanceLocked: chargeAccount.balanceLocked + withdrawal.fees.serviceCharge
           }
 
           txn.update(chargeAccountDocRef, chargeAccountUpdate);
@@ -565,12 +572,12 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
     return;
   }
 
-  const fee = FeeType.FixedFee(preparedWithdrawal.fee);
+  const txFee = FeeType.FixedFee(preparedWithdrawal.fees.txFee);
 
   const sendResult = await serviceWallet.wallet.sendTransactionAdvanced(
                       destinations,
                       undefined,
-                      fee,
+                      txFee,
                       preparedWithdrawal.paymentId,
                       [app.subWallet],
                       app.subWallet,
@@ -710,19 +717,19 @@ async function processSuccessfulWithdrawal(withdrawal: Withdrawal, transaction: 
     return;
   }
 
-  // check amount
-  let txAmount = 0;
+  // // check amount
+  // let txAmount = 0;
 
-  transaction.transfers.forEach((amount, publicKey) => {
-    if (publicKey === app.publicKey && amount < 0) {
-      txAmount += amount;
-    }
-  });
+  // transaction.transfers.forEach((amount, publicKey) => {
+  //   if (publicKey === app.publicKey && amount < 0) {
+  //     txAmount += amount;
+  //   }
+  // });
 
-  if (Math.abs(txAmount) !== withdrawal.amount + withdrawal.fee) {
-    console.error(`incorrect withdrawal amount! found amount [${Math.abs(txAmount)}], expected: [${withdrawal.amount}]`);
-    return
-  }
+  // if (Math.abs(txAmount) !== withdrawal.amount + withdrawal.fee) {
+  //   console.error(`incorrect withdrawal amount! found amount [${Math.abs(txAmount)}], expected: [${withdrawal.amount}]`);
+  //   return
+  // }
 
   const withdrawalPath = `apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`;
 
@@ -783,7 +790,8 @@ async function cancelFailedWithdrawal(appId: string, withdrawalId: string): Prom
       }
 
       const withdrawal        = withdrawalDoc.data() as Withdrawal;
-      const totalAmount       = withdrawal.amount + withdrawal.fee + withdrawal.serviceChargeAmount;
+      const totalFees         = withdrawal.fees.txFee + withdrawal.fees.nodeFee + withdrawal.fees.serviceCharge;
+      const totalAmount       = withdrawal.amount + totalFees;
       const serviceChargeId   = withdrawal.serviceChargeId;
       const accountDocRef     = admin.firestore().doc(`apps/${appId}/accounts/${withdrawal.accountId}`);
       const accountDoc        = await txn.get(accountDocRef);
