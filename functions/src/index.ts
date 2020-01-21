@@ -147,7 +147,14 @@ exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/
   const newState  = change.after.data() as Deposit;
 
   await DepositsModule.processAccountDepositUpdate(oldState, newState);
-  return null;
+});
+
+exports.onDepositWrite = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
+.onWrite(async (change, context) => {
+  const newState    = change.after.data() as Deposit;
+  const historyRef  = `/apps/${context.params.appId}/deposits/${context.params.depositId}/history`;
+
+  await admin.firestore().collection(historyRef).add(newState);
 });
 
 exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
@@ -155,7 +162,6 @@ exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdr
   const state = snapshot.data() as Withdrawal;
 
   await WithdrawalsModule.processPendingWithdrawal(state);
-  return null;
 });
 
 exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
@@ -164,7 +170,14 @@ exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdr
   const newState  = change.after.data() as Withdrawal;
 
   await WithdrawalsModule.processWithdrawalUpdate(oldState, newState);
-  return null;
+});
+
+exports.onWithdrawalWrite = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
+.onWrite(async (change, context) => {
+  const state       = change.after.data() as Withdrawal;
+  const historyRef  = `/apps/${context.params.appId}/withdrawals/${context.params.withdrawalId}/history`;
+
+  await admin.firestore().collection(historyRef).add(state);
 });
 
 exports.onServiceChargeUpdated = functions.firestore.document(`/apps/{appId}/serviceCharges/{chargeId}`)
