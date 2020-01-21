@@ -12,7 +12,7 @@ import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate,
   Fees} from '../../shared/types';
 import { generateRandomSignatureSegement } from './utils';
 import { ServiceConfig, ServiceWallet } from './types';
-import { Transaction, PreparedTransaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
+import { Transaction, PreparedTransaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { WalletErrorCode, WalletError } from 'turtlecoin-wallet-backend';
 import { FeeType } from 'turtlecoin-wallet-backend/dist/lib/FeeType';
 
@@ -248,10 +248,10 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
     return;
   }
 
-  let preparedTx: PreparedTransaction | undefined;
+  let preparedTxHash: string | undefined;
 
   try {
-    preparedTx = await admin.firestore().runTransaction(async (txn): Promise<PreparedTransaction> => {
+    preparedTxHash = await admin.firestore().runTransaction(async (txn): Promise<string> => {
       const preparedDocRef  = admin.firestore().doc(`apps/${pendingWithdrawal.appId}/preparedWithdrawals/${pendingWithdrawal.preparedWithdrawalId}`);
       const preparedDoc     = await txn.get(preparedDocRef);
       const withdrawalDoc   = await txn.get(withdrawalDocRef);
@@ -262,22 +262,14 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
         return Promise.reject(msg);
       }
 
-      const preparedWithdrawal  = preparedDoc.data() as PreparedWithdrawal;
-      const preparedTransaction = JSON.parse(preparedWithdrawal.preparedTxJson) as PreparedTransaction;
-
-      if (!preparedTransaction) {
-        const msg = `unabled to deserialize prepared transaction JSON with id: ${pendingWithdrawal.preparedWithdrawalId}`;
-        console.error(msg);
-        return Promise.reject(msg);
-      }
-
       if (!withdrawalDoc.exists) {
         const msg = `withdrawal ${pendingWithdrawal.id} not found, skipping further processing.`;
         console.error(msg);
         return Promise.reject(msg);
       }
 
-      const withdrawal = withdrawalDoc.data() as Withdrawal;
+      const preparedWithdrawal  = preparedDoc.data() as PreparedWithdrawal;
+      const withdrawal          = withdrawalDoc.data() as Withdrawal;
 
       if (withdrawal.status !== 'pending') {
         const msg = `new withdrawal request ${pendingWithdrawal.id} not in pending state, skipping further processing.`;
@@ -295,25 +287,20 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
 
       txn.update(withdrawalDocRef, confirmingUpdate);
 
-      return Promise.resolve(preparedTransaction);
+      return Promise.resolve(preparedWithdrawal.txHash);
     });
   } catch (error) {
     console.log(error);
     return;
   }
 
-  let sendResult: SendTransactionResult | undefined;
+  console.log(`sending prepared tx hash: ${preparedTxHash}`);
 
-  try {
-    console.log('sending raw prepared tx...');
-    console.log(JSON.stringify(preparedTx));
-    sendResult = await serviceWallet.wallet.sendRawPreparedTransaction(preparedTx);
+  const [sendTxResult, sendError] = await WalletManager.sendPreparedTransaction(preparedTxHash, serviceWallet.serviceConfig);
 
-  } catch (error) {
-    console.log(`error trying to send tx for withdrawal ${pendingWithdrawal.id} => ${error}`);
-  }
-
-  if (!sendResult) {
+  if (!sendTxResult) {
+    const errorMsg = (sendError as ServiceError).message;
+    console.log(`error trying to send tx for withdrawal ${pendingWithdrawal.id} => ${errorMsg}`);
     console.log('no send result, cancelling withdrawal...');
 
     await cancelFailedWithdrawal(pendingWithdrawal.appId, pendingWithdrawal.id);
@@ -324,22 +311,21 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
     lastUpdate: Date.now()
   }
 
-  if (sendResult.success) {
-    if (sendResult.fee) {
-      insights().trackMetric({name: "withdrawal tx fee", value: sendResult.fee * 0.01});
+  if (sendTxResult.success) {
+    if (sendTxResult.fee) {
+      insights().trackMetric({name: "withdrawal tx fee", value: sendTxResult.fee * 0.01});
     }
-    console.log(`tx for withdrawal ${pendingWithdrawal.id} successfully sent with hash: ${sendResult.transactionHash}`);
+    console.log(`tx for withdrawal ${pendingWithdrawal.id} successfully sent with hash: ${sendTxResult.transactionHash}`);
   } else {
-    console.log(`${pendingWithdrawal.id} send error: ${sendResult.error}`);
+    console.log(`${pendingWithdrawal.id} send error: ${JSON.stringify(sendTxResult.error)}`);
 
     txSentUpdate.status = 'faulty';
-    txSentUpdate.daemonErrorCode = sendResult.error.errorCode;
+    txSentUpdate.daemonErrorCode = sendTxResult.error.errorCode;
 
     insights().trackEvent({
       name: "withdrawal daemon error",
       properties: {
-        errorCode: sendResult.error.errorCode.toString(),
-        errorMessage: sendResult.error.toString()
+        errorCode: sendTxResult.error.errorCode.toString()
       }
     });
   }
@@ -494,6 +480,10 @@ export async function processWithdrawalUpdate(
   oldState: Withdrawal,
   newState: Withdrawal): Promise<void> {
 
+  if (oldState.status !== 'pending' && newState.status === 'pending') {
+    await processPendingWithdrawal(newState);
+  }
+
   if (oldState.status === 'confirming' && newState.status === 'completed') {
     const [app, error] = await AppModule.getApp(oldState.appId);
 
@@ -527,15 +517,12 @@ async function processFaultyWithdrawal(
   }
 
   if (hasConfirmedFailureErrorCode(withdrawal, walletHeight, serviceWallet.serviceConfig)) {
-    // retry with a new prepared withdrawal
-    // TODO: refactor max retries var to service config
-    if (withdrawal.retries < 5) {
-      return await retryFaultyWithdrawal(withdrawal, serviceWallet);
-    }
-
-
     await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
     return;
+  } else if (withdrawal.retries < 5) {
+    // retry with a new prepared withdrawal
+    // TODO: refactor max retries var to service config
+    return await retryFaultyWithdrawal(withdrawal, serviceWallet);
   }
 
   // The withdrawal will be marked as lost after the wallet height exceeds withdrawTimoutBlocks
@@ -638,11 +625,6 @@ function hasConfirmedFailureErrorCode(
     return false;
   }
 
-  // give a little time to pick up the transaction in case of false-positive error code
-  if (walletHeight < (withdrawal.requestedAtBlock + serviceConfig.txConfirmations)) {
-    return false;
-  }
-
   switch (withdrawal.daemonErrorCode) {
     case WalletErrorCode.NOT_ENOUGH_BALANCE:
       /* Amount + fee is greater than the total balance available in the
@@ -656,6 +638,9 @@ function hasConfirmedFailureErrorCode(
        return true;
     case WalletErrorCode.PREPARED_TRANSACTION_EXPIRED:
       /* Prepared transaction is no longer valid, inputs have been consumed by other transactions. */
+      return true;
+    case WalletErrorCode.PREPARED_TRANSACTION_NOT_FOUND:
+      /* Prepared transaction cannot be found, perhaps wallet application has been restarted */
       return true;
     default:
       insights().trackEvent({
@@ -716,20 +701,6 @@ async function processSuccessfulWithdrawal(withdrawal: Withdrawal, transaction: 
     console.error(`failed to find app for completed witdhrawal: ${(appError as ServiceError).message}`);
     return;
   }
-
-  // // check amount
-  // let txAmount = 0;
-
-  // transaction.transfers.forEach((amount, publicKey) => {
-  //   if (publicKey === app.publicKey && amount < 0) {
-  //     txAmount += amount;
-  //   }
-  // });
-
-  // if (Math.abs(txAmount) !== withdrawal.amount + withdrawal.fee) {
-  //   console.error(`incorrect withdrawal amount! found amount [${Math.abs(txAmount)}], expected: [${withdrawal.amount}]`);
-  //   return
-  // }
 
   const withdrawalPath = `apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`;
 

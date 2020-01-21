@@ -150,13 +150,13 @@ exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/
   return null;
 });
 
-// exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
-// .onCreate(async (snapshot, context) => {
-//   const state = snapshot.data() as Withdrawal;
+exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
+.onCreate(async (snapshot, context) => {
+  const state = snapshot.data() as Withdrawal;
 
-//   await WithdrawalsModule.processPendingWithdrawal(state);
-//   return null;
-// });
+  await WithdrawalsModule.processPendingWithdrawal(state);
+  return null;
+});
 
 exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
 .onUpdate(async (change, context) => {

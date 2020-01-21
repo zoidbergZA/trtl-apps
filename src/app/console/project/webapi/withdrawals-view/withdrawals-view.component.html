@@ -31,7 +31,9 @@
       <ng-container matColumnDef="status">
         <mat-header-cell *matHeaderCellDef> Status </mat-header-cell>
         <mat-cell *matCellDef="let element">
-          <p *ngIf="!element.failed">{{ element.status }}</p>
+          <p *ngIf="!element.failed">{{ element.status }}
+            <span *ngIf="element.status === 'faulty'">[{{ element.daemonErrorCode }}]</span>
+          </p>
           <p *ngIf="element.failed" class="error-text">FAILED</p>
         </mat-cell>
       </ng-container>

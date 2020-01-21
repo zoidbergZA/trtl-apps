@@ -229,10 +229,6 @@ export async function prepareAccountTransaction(
   const cloudWalletApi = getCloudWalletApiBase();
   const endpoint = `${cloudWalletApi}/prepare_transaction`;
 
-  // const body: any = {
-  //   // preparedWithdrawalId: preparedWithdrawalId
-  // }
-
   const reqConfig = {
     headers: { Authorization: "Bearer " + token }
   }
@@ -242,6 +238,44 @@ export async function prepareAccountTransaction(
     const sendResult = response.data as SendTransactionResult;
 
     console.log(sendResult);
+    return [sendResult, undefined];
+  } catch (error) {
+    return [undefined, error.response.data];
+  }
+}
+
+export async function sendPreparedTransaction(
+  preparedTxHash: string,
+  serviceConfig: ServiceConfig): Promise<[SendTransactionResult | undefined, undefined | ServiceError]> {
+
+  const [token, jwtError] = await getCloudWalletToken();
+
+  if (!token) {
+    console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
+    return [undefined, jwtError];
+  }
+
+  const walletReady = await warmupCloudWallet(token, serviceConfig);
+
+  if (!walletReady) {
+    return [undefined, new ServiceError('service/unknown-error', 'cloud wallet not ready.')];
+  }
+
+  const body: any = {
+    preparedTxHash: preparedTxHash
+  }
+
+  const cloudWalletApi = getCloudWalletApiBase();
+  const endpoint = `${cloudWalletApi}/send`;
+
+  const reqConfig = {
+    headers: { Authorization: "Bearer " + token }
+  }
+
+  try {
+    const response = await axios.post(endpoint, body, reqConfig);
+    const sendResult = response.data as SendTransactionResult;
+
     return [sendResult, undefined];
   } catch (error) {
     return [undefined, error.response.data];
