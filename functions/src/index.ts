@@ -6,6 +6,7 @@ import * as AppModule from './appModule';
 import * as ServiceModule from './serviceModule';
 import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
+import * as Analytics from './analyticsModule';
 import * as WalletManager from './walletManager';
 import * as WebhooksModule from './webhookModule';
 import * as UsersModule from './usersModule';
@@ -18,16 +19,6 @@ import { ServiceError } from './serviceError';
 //                              Initialization
 // =============================================================================
 
-import appInsights = require('applicationinsights');
-appInsights.setup(functions.config().azure.appinsights).start();
-
-appInsights.defaultClient.commonProperties = {
-	environment: 'STAGING'
-};
-
-export function insights() {
-  return appInsights.defaultClient;
-}
 
 const cors = require('cors')({ origin: true });
 admin.initializeApp();
@@ -35,6 +26,12 @@ admin.initializeApp();
 // Create "main" function to host all other top-level functions
 const expressApp = express();
 expressApp.use('/api', api);
+
+const appInsightsApiKey = functions.config().azure.appinsights;
+
+if (appInsightsApiKey) {
+  Analytics.initAppInsights(appInsightsApiKey);
+}
 
 
 // =============================================================================
@@ -185,7 +182,7 @@ exports.onServiceChargeUpdated = functions.firestore.document(`/apps/{appId}/ser
   const charge = change.after.data() as ServiceCharge;
 
   if (charge.status === 'completed' && !charge.cancelled) {
-    insights().trackMetric({name: "successful service charge", value: charge.amount * 0.01});
+    Analytics.trackMetric('successful service charge', charge.amount * 0.01);
   }
 });
 

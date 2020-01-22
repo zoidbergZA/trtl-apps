@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin';
 import * as WalletManager from './walletManager';
 import * as AppModule from './appModule';
 import * as ServiceModule from './serviceModule';
-import { insights } from './index';
+import * as Analytics from './analyticsModule';
 import { serviceChargesAccountId } from './constants';
 import { ServiceError } from './serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
@@ -313,7 +313,7 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
 
   if (sendTxResult.success) {
     if (sendTxResult.fee) {
-      insights().trackMetric({name: "withdrawal tx fee", value: sendTxResult.fee * 0.01});
+      Analytics.trackMetric('withdrawal tx fee', sendTxResult.fee * 0.01);
     }
     console.log(`tx for withdrawal ${pendingWithdrawal.id} successfully sent with hash: ${sendTxResult.transactionHash}`);
   } else {
@@ -322,7 +322,7 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
     txSentUpdate.status = 'faulty';
     txSentUpdate.daemonErrorCode = sendTxResult.error.errorCode;
 
-    insights().trackEvent({
+    Analytics.trackEvent('withdrawal daemon error', {
       name: "withdrawal daemon error",
       properties: {
         errorCode: sendTxResult.error.errorCode.toString()
@@ -643,14 +643,12 @@ function hasConfirmedFailureErrorCode(
       /* Prepared transaction cannot be found, perhaps wallet application has been restarted */
       return true;
     default:
-      insights().trackEvent({
-        name: "unhandled wallet error",
-        properties: {
-          walletErrorCode: withdrawal.daemonErrorCode.toString(),
-          withdrawalId: withdrawal.id,
-          timestamp: Date.now().toString()
-        }
+      Analytics.trackEvent('unhandled wallet error', {
+        walletErrorCode: withdrawal.daemonErrorCode.toString(),
+        withdrawalId: withdrawal.id,
+        timestamp: Date.now().toString()
       });
+
       return false;
   }
 }
