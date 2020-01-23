@@ -2,13 +2,13 @@ import appInsights = require('applicationinsights');
 
 let isInsightsInitialized = false;
 
-appInsights.defaultClient.commonProperties = {
-	environment: 'DEVELOPMENT'
-};
-
 export function initAppInsights(apiKey: string) {
   appInsights.setup(apiKey).start();
   isInsightsInitialized = true;
+
+  appInsights.defaultClient.commonProperties = {
+    environment: 'DEVELOPMENT'
+  };
 }
 
 export function trackMetric(name: string, value: number) {
