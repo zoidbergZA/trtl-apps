@@ -122,7 +122,7 @@ export interface PreparedWithdrawal {
 export interface Fees {
   txFee: number;
   nodeFee: number;
-  serviceCharge: number;
+  serviceFee: number;
 }
 
 export interface PreparedWithdrawalUpdate {

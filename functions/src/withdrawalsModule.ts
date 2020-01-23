@@ -63,7 +63,7 @@ export async function createPreparedWithdrawal(
     const fees: Fees = {
       txFee: txFee,
       nodeFee: sendResult.nodeFee,
-      serviceCharge: serviceCharge
+      serviceFee: serviceCharge
     }
 
     const preparedWithdrawal: PreparedWithdrawal = {
@@ -136,7 +136,7 @@ export async function processPreparedWithdrawal(
 
   const withdrawalAccount   = withdrawalAccountDoc.data() as Account;
   const fees                = preparedWithdrawal.fees;
-  const totalFees           = fees.txFee + fees.nodeFee + fees.serviceCharge;
+  const totalFees           = fees.txFee + fees.nodeFee + fees.serviceFee;
   const totalAmount         = preparedWithdrawal.amount + totalFees;
 
   if (withdrawalAccount.balanceUnlocked < totalAmount) {
@@ -173,7 +173,7 @@ export async function processPreparedWithdrawal(
       const account       = accountDoc.data() as Account;
 
       if (account.balanceUnlocked >= totalAmount) {
-        if (withdrawal.fees.serviceCharge > 0) {
+        if (withdrawal.fees.serviceFee > 0) {
           const serviceChargeDocRef = admin.firestore().collection(`apps/${appId}/serviceCharges`).doc();
 
           const serviceCharge: ServiceCharge = {
@@ -199,7 +199,7 @@ export async function processPreparedWithdrawal(
           const chargeAccount = chargeAccountDoc.data() as Account;
 
           const chargeAccountUpdate: AccountUpdate = {
-            balanceLocked: chargeAccount.balanceLocked + withdrawal.fees.serviceCharge
+            balanceLocked: chargeAccount.balanceLocked + withdrawal.fees.serviceFee
           }
 
           txn.update(chargeAccountDocRef, chargeAccountUpdate);
