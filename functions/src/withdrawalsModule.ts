@@ -759,7 +759,7 @@ async function cancelFailedWithdrawal(appId: string, withdrawalId: string): Prom
       }
 
       const withdrawal        = withdrawalDoc.data() as Withdrawal;
-      const totalFees         = withdrawal.fees.txFee + withdrawal.fees.nodeFee + withdrawal.fees.serviceCharge;
+      const totalFees         = withdrawal.fees.txFee + withdrawal.fees.nodeFee + withdrawal.fees.serviceFee;
       const totalAmount       = withdrawal.amount + totalFees;
       const serviceChargeId   = withdrawal.serviceChargeId;
       const accountDocRef     = admin.firestore().doc(`apps/${appId}/accounts/${withdrawal.accountId}`);

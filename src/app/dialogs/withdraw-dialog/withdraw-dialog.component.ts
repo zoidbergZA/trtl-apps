@@ -52,7 +52,7 @@ export class WithdrawDialogComponent implements OnInit {
     if (withdrawalPreview) {
       const fees = withdrawalPreview.fees;
 
-      this.total = withdrawalPreview.amount + fees.txFee + fees.nodeFee + fees.serviceCharge;
+      this.total = withdrawalPreview.amount + fees.txFee + fees.nodeFee + fees.serviceFee;
     } else {
       this.total = undefined;
     }
