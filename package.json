@@ -29,7 +29,7 @@
     "ng2-currency-mask": "^5.3.1",
     "ngx-clipboard": "^12.2.1",
     "rxjs": "~6.4.0",
-    "trtl-apps": "^0.7.0",
+    "trtl-apps": "^0.8.0",
     "tslib": "^1.10.0",
     "zone.js": "~0.9.1"
   },

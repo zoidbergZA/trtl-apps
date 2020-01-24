@@ -556,8 +556,11 @@
                   "appId" : "Qp7EwLQlLWDpspZT5IUE",
                   "accountId" : "2eSGgHTvWSZQyd0SSH83",
                   "amount" : 420,
-                  "fee" : 2000,
-                  "serviceCharge" : 10,
+                  "fees" : {
+                    "txFee" : 1000,
+                    "nodeFee" : 10,
+                    "serviceFee" : 0
+                  },
                   "address" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he",
                   "timestamp" : 1573675761789
                 }
@@ -633,8 +636,11 @@
                   "appId" : "J3irXkH26gE4pZHYyWWW",
                   "accountId" : "8RgwiWmgiYKQlUHWGaTW",
                   "amount" : 420,
-                  "fee" : 2000,
-                  "serviceChargeAmount" : 10,
+                  "fees" : {
+                    "txFee" : 1000,
+                    "nodeFee" : 10,
+                    "serviceFee" : 0
+                  },
                   "address" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he",
                   "requestAtBlock" : 2015846,
                   "timestamp" : 1573675761789,
@@ -707,8 +713,11 @@
                   "appId" : "J3irXkH26gE4pZHYyWWW",
                   "accountId" : "8RgwiWmgiYKQlUHWGaTW",
                   "amount" : 420,
-                  "fee" : 2000,
-                  "serviceChargeAmount" : 10,
+                  "fees" : {
+                    "txFee" : 1000,
+                    "nodeFee" : 10,
+                    "serviceFee" : 0
+                  },
                   "address" : "TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he",
                   "requestAtBlock" : 2015846,
                   "timestamp" : 1573675761789,
@@ -934,11 +943,8 @@
           "amount" : {
             "type" : "integer"
           },
-          "fee" : {
-            "type" : "integer"
-          },
-          "serviceChargeAmount" : {
-            "type" : "integer"
+          "fees" : {
+            "$ref" : "#/components/schemas/Fees"
           },
           "serviceChargeId" : {
             "type" : "string"
@@ -977,6 +983,20 @@
             "type" : "integer"
           },
           "retries" : {
+            "type" : "integer"
+          }
+        }
+      },
+      "Fees" : {
+        "type" : "object",
+        "properties" : {
+          "txFee" : {
+            "type" : "integer"
+          },
+          "nodeFee" : {
+            "type" : "integer"
+          },
+          "serviceFee" : {
             "type" : "integer"
           }
         }
