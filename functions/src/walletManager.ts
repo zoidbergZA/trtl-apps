@@ -10,8 +10,8 @@ import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-b
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
 import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate, WalletSyncInfo,
-  WalletStatus, StartWalletRequest, PrepareTransactionRequest } from './types';
-import { SubWalletInfo } from '../../shared/types';
+  StartWalletRequest, PrepareTransactionRequest } from './types';
+import { SubWalletInfo, WalletStatus } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 const { google } = require('googleapis');
 
@@ -462,7 +462,7 @@ export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
   };
 }
 
-export async function warmupCloudWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
+export async function getCloudWalletStatus(jwtToken: string): Promise<WalletStatus | undefined> {
   const cloudWalletApi = getCloudWalletApiBase();
   const statusEndpoint = `${cloudWalletApi}/status`;
 
@@ -470,14 +470,24 @@ export async function warmupCloudWallet(jwtToken: string, serviceConfig: Service
     headers: { Authorization: "Bearer " + jwtToken }
   }
 
-  let status: WalletStatus | undefined;
-
   try {
     const statusResponse = await axios.get(statusEndpoint, reqConfig);
-    status = statusResponse.data as WalletStatus;
+    return statusResponse.data as WalletStatus;
   } catch (error) {
     console.log(error);
+
+    return undefined;
   }
+}
+
+export async function warmupCloudWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
+  const cloudWalletApi = getCloudWalletApiBase();
+
+  const reqConfig = {
+    headers: { Authorization: "Bearer " + jwtToken }
+  }
+
+  const status = await getCloudWalletStatus(jwtToken);
 
   if (!status) {
     return false;

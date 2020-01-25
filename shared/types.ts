@@ -202,8 +202,21 @@ export interface ServiceChargeUpdate {
 }
 
 export interface ServiceStatus {
+  serviceHalted: boolean;
+  daemonHost: string;
+  daemonPort: number;
+  serviceCharge: number;
   firebaseWalletOk: boolean;
   firebaseWalletSyncInfo: [number, number, number];
   appEngineWalletOk: boolean;
-  appEngineWalletSyncInfo: [number, number, number];
+  appEngineWalletStatus?: WalletStatus;
+}
+
+export interface WalletStatus {
+  started: boolean;
+  uptime?: number;
+  daemonHost?: string;
+  daemonPort?: number;
+  walletHeight?: number;
+  networkHeight?: number;
 }

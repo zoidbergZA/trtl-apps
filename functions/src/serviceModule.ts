@@ -139,15 +139,25 @@ export async function validateInviteCode(code: string): Promise<boolean> {
 
 export async function getServiceStatus(): Promise<[ServiceStatus | undefined, undefined | ServiceError]> {
   const status: ServiceStatus = {
+    serviceHalted: false,
+    daemonHost: '',
+    daemonPort: 0,
+    serviceCharge: 0,
     firebaseWalletOk: false,
     firebaseWalletSyncInfo: [0,0,0],
-    appEngineWalletOk: false,
-    appEngineWalletSyncInfo: [0,0,0]
+    appEngineWalletOk: false
   }
 
   const [serviceWallet, serviceWalletError] = await WalletManager.getServiceWallet(false);
 
   if (serviceWallet) {
+    const config = serviceWallet.serviceConfig;
+
+    status.serviceHalted  = config.serviceHalted;
+    status.daemonHost     = config.daemonHost;
+    status.daemonPort     = config.daemonPort;
+    status.serviceCharge  = config.serviceCharge;
+
     status.firebaseWalletSyncInfo = serviceWallet.wallet.getSyncStatus();
     const heightDelta = status.firebaseWalletSyncInfo[2] - status.firebaseWalletSyncInfo[0];
 
@@ -156,6 +166,23 @@ export async function getServiceStatus(): Promise<[ServiceStatus | undefined, un
     }
   } else {
     console.log((serviceWalletError as ServiceError).message);
+  }
+
+  const [cloudWalletToken, tokenError] = await WalletManager.getCloudWalletToken();
+
+  if (cloudWalletToken) {
+    const walletStatus = await WalletManager.getCloudWalletStatus(cloudWalletToken);
+    status.appEngineWalletStatus = walletStatus;
+
+    if (walletStatus && walletStatus.walletHeight && walletStatus.networkHeight) {
+      const heightDelta = walletStatus.networkHeight - walletStatus.walletHeight;
+
+      if (heightDelta < 240) {
+        status.appEngineWalletOk = true;
+      }
+    }
+  } else {
+    console.log(tokenError);
   }
 
   return [status, undefined];

@@ -114,15 +114,6 @@ export interface PrepareTransactionRequest {
   paymentId?: string;
 }
 
-export interface WalletStatus {
-  started: boolean;
-  uptime?: number;
-  daemonHost?: string;
-  daemonPort?: number;
-  walletHeight?: number;
-  networkHeight?: number;
-}
-
 export interface StartWalletRequest {
   daemonHost: string;
   daemonPort: number;
