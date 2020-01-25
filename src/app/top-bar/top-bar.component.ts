@@ -67,8 +67,8 @@ export class TopBarComponent implements OnInit, OnDestroy {
     this.router.navigate(['/admin']);
   }
 
-  onAccountClick() {
-    console.log('todo: handle account click');
+  onUserProfileClick() {
+    this.router.navigate(['/user/profile']);
   }
 
   onConsoleClick() {

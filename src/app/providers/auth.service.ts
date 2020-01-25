@@ -8,16 +8,17 @@ import { Router } from '@angular/router';
 })
 export class AuthService {
 
+  user: firebase.User | null = null;
   adminUser = false;
-  private uid: string | undefined;
 
   constructor(
     public firebaseAuth: AngularFireAuth,
     private router: Router) {
 
     this.firebaseAuth.user.subscribe(async user => {
+      this.user = user;
+
       if (user) {
-        this.uid = user.uid;
         this.adminUser = false;
 
         const idTokenResult = await user.getIdTokenResult();
@@ -28,14 +29,17 @@ export class AuthService {
           }
         }
       } else {
-        this.uid = undefined;
         this.adminUser = false;
       }
     });
   }
 
   getUid(): string | undefined {
-    return this.uid;
+    if (this.user) {
+      return this.user.uid;
+    } else {
+      return undefined;
+    }
   }
 
   createUserWithEmailAndPassword(email: string, password: string): Promise<auth.UserCredential> {

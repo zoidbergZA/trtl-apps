@@ -16,6 +16,7 @@ import { SupportComponent } from './support/support.component';
 import { WebhooksComponent } from './documentation/webhooks/webhooks.component';
 import { DocumentationComponent } from './documentation/documentation.component';
 import { AdminComponent } from './admin/admin.component';
+import { UserProfileComponent } from './user-profile/user-profile.component';
 
 const redirectUnauthorizedToSignIn  = () => redirectUnauthorizedTo(['/signin']);
 const redirectLoggedInToConsole     = () => redirectLoggedInTo(['/console']);
@@ -60,6 +61,12 @@ const routes: Routes = [
     component:    RegisterComponent,
     canActivate:  [AngularFireAuthGuard],
     data:         { authGuardPipe: redirectLoggedInToConsole }
+  },
+  {
+    path:         'user/profile',
+    component:    UserProfileComponent,
+    canActivate:  [AngularFireAuthGuard],
+    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
   },
   {
     path:         'console',

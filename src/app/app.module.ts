@@ -62,6 +62,7 @@ import { WebhooksComponent } from './documentation/webhooks/webhooks.component';
 import { PasswordRecoveryDialogComponent } from './dialogs/password-recovery-dialog/password-recovery-dialog.component';
 import { DocumentationComponent } from './documentation/documentation.component';
 import { AdminComponent } from './admin/admin.component';
+import { UserProfileComponent } from './user-profile/user-profile.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -118,7 +119,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     WebhooksComponent,
     PasswordRecoveryDialogComponent,
     DocumentationComponent,
-    AdminComponent
+    AdminComponent,
+    UserProfileComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
