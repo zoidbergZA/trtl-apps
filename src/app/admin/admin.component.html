@@ -4,27 +4,60 @@
     <mat-card>
       <mat-card-content>
         <mat-card-title>Service Health</mat-card-title>
-        <button mat-stroked-button (click)="serviceStatusClick()">Get service status</button>
-        <div *ngIf="serviceStatus">
-          <table class="app-info-table">
-            <tr>
-              <td class="table-key">Firebase wallet status</td>
-              <td *ngIf="serviceStatus?.firebaseWalletOk" class="table-value">OK</td>
-              <td *ngIf="!serviceStatus?.firebaseWalletOk" class="table-value">Faulty</td>
-            </tr>
-            <tr>
-              <td class="table-key">Firebase wallet sync</td>
-              <td class="table-value">{{ serviceStatus?.firebaseWalletSyncInfo }}</td>
-            </tr>
-            <tr>
-              <td class="table-key">App Engine wallet status</td>
-              <td *ngIf="serviceStatus?.appEngineWalletOk" class="table-value">OK</td>
-              <td *ngIf="!serviceStatus?.appEngineWalletOk" class="table-value">Faulty</td>
-            </tr>
-          </table>
+        <div *ngIf="fetchingStatus">
+          <mat-spinner diameter="64"></mat-spinner>
         </div>
-        <div *ngIf="!serviceStatus">
-          <p>Click to get current service status</p>
+        <div *ngIf="!fetchingStatus">
+          <button mat-stroked-button (click)="serviceStatusClick()">Get service status</button>
+          <div *ngIf="serviceStatus">
+            <table class="app-info-table">
+              <div class="section-title">Service info</div>
+              <tr>
+                <td class="table-key">Service running</td>
+                <td class="table-value">{{ !serviceStatus?.serviceHalted }}</td>
+              </tr>
+              <tr>
+                <td class="table-key">Node</td>
+                <td class="table-value">{{ serviceStatus?.daemonHost }}:{{ serviceStatus?.daemonPort }}</td>
+              </tr>
+              <tr>
+                <td class="table-key">Service fee</td>
+                <td class="table-value">{{ serviceStatus?.serviceCharge | TRTL }}</td>
+              </tr>
+              <div class="section-title">Firebase wallet info</div>
+              <tr>
+                <td class="table-key">Status</td>
+                <td *ngIf="serviceStatus?.firebaseWalletOk" class="table-value">OK</td>
+                <td *ngIf="!serviceStatus?.firebaseWalletOk" class="table-value">Faulty</td>
+              </tr>
+              <tr>
+                <td class="table-key">Sync info</td>
+                <td class="table-value">{{ getSyncInfoString(serviceStatus?.firebaseWalletSyncInfo) }}</td>
+              </tr>
+            </table>
+            <div *ngIf="serviceStatus?.appEngineWalletStatus as info">
+              <div class="section-title">App Engine wallet info</div>
+              <table>
+                <tr>
+                  <td class="table-key">Status</td>
+                  <td *ngIf="serviceStatus?.appEngineWalletOk" class="table-value">OK</td>
+                  <td *ngIf="!serviceStatus?.appEngineWalletOk" class="table-value">Faulty</td>
+                </tr>
+                <tr>
+                  <td class="table-key">Started</td>
+                  <td class="table-value">{{ info?.started }}</td>
+                </tr>
+                <tr>
+                  <td class="table-key">Node</td>
+                  <td class="table-value">{{ info?.daemonHost }}:{{ info?.daemonPort }}</td>
+                </tr>
+                <tr *ngIf="info?.networkHeight && info?.walletHeight">
+                  <td class="table-key">Height delta</td>
+                  <td class="table-value">{{ (info?.networkHeight || 0) - (info?.networkHeight || 0) }}</td>
+                </tr>
+              </table>
+            </div>
+          </div>
         </div>
       </mat-card-content>
     </mat-card>
