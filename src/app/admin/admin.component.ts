@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { AdminService } from '../providers/admin.service';
+import { ServiceStatus } from 'shared/types';
 
 @Component({
   selector: 'app-admin',
@@ -8,14 +9,15 @@ import { AdminService } from '../providers/admin.service';
 })
 export class AdminComponent implements OnInit {
 
+  serviceStatus: ServiceStatus | undefined;
+
   constructor(private adminService: AdminService) { }
 
   ngOnInit() {
   }
 
   async serviceStatusClick() {
-    const status = await this.adminService.getServiceStatus();
-
-    console.log(status);
+    this.serviceStatus = await this.adminService.getServiceStatus();
+    console.log(this.serviceStatus);
   }
 }

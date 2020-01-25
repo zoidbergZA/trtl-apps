@@ -5,16 +5,27 @@
       <mat-card-content>
         <mat-card-title>Service Health</mat-card-title>
         <button mat-stroked-button (click)="serviceStatusClick()">Get service status</button>
-        <table class="app-info-table">
-          <tr>
-            <td class="table-key">Firebase wallet status</td>
-            <td class="table-value">OK</td>
-          </tr>
-          <tr>
-            <td class="table-key">App Engine wallet status</td>
-            <td class="table-value">OK</td>
-          </tr>
-        </table>
+        <div *ngIf="serviceStatus">
+          <table class="app-info-table">
+            <tr>
+              <td class="table-key">Firebase wallet status</td>
+              <td *ngIf="serviceStatus?.firebaseWalletOk" class="table-value">OK</td>
+              <td *ngIf="!serviceStatus?.firebaseWalletOk" class="table-value">Faulty</td>
+            </tr>
+            <tr>
+              <td class="table-key">Firebase wallet sync</td>
+              <td class="table-value">{{ serviceStatus?.firebaseWalletSyncInfo }}</td>
+            </tr>
+            <tr>
+              <td class="table-key">App Engine wallet status</td>
+              <td *ngIf="serviceStatus?.appEngineWalletOk" class="table-value">OK</td>
+              <td *ngIf="!serviceStatus?.appEngineWalletOk" class="table-value">Faulty</td>
+            </tr>
+          </table>
+        </div>
+        <div *ngIf="!serviceStatus">
+          <p>Click to get current service status</p>
+        </div>
       </mat-card-content>
     </mat-card>
   </div>
