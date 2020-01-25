@@ -63,6 +63,7 @@ import { PasswordRecoveryDialogComponent } from './dialogs/password-recovery-dia
 import { DocumentationComponent } from './documentation/documentation.component';
 import { AdminComponent } from './admin/admin.component';
 import { UserProfileComponent } from './user-profile/user-profile.component';
+import { AdminService } from './providers/admin.service';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -154,6 +155,7 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   providers: [
     AuthService,
     ConsoleService,
+    AdminService,
     DialogService,
     AngularFireAuthGuard,
     { provide: CURRENCY_MASK_CONFIG, useValue: CustomCurrencyMaskConfig }

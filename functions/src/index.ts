@@ -122,6 +122,35 @@ export const setAppWebhook = functions.https.onCall(async (data, context) => {
   return result;
 });
 
+export const getServiceStatus = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
+  }
+
+  let isAdmin = false;
+
+  try {
+    const user    = await admin.auth().getUser(context.auth.uid);
+    const claims  = user.customClaims as any;
+
+    if (claims && !!claims.admin) {
+      isAdmin = true;
+    }
+  } catch (error) {
+    console.log(error);
+  }
+
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
+  }
+
+  const result: any = {
+    status: 'OK'
+  };
+
+  return result;
+});
+
 
 // =============================================================================
 //                              Auth Triggers
