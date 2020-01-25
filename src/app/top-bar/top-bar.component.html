@@ -5,6 +5,7 @@
   <button mat-button (click)="onSupportClick()">Support</button>
   <span class="fill-toolbar-space"></span>
   <button mat-button (click)='onConsoleClick()'>Go to console</button>
+  <button *ngIf="authService.adminUser" mat-button (click)='onAdminClick()'>ADMIN</button>
   <button *ngIf="!user" mat-button (click)='onSignInClick()'>Sign in</button>
   <button *ngIf="user" mat-icon-button aria-label="user" [matMenuTriggerFor]="userMenu">
     <mat-icon>account_circle</mat-icon>

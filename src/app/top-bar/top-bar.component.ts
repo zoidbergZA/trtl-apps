@@ -16,8 +16,8 @@ export class TopBarComponent implements OnInit, OnDestroy {
   user: firebase.User | null = null;
 
   constructor(
+    public authService: AuthService,
     private router: Router,
-    private authService: AuthService,
     private snackBar: MatSnackBar) { }
 
     ngOnInit() {
@@ -61,6 +61,10 @@ export class TopBarComponent implements OnInit, OnDestroy {
 
   onSupportClick() {
     this.router.navigate(['/support']);
+  }
+
+  onAdminClick() {
+    this.router.navigate(['/admin']);
   }
 
   onAccountClick() {
