@@ -8,17 +8,28 @@ import { Router } from '@angular/router';
 })
 export class AuthService {
 
+  adminUser = false;
   private uid: string | undefined;
 
   constructor(
     public firebaseAuth: AngularFireAuth,
     private router: Router) {
 
-    this.firebaseAuth.user.subscribe(user => {
+    this.firebaseAuth.user.subscribe(async user => {
       if (user) {
         this.uid = user.uid;
+        this.adminUser = false;
+
+        const idTokenResult = await user.getIdTokenResult();
+
+        if (idTokenResult) {
+          if (!!idTokenResult.claims.admin) {
+            this.adminUser = true;
+          }
+        }
       } else {
         this.uid = undefined;
+        this.adminUser = false;
       }
     });
   }

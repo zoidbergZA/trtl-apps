@@ -89,6 +89,11 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
   return await WalletManager.createMasterWallet(serviceConfig);
 }
 
+export async function giveUserAdminRights(uid: string): Promise<boolean> {
+  await admin.auth().setCustomUserClaims(uid, { admin: true });
+  return true;
+}
+
 export async function createInvitationsBatch(amount: number): Promise<[number | undefined, undefined | ServiceError]> {
   const now = Date.now();
   const batch = admin.firestore().batch();
