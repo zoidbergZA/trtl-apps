@@ -4,7 +4,7 @@ import * as axios from 'axios';
 import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from './types';
 import { sleep } from './utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
-import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate } from '../../shared/types';
+import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceStatus } from '../../shared/types';
 import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId } from './constants';
 import { ServiceError } from './serviceError';
 
@@ -135,6 +135,30 @@ export async function validateInviteCode(code: string): Promise<boolean> {
   const invite = snapshot.data() as AppInviteCode;
 
   return !invite.claimed;
+}
+
+export async function getServiceStatus(): Promise<[ServiceStatus | undefined, undefined | ServiceError]> {
+  const status: ServiceStatus = {
+    firebaseWalletOk: false,
+    firebaseWalletSyncInfo: [0,0,0],
+    appEngineWalletOk: false,
+    appEngineWalletSyncInfo: [0,0,0]
+  }
+
+  const [serviceWallet, serviceWalletError] = await WalletManager.getServiceWallet(false);
+
+  if (serviceWallet) {
+    status.firebaseWalletSyncInfo = serviceWallet.wallet.getSyncStatus();
+    const heightDelta = status.firebaseWalletSyncInfo[2] - status.firebaseWalletSyncInfo[0];
+
+    if (heightDelta < 60) {
+      status.firebaseWalletOk = true;
+    }
+  } else {
+    console.log((serviceWalletError as ServiceError).message);
+  }
+
+  return [status, undefined];
 }
 
 export async function updateMasterWallet(): Promise<void> {

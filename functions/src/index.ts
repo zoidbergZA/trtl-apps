@@ -144,11 +144,14 @@ export const getServiceStatus = functions.https.onCall(async (data, context) => 
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
   }
 
-  const result: any = {
-    status: 'OK'
-  };
+  const [status, error] = await ServiceModule.getServiceStatus();
 
-  return result;
+  if (!status) {
+    const err = error as ServiceError;
+    throw new functions.https.HttpsError('internal', err.message);
+  }
+
+  return status;
 });
 
 

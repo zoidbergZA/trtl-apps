@@ -200,3 +200,10 @@ export interface ServiceChargeUpdate {
   cancelled?: boolean;
   status?: ServiceChargeStatus;
 }
+
+export interface ServiceStatus {
+  firebaseWalletOk: boolean;
+  firebaseWalletSyncInfo: [number, number, number];
+  appEngineWalletOk: boolean;
+  appEngineWalletSyncInfo: [number, number, number];
+}
