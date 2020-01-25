@@ -221,6 +221,31 @@ export const bootstrap = functions.https.onRequest(async (request, response) => 
   });
 });
 
+export const giveUserAdminRights = functions.https.onRequest(async (request, response) => {
+  cors(request, response, () => {
+    const adminSignature = request.get(Constants.serviceAdminRequestHeader);
+
+    if (adminSignature !== functions.config().serviceadmin.password) {
+      response.status(403).send('unauthorized request.');
+      return;
+    }
+
+    const userId: string | undefined = request.query.uid;
+
+    if (!userId) {
+      response.status(400).send('bad request');
+      return;
+    }
+
+    return ServiceModule.giveUserAdminRights(userId).then(succeeded => {
+      response.status(200).send({ succeeded: succeeded });
+    }).catch(error => {
+      console.log(error);
+      response.status(500).send({ error: error });
+    });
+  });
+});
+
 export const createInvitationsBatch = functions.https.onRequest(async (request, response) => {
   cors(request, response, () => {
     const adminSignature = request.get(Constants.serviceAdminRequestHeader);
@@ -284,7 +309,6 @@ export const rewindMasterWallet = functions.https.onRequest(async (request, resp
     response.status(400).send('bad request');
     return;
   }
-
 
   await serviceWallet.wallet.rewind(rewindHeight);
 
