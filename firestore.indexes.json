@@ -89,6 +89,20 @@
       ]
     },
     {
+      "collectionGroup": "withdrawalHistory",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastUpdate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "withdrawals",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
