@@ -813,3 +813,19 @@ async function cancelFailedWithdrawal(appId: string, withdrawalId: string): Prom
     console.error(error);
   }
 }
+
+export async function getWithdrawalHistory(withdrawalId: string): Promise<[Withdrawal[] | undefined, undefined | ServiceError]> {
+  const query = await admin.firestore()
+                  .collectionGroup('withdrawalHistory')
+                  .where('id', '==', withdrawalId)
+                  .orderBy('lastUpdate', 'desc')
+                  .get();
+
+  if (query.size === 0) {
+    return [undefined, new ServiceError('app/withdrawal-not-found')];
+  }
+
+  const history = query.docs.map(d => d.data() as Withdrawal);
+
+  return [history, undefined];
+}

@@ -123,22 +123,7 @@ export const setAppWebhook = functions.https.onCall(async (data, context) => {
 });
 
 export const getServiceStatus = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
-  }
-
-  let isAdmin = false;
-
-  try {
-    const user    = await admin.auth().getUser(context.auth.uid);
-    const claims  = user.customClaims as any;
-
-    if (claims && !!claims.admin) {
-      isAdmin = true;
-    }
-  } catch (error) {
-    console.log(error);
-  }
+  const isAdmin = await isAdminUserCheck(context);
 
   if (!isAdmin) {
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
@@ -152,6 +137,29 @@ export const getServiceStatus = functions.https.onCall(async (data, context) => 
   }
 
   return status;
+});
+
+export const getWithdrawalHistory = functions.https.onCall(async (data, context) => {
+  const isAdmin = await isAdminUserCheck(context);
+
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
+  }
+
+  const withdrawalId: string | undefined = data.withdrawalId;
+
+  if (!withdrawalId) {
+    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+  }
+
+  const [history, error] = await WithdrawalsModule.getWithdrawalHistory(withdrawalId);
+
+  if (!history) {
+    const err = error as ServiceError;
+    throw new functions.https.HttpsError('internal', err.message);
+  }
+
+  return history;
 });
 
 
@@ -181,7 +189,7 @@ exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/
 exports.onDepositWrite = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
 .onWrite(async (change, context) => {
   const newState    = change.after.data() as Deposit;
-  const historyRef  = `/apps/${context.params.appId}/deposits/${context.params.depositId}/history`;
+  const historyRef  = `/apps/${context.params.appId}/deposits/${context.params.depositId}/DepositHistory`;
 
   await admin.firestore().collection(historyRef).add(newState);
 });
@@ -204,7 +212,7 @@ exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdr
 exports.onWithdrawalWrite = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
 .onWrite(async (change, context) => {
   const state       = change.after.data() as Withdrawal;
-  const historyRef  = `/apps/${context.params.appId}/withdrawals/${context.params.withdrawalId}/history`;
+  const historyRef  = `/apps/${context.params.appId}/withdrawals/${context.params.withdrawalId}/withdrawalHistory`;
 
   await admin.firestore().collection(historyRef).add(state);
 });
@@ -434,3 +442,28 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
     console.error(e);
   });
 });
+
+
+// =============================================================================
+//                              Utility functions
+// =============================================================================
+
+
+async function isAdminUserCheck(context: functions.https.CallableContext): Promise<boolean> {
+  if (!context.auth) {
+    return false;
+  }
+
+  try {
+    const user    = await admin.auth().getUser(context.auth.uid);
+    const claims  = user.customClaims as any;
+
+    if (claims && !!claims.admin) {
+      return true;
+    }
+  } catch (error) {
+    console.log(error);
+  }
+
+  return false;
+}
