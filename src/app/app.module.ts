@@ -65,6 +65,7 @@ import { AdminComponent } from './admin/admin.component';
 import { UserProfileComponent } from './user-profile/user-profile.component';
 import { AdminService } from './providers/admin.service';
 import { WithdrawalInspectorComponent } from './admin/withdrawal-inspector/withdrawal-inspector.component';
+import { GenericObjectInspectorComponent } from './generic-object-inspector/generic-object-inspector.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -123,7 +124,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     DocumentationComponent,
     AdminComponent,
     UserProfileComponent,
-    WithdrawalInspectorComponent
+    WithdrawalInspectorComponent,
+    GenericObjectInspectorComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,

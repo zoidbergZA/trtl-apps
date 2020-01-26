@@ -1,0 +1,8 @@
+<div *ngIf="object">
+  <table>
+    <tr *ngFor="let item of object | keyvalue">
+      <td class="table-key">{{ item.key }}</td>
+      <td class="table-value">{{ item.value | json }}</td>
+    </tr>
+  </table>
+</div>

@@ -16,9 +16,10 @@
           </div>
         </div>
         <div *ngIf="history">
-          <h3>History</h3>
+          <h2 class="history-title" class="center-text">History of withdrawal ID: <span class="code-font">{{ searchValue }}</span></h2>
           <div *ngFor="let item of history">
-            <p>{{ item.lastUpdate }}</p>
+            <h4>{{ item.lastUpdate | date: 'short' }}</h4>
+            <generic-object-inspector [object]=item></generic-object-inspector>
           </div>
         </div>
       </mat-card-content>
