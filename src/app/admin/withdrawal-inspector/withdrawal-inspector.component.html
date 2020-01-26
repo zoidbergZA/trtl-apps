@@ -4,6 +4,23 @@
     <mat-card>
       <mat-card-content>
         <mat-card-title>Withdrawal inspector</mat-card-title>
+        <div *ngIf="fetching">
+          <mat-spinner diameter="64"></mat-spinner>
+        </div>
+        <div *ngIf="!fetching">
+          <div class="api-search-container">
+            <search-box (searchChanged)="onSearchValueChanged($event)"></search-box>
+            <div class="search-button">
+              <button mat-flat-button color="primary" (click)="onSearchClick()">Find Withdrawal</button>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="history">
+          <h3>History</h3>
+          <div *ngFor="let item of history">
+            <p>{{ item.lastUpdate }}</p>
+          </div>
+        </div>
       </mat-card-content>
     </mat-card>
   </div>
