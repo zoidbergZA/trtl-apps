@@ -17,6 +17,7 @@ import { WebhooksComponent } from './documentation/webhooks/webhooks.component';
 import { DocumentationComponent } from './documentation/documentation.component';
 import { AdminComponent } from './admin/admin.component';
 import { UserProfileComponent } from './user-profile/user-profile.component';
+import { WithdrawalInspectorComponent } from './admin/withdrawal-inspector/withdrawal-inspector.component';
 
 const redirectUnauthorizedToSignIn  = () => redirectUnauthorizedTo(['/signin']);
 const redirectLoggedInToConsole     = () => redirectLoggedInTo(['/console']);
@@ -77,6 +78,12 @@ const routes: Routes = [
   {
     path:         'admin',
     component:    AdminComponent,
+    canActivate:  [AngularFireAuthGuard],
+    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
+  },
+  {
+    path:         'admin/withdrawal-inspector',
+    component:    WithdrawalInspectorComponent,
     canActivate:  [AngularFireAuthGuard],
     data:         { authGuardPipe: redirectUnauthorizedToSignIn }
   },

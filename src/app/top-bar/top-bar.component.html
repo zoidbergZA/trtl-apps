@@ -5,17 +5,17 @@
   <button mat-button (click)="onSupportClick()">Support</button>
   <span class="fill-toolbar-space"></span>
   <button mat-button (click)='onConsoleClick()'>Go to console</button>
-  <button *ngIf="authService.adminUser" mat-button (click)='onAdminClick()'>ADMIN</button>
+  <button *ngIf="authService.adminUser" mat-button [matMenuTriggerFor]="adminMenu">ADMIN</button>
   <button *ngIf="!user" mat-button (click)='onSignInClick()'>Sign in</button>
   <button *ngIf="user" mat-icon-button aria-label="user" [matMenuTriggerFor]="userMenu">
     <mat-icon>account_circle</mat-icon>
   </button>
 </mat-toolbar>
 
-<!-- <mat-menu #integrationsMenu="matMenu">
-  <button mat-menu-item (click)="onGetStartedHttpClick()">HTTP endpoints</button>
-  <button mat-menu-item (click)="onGetStartedNodeClick()">npm package</button>
-</mat-menu> -->
+<mat-menu #adminMenu="matMenu">
+  <button mat-menu-item (click)="onServiceStatusClick()">Service status</button>
+  <button mat-menu-item (click)="onInspectWithdrawalClick()">Withdrawal inspector</button>
+</mat-menu>
 
 <mat-menu #userMenu="matMenu">
   <button mat-menu-item (click)="onUserProfileClick()">profile</button>

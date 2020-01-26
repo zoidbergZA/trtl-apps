@@ -63,8 +63,12 @@ export class TopBarComponent implements OnInit, OnDestroy {
     this.router.navigate(['/support']);
   }
 
-  onAdminClick() {
+  onServiceStatusClick() {
     this.router.navigate(['/admin']);
+  }
+
+  onInspectWithdrawalClick() {
+    this.router.navigate(['/admin/withdrawal-inspector']);
   }
 
   onUserProfileClick() {
