@@ -358,18 +358,12 @@ export async function saveMasterWallet(wallet: WalletBackend): Promise<[number |
   }
 
   const encryptedString = wallet.encryptWalletToString(functions.config().serviceadmin.password);
-  const tempFile        = path.join(os.tmpdir(), 'masterwallet.bin');
-  const timestamp       = Date.now()
-
-  fs.writeFileSync(tempFile, encryptedString);
+  const timestamp       = Date.now();
 
   const saveResults = await Promise.all([
     saveWalletFirebase(masterWalletInfo.location, encryptedString),
     saveWalletAppEngine(encryptedString)
   ]);
-
-  // delete temp files
-  fs.unlinkSync(tempFile);
 
   console.log(`save wallet firebase succeeded? ${saveResults[0]}`);
   console.log(`save wallet appEngine succeeded? ${saveResults[1]}`);
