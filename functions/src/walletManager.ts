@@ -13,7 +13,8 @@ import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate, WalletSyncI
   StartWalletRequest, PrepareTransactionRequest } from './types';
 import { SubWalletInfo, WalletStatus } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
-const { google } = require('googleapis');
+import { google } from 'googleapis';
+import { Storage } from '@google-cloud/storage';
 
 let masterWallet: WalletBackend | undefined;
 let masterWalletStartedAt: number | undefined;
@@ -21,6 +22,7 @@ let masterWalletLastSaveAt: number | undefined;
 
 export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<[string | undefined, undefined | ServiceError]> {
   console.log('creating new master wallet...');
+
   const walletDoc: WalletInfo = {
     location:         Constants.defaultWalletLocation,
     backupsDirectory: Constants.defaultWalletBackupsDirectory,
@@ -355,31 +357,71 @@ export async function saveMasterWallet(wallet: WalletBackend): Promise<[number |
     return [undefined, new ServiceError('service/master-wallet-info')];
   }
 
+  const encryptedString = wallet.encryptWalletToString(functions.config().serviceadmin.password);
+  const tempFile        = path.join(os.tmpdir(), 'masterwallet.bin');
+  const timestamp       = Date.now()
+
+  fs.writeFileSync(tempFile, encryptedString);
+
+  const result1 = await saveWalletFirebase(masterWalletInfo.location, encryptedString);
+  const result2 = await saveWalletAppEngine(encryptedString);
+
+  // delete temp files
+  fs.unlinkSync(tempFile);
+
+  console.log(`save wallet firebase succeeded? ${result1}`);
+  console.log(`save wallet appEngine succeeded? ${result2}`);
+
+  return [timestamp, undefined];
+}
+
+async function saveWalletFirebase(filepath: string, encryptedWallet: string): Promise<boolean> {
   try {
-    const encryptedString = wallet.encryptWalletToString(functions.config().serviceadmin.password);
-    const tempFile        = path.join(os.tmpdir(), 'masterwallet.bin');
-    const timestamp       = Date.now()
-
-    fs.writeFileSync(tempFile, encryptedString);
-
     const bucket = admin.storage().bucket();
-    const f = bucket.file(masterWalletInfo.location);
+    const file = bucket.file(filepath);
 
-    await f.save(encryptedString);
-
-    // delete temp files
-    fs.unlinkSync(tempFile);
+    await file.save(encryptedWallet);
 
     const updateObject: WalletInfoUpdate = {
-      lastSaveAt: timestamp
+      lastSaveAt: Date.now()
     }
 
     await admin.firestore().doc('wallets/master').update(updateObject);
 
-    return [timestamp, undefined];
+    return true;
   } catch (error) {
     console.error(error);
-    return [undefined, new ServiceError('service/unknown-error', error)];
+    return false;
+  }
+}
+
+async function saveWalletAppEngine(encryptedWallet: string): Promise<boolean> {
+  try {
+    const bucket      = admin.storage().bucket();
+    const keyFile     = bucket.file(Constants.gcpServiceAccountFilename);
+    const buffer      = await keyFile.download();
+    const keyJson     = buffer.toString();
+    const keyFilePath = path.join(os.tmpdir(), 'keyfile.json');
+
+    fs.writeFileSync(keyFilePath, keyJson);
+
+    const gcp_storage = new Storage({
+      keyFilename: keyFilePath,
+      projectId: functions.config().cloudwallet.project_id
+    });
+
+    const gcpBucket = gcp_storage.bucket(Constants.gcpWalletBucketName);
+    const file      = gcpBucket.file(Constants.gcpWalletFilename);
+
+    await file.save(encryptedWallet);
+
+    // delete temp files
+    fs.unlinkSync(keyFilePath);
+
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
   }
 }
 
@@ -493,6 +535,8 @@ export async function warmupCloudWallet(jwtToken: string, serviceConfig: Service
     return false;
   }
 
+  // TODO: check status uptime if its time for an App Engine wallet restart
+
   if (status.started || status.daemonHost === serviceConfig.daemonHost) {
     return true;
   }
@@ -525,7 +569,7 @@ export async function getCloudWalletToken(): Promise<[string | undefined, undefi
   // configure a JWT auth client
   const jwtClient = new google.auth.JWT(
     client_email,
-    null,
+    undefined,
     private_key);
 
   jwtClient.additionalClaims = {
@@ -535,7 +579,11 @@ export async function getCloudWalletToken(): Promise<[string | undefined, undefi
   try {
     const response = await jwtClient.authorize();
 
-    return [response.id_token, undefined];
+    if (response.id_token) {
+      return [response.id_token, undefined];
+    } else {
+      return [undefined, new ServiceError('service/unknown-error')];
+    }
   } catch (error) {
     return [undefined, new ServiceError('service/unknown-error', error)];
   }
