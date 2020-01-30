@@ -272,14 +272,14 @@ export async function updateMasterWallet(): Promise<void> {
     }
   }
 
-  // if (syncInfoEnd.heightDelta <= 2) {
-  //   const optimizeStartAt = Date.now();
-  //   const [numberOfTransactionsSent, ] = await wallet.optimize();
-  //   const optimizeEndAt = Date.now();
-  //   const optimizeSeconds = (optimizeEndAt - optimizeStartAt) * 0.001;
+  if (syncInfoEnd.heightDelta <= 2) {
+    const optimizeStartAt = Date.now();
+    const [numberOfTransactionsSent, ] = await wallet.optimize();
+    const optimizeEndAt = Date.now();
+    const optimizeSeconds = (optimizeEndAt - optimizeStartAt) * 0.001;
 
-  //   console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
-  // }
+    console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
+  }
 
   const [, saveError] = await WalletManager.saveMasterWallet(wallet);
 

@@ -48,6 +48,10 @@
                   <td class="table-value">{{ info?.started }}</td>
                 </tr>
                 <tr>
+                  <td class="table-key">Wallet uptime</td>
+                  <td class="table-value">{{ toHMS(info?.uptime) }}</td>
+                </tr>
+                <tr>
                   <td class="table-key">Node</td>
                   <td class="table-value">{{ info?.daemonHost }}:{{ info?.daemonPort }}</td>
                 </tr>
