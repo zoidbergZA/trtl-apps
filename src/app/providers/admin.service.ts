@@ -1,13 +1,17 @@
 import { Injectable } from '@angular/core';
 import { AngularFireFunctions } from '@angular/fire/functions';
-import { ServiceStatus, Withdrawal, Deposit } from 'shared/types';
+import { ServiceStatus, Withdrawal, Deposit, Account } from 'shared/types';
+import { AngularFirestore } from '@angular/fire/firestore';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AdminService {
 
-  constructor(private afFunctions: AngularFireFunctions) { }
+  constructor(
+    private afs: AngularFirestore,
+    private afFunctions: AngularFireFunctions) { }
 
   async getServiceStatus(): Promise<ServiceStatus | undefined> {
     try {
@@ -39,6 +43,17 @@ export class AdminService {
       }).toPromise();
 
       return response as Withdrawal[];
+    } catch (error) {
+      console.log(error);
+      return undefined;
+    }
+  }
+
+  async getServiceChargeAccounts(): Promise<Account[] | undefined> {
+    try {
+      const response = await this.afFunctions.httpsCallable('getServiceChargeAccounts')({}).toPromise();
+
+      return response as Account[];
     } catch (error) {
       console.log(error);
       return undefined;

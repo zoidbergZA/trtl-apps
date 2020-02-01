@@ -19,6 +19,7 @@ import { AdminComponent } from './admin/admin.component';
 import { UserProfileComponent } from './user-profile/user-profile.component';
 import { WithdrawalInspectorComponent } from './admin/withdrawal-inspector/withdrawal-inspector.component';
 import { DepositInspectorComponent } from './admin/deposit-inspector/deposit-inspector.component';
+import { ServiceChargeManagementComponent } from './admin/service-charge-management/service-charge-management.component';
 
 const redirectUnauthorizedToSignIn  = () => redirectUnauthorizedTo(['/signin']);
 const redirectLoggedInToConsole     = () => redirectLoggedInTo(['/console']);
@@ -79,6 +80,12 @@ const routes: Routes = [
   {
     path:         'admin',
     component:    AdminComponent,
+    canActivate:  [AngularFireAuthGuard],
+    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
+  },
+  {
+    path:         'admin/charges-management',
+    component:    ServiceChargeManagementComponent,
     canActivate:  [AngularFireAuthGuard],
     data:         { authGuardPipe: redirectUnauthorizedToSignIn }
   },

@@ -125,6 +125,18 @@ export async function getServiceConfig(): Promise<[ServiceConfig | undefined, un
   return [config, undefined];
 }
 
+export async function getServiceChargeAccounts(): Promise<[Account[] | undefined, undefined | ServiceError]> {
+  const query = await admin.firestore()
+                  .collectionGroup('serviceAccounts')
+                  .where('id', '==', 'serviceCharges')
+                  .orderBy('balanceUnlocked', 'desc')
+                  .get();
+
+  const accounts = query.docs.map(d => d.data() as Account);
+
+  return [accounts, undefined];
+}
+
 export async function validateInviteCode(code: string): Promise<boolean> {
   const snapshot = await admin.firestore().doc(`appInvites/${code}`).get();
 

@@ -185,6 +185,23 @@ export const getWithdrawalHistory = functions.https.onCall(async (data, context)
   return history;
 });
 
+export const getServiceChargeAccounts = functions.https.onCall(async (data, context) => {
+  const isAdmin = await isAdminUserCheck(context);
+
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
+  }
+
+  const [accounts, error] = await ServiceModule.getServiceChargeAccounts();
+
+  if (!accounts) {
+    const err = error as ServiceError;
+    throw new functions.https.HttpsError('internal', err.message);
+  }
+
+  return accounts;
+});
+
 
 // =============================================================================
 //                              Auth Triggers
