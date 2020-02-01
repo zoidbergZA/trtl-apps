@@ -1,0 +1,28 @@
+<div class="page-content">
+  <h2 class="center-text">Service Admin</h2>
+  <div class="containter">
+    <mat-card>
+      <mat-card-content>
+        <mat-card-title>Deposit inspector</mat-card-title>
+        <div *ngIf="fetching">
+          <mat-spinner diameter="64"></mat-spinner>
+        </div>
+        <div *ngIf="!fetching">
+          <div class="api-search-container">
+            <search-box (searchChanged)="onSearchValueChanged($event)"></search-box>
+            <div class="search-button">
+              <button mat-flat-button color="primary" (click)="onSearchClick()">Find deposit</button>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="history">
+          <h2 class="history-title" class="center-text">History of deposit ID: <span class="code-font">{{ searchValue }}</span></h2>
+          <div *ngFor="let item of history">
+            <h4>{{ item.lastUpdate | date: 'short' }}</h4>
+            <generic-object-inspector [object]=item></generic-object-inspector>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireFunctions } from '@angular/fire/functions';
-import { ServiceStatus, Withdrawal } from 'shared/types';
+import { ServiceStatus, Withdrawal, Deposit } from 'shared/types';
 
 @Injectable({
   providedIn: 'root'
@@ -13,6 +13,19 @@ export class AdminService {
     try {
       const response = await this.afFunctions.httpsCallable('getServiceStatus')({ }).toPromise();
       return response as ServiceStatus;
+    } catch (error) {
+      console.log(error);
+      return undefined;
+    }
+  }
+
+  async getDepositHistory(depositId: string): Promise<Deposit[] | undefined> {
+    try {
+      const response = await this.afFunctions.httpsCallable('getDepositHistory')({
+        depositId
+      }).toPromise();
+
+      return response as Deposit[];
     } catch (error) {
       console.log(error);
       return undefined;

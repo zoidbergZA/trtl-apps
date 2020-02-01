@@ -74,6 +74,22 @@ export async function getAllDeposits(fromHeight: number): Promise<Deposit[]> {
   return depositDocs.docs.map(d => d.data() as Deposit);
 }
 
+export async function getDepositHistory(depositId: string): Promise<[Deposit[] | undefined, undefined | ServiceError]> {
+  const query = await admin.firestore()
+                  .collectionGroup('depositHistory')
+                  .where('id', '==', depositId)
+                  .orderBy('lastUpdate', 'desc')
+                  .get();
+
+  if (query.size === 0) {
+    return [undefined, new ServiceError('app/withdrawal-not-found')];
+  }
+
+  const history = query.docs.map(d => d.data() as Deposit);
+
+  return [history, undefined];
+}
+
 async function scanNewDeposits(transactions: Transaction[], deposits: Deposit[]): Promise<void> {
   if (transactions.length === 0 && deposits.length === 0) {
     console.log('no new transactions to scan.');

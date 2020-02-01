@@ -67,6 +67,10 @@ export class TopBarComponent implements OnInit, OnDestroy {
     this.router.navigate(['/admin']);
   }
 
+  onInspectDepositClick() {
+    this.router.navigate(['/admin/deposit-inspector']);
+  }
+
   onInspectWithdrawalClick() {
     this.router.navigate(['/admin/withdrawal-inspector']);
   }

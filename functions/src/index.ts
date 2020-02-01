@@ -139,6 +139,29 @@ export const getServiceStatus = functions.https.onCall(async (data, context) => 
   return status;
 });
 
+export const getDepositHistory = functions.https.onCall(async (data, context) => {
+  const isAdmin = await isAdminUserCheck(context);
+
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
+  }
+
+  const depositId: string | undefined = data.depositId;
+
+  if (!depositId) {
+    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+  }
+
+  const [history, error] = await DepositsModule.getDepositHistory(depositId);
+
+  if (!history) {
+    const err = error as ServiceError;
+    throw new functions.https.HttpsError('internal', err.message);
+  }
+
+  return history;
+});
+
 export const getWithdrawalHistory = functions.https.onCall(async (data, context) => {
   const isAdmin = await isAdminUserCheck(context);
 
@@ -189,7 +212,7 @@ exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/
 exports.onDepositWrite = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
 .onWrite(async (change, context) => {
   const newState    = change.after.data() as Deposit;
-  const historyRef  = `/apps/${context.params.appId}/deposits/${context.params.depositId}/DepositHistory`;
+  const historyRef  = `/apps/${context.params.appId}/deposits/${context.params.depositId}/depositHistory`;
 
   await admin.firestore().collection(historyRef).add(newState);
 });
