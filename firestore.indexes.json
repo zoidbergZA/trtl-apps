@@ -47,6 +47,20 @@
       ]
     },
     {
+      "collectionGroup": "depositHistory",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastUpdate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "deposits",
       "queryScope": "COLLECTION",
       "fields": [
@@ -70,6 +84,20 @@
         },
         {
           "fieldPath": "priority",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "serviceAccounts",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "balanceUnlocked",
           "order": "DESCENDING"
         }
       ]
