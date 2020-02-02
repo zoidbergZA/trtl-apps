@@ -1,5 +1,9 @@
+<div>
+  <h2>Service nodes <button mat-stroked-button>+ add node</button></h2>
+</div>
 <div *ngIf="nodes$">
   <div *ngFor="let node of nodes$ | async">
-    <p>node: {{ node.name }}</p>
+    <node-info-card [node]="node"></node-info-card>
   </div>
+  <div class="y-spacer"></div>
 </div>

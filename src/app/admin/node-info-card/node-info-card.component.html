@@ -1,0 +1,45 @@
+<div class="card-holder">
+  <mat-card *ngIf="node">
+    <mat-toolbar>
+      <span>{{ node?.name }}</span>
+      <span class="fill-toolbar-space"></span>
+      <button mat-icon-button>
+        <mat-icon>edit</mat-icon>
+      </button>
+    </mat-toolbar>
+    <table class="info-table">
+      <tr>
+        <td class="table-key">priority</td>
+        <td class="table-value">{{ node?.priority }}</td>
+      </tr>
+      <tr>
+        <td class="table-key">url</td>
+        <td class="table-value">{{ node?.url }}:{{ node?.port }}</td>
+      </tr>
+      <tr>
+        <td class="table-key">online</td>
+        <td class="table-value">{{ node?.online }}</td>
+      </tr>
+      <tr>
+        <td class="table-key">availability</td>
+        <td class="table-value">{{ node?.availability }}%</td>
+      </tr>
+      <tr>
+        <td class="table-key">fee</td>
+        <td class="table-value">{{ node?.fee | TRTL }}</td>
+      </tr>
+      <tr>
+        <td class="table-key">version</td>
+        <td class="table-value">{{ node?.version }}</td>
+      </tr>
+      <tr>
+        <td class="table-key">ssl</td>
+        <td class="table-value">{{ node?.ssl }}</td>
+      </tr>
+      <tr>
+        <td class="table-key">cache</td>
+        <td class="table-value">{{ node?.cache }}</td>
+      </tr>
+    </table>
+  </mat-card>
+</div>

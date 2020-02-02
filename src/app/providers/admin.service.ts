@@ -55,7 +55,9 @@ export class AdminService {
   }
 
   getServiceNodes$(): Observable<ServiceNode[]> {
-    return this.afs.collection<ServiceNode>('nodes').valueChanges();
+    return this.afs
+      .collection<ServiceNode>('nodes', ref => ref.orderBy('priority', 'desc'))
+      .valueChanges();
   }
 
   async getServiceChargeAccounts(): Promise<Account[] | undefined> {

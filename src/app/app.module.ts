@@ -70,6 +70,7 @@ import { DepositInspectorComponent } from './admin/deposit-inspector/deposit-ins
 import { ServiceChargeManagementComponent } from './admin/service-charge-management/service-charge-management.component';
 import { ConfigManagementComponent } from './admin/config-management/config-management.component';
 import { NodeManagementComponent } from './admin/node-management/node-management.component';
+import { NodeInfoCardComponent } from './admin/node-info-card/node-info-card.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -133,7 +134,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     DepositInspectorComponent,
     ServiceChargeManagementComponent,
     ConfigManagementComponent,
-    NodeManagementComponent
+    NodeManagementComponent,
+    NodeInfoCardComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
