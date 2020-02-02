@@ -3,7 +3,7 @@ import { AngularFireFunctions } from '@angular/fire/functions';
 import { ServiceStatus, Withdrawal, Deposit, Account } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
-import { ServiceConfig } from 'functions/src/types';
+import { ServiceConfig, ServiceNode } from 'functions/src/types';
 
 @Injectable({
   providedIn: 'root'
@@ -52,6 +52,10 @@ export class AdminService {
 
   getServiceConfig$(): Observable<ServiceConfig | undefined> {
     return this.afs.doc<ServiceConfig>('globals/config').valueChanges();
+  }
+
+  getServiceNodes$(): Observable<ServiceNode[]> {
+    return this.afs.collection<ServiceNode>('nodes').valueChanges();
   }
 
   async getServiceChargeAccounts(): Promise<Account[] | undefined> {

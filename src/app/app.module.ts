@@ -69,6 +69,7 @@ import { GenericObjectInspectorComponent } from './generic-object-inspector/gene
 import { DepositInspectorComponent } from './admin/deposit-inspector/deposit-inspector.component';
 import { ServiceChargeManagementComponent } from './admin/service-charge-management/service-charge-management.component';
 import { ConfigManagementComponent } from './admin/config-management/config-management.component';
+import { NodeManagementComponent } from './admin/node-management/node-management.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -131,7 +132,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     GenericObjectInspectorComponent,
     DepositInspectorComponent,
     ServiceChargeManagementComponent,
-    ConfigManagementComponent
+    ConfigManagementComponent,
+    NodeManagementComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
