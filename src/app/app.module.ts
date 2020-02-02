@@ -71,6 +71,7 @@ import { ServiceChargeManagementComponent } from './admin/service-charge-managem
 import { ConfigManagementComponent } from './admin/config-management/config-management.component';
 import { NodeManagementComponent } from './admin/node-management/node-management.component';
 import { NodeInfoCardComponent } from './admin/node-info-card/node-info-card.component';
+import { EditNodeDialogComponent } from './admin/dialogs/edit-node-dialog/edit-node-dialog.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -135,7 +136,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     ServiceChargeManagementComponent,
     ConfigManagementComponent,
     NodeManagementComponent,
-    NodeInfoCardComponent
+    NodeInfoCardComponent,
+    EditNodeDialogComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
@@ -148,7 +150,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     WithdrawDialogComponent,
     EditStringDialogComponent,
     SetWebhookDialogComponent,
-    PasswordRecoveryDialogComponent
+    PasswordRecoveryDialogComponent,
+    EditNodeDialogComponent
   ],
   imports: [
     BrowserModule,

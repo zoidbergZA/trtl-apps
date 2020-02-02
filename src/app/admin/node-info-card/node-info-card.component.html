@@ -3,7 +3,7 @@
     <mat-toolbar>
       <span>{{ node?.name }}</span>
       <span class="fill-toolbar-space"></span>
-      <button mat-icon-button>
+      <button mat-icon-button (click)="onEditClick()">
         <mat-icon>edit</mat-icon>
       </button>
     </mat-toolbar>

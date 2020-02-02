@@ -1,5 +1,7 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { ServiceNode } from 'functions/src/types';
+import { MatDialog } from '@angular/material';
+import { EditNodeDialogComponent } from '../dialogs/edit-node-dialog/edit-node-dialog.component';
 
 @Component({
   selector: 'node-info-card',
@@ -10,8 +12,19 @@ export class NodeInfoCardComponent implements OnInit {
 
   @Input() node: ServiceNode | undefined;
 
-  constructor() { }
+  constructor(public dialog: MatDialog) { }
 
   ngOnInit() {
+  }
+
+  onEditClick() {
+    if (!this.node) {
+      return;
+    }
+
+    this.dialog.open(EditNodeDialogComponent, {
+      width: '800px',
+      data: this.node
+    });
   }
 }
