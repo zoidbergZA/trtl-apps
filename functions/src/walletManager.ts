@@ -406,7 +406,7 @@ async function saveWalletAppEngine(encryptedWallet: string): Promise<boolean> {
       projectId: functions.config().cloudwallet.project_id
     });
 
-    const gcpBucket = gcp_storage.bucket(Constants.gcpWalletBucketName);
+    const gcpBucket = gcp_storage.bucket(functions.config().cloudwallet.wallets_bucket);
     const file      = gcpBucket.file(Constants.gcpWalletFilename);
 
     await file.save(encryptedWallet);

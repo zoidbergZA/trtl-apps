@@ -27,10 +27,14 @@ admin.initializeApp();
 const expressApp = express();
 expressApp.use('/api', api);
 
-const appInsightsApiKey = functions.config().azure.appinsights;
+try {
+  const appInsightsApiKey = functions.config().azure.appinsights;
 
-if (appInsightsApiKey) {
-  Analytics.initAppInsights(appInsightsApiKey);
+  if (appInsightsApiKey) {
+    Analytics.initAppInsights(appInsightsApiKey);
+  }
+} catch (error) {
+  // no app insights API key set
 }
 
 
