@@ -1,12 +1,19 @@
 <h3>{{ data.name }}</h3>
 <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
-  <mat-form-field class="input-field">
-    <input matInput
-      formControlName="stringValue"
-      type="text"
-      autocomplete="off"
-      placeholder="enter value">
-  </mat-form-field>
+  <table>
+    <tr>
+      <td class="table-key">x</td>
+      <td class="table-value">
+        <mat-form-field class="input-field">
+          <input matInput
+            formControlName="stringValue"
+            type="text"
+            autocomplete="off"
+            placeholder="enter value">
+        </mat-form-field>
+      </td>
+    </tr>
+  </table>
   <div>
     <button mat-stroked-button
       type="submit"
