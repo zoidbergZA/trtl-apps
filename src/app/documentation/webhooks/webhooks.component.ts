@@ -69,39 +69,55 @@ export class WebhooksComponent implements OnInit {
   withdrawalSucceeded = {
     code: 'withdrawal/succeeded',
     data: {
-      address: 'TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he',
-      amount: 5,
+      id: 'mbEz7SwYhNxPRWnb8MYb',
+      paymentId: 'dd1b2917f574f5ce2b0fbbfdb0c9d0be7482125fcd93436933c8fe75c38c8a4b',
       appId: '84U0IRP0rdC57AHfwRQc',
+      accountId: 'jaKrijd8WjHRWTu2y8pG',
+      amount: 500000,
+      fees: {
+        txFee: 1500,
+        nodeFee: 10,
+        serviceFee: 0
+      },
+      userDebited: true,
+      address: 'TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he',
+      timestamp: 1576340903981,
+      lastUpdate: 1576341061152,
+      status: 'completed',
+      requestedAtBlock: 2104300,
       blockHeight: 2104302,
       failed: false,
-      fee: 10,
-      id: 'mbEz7SwYhNxPRWnb8MYb',
-      lastUpdate: 1576341061152,
-      paymentId: 'dd1b2917f574f5ce2b0fbbfdb0c9d0be7482125fcd93436933c8fe75c38c8a4b',
-      requestedAtBlock: 2104300,
-      status: 'completed',
-      timestamp: 1576340903981,
+      preparedWithdrawalId: '35ruwGoGaaSgjYAUdpJh',
       txHash: '07e8f4ee5a0dcdf3ca3ce987069f107d045def181d438696114fb6990fb3c72c',
-      accountId: 'jaKrijd8WjHRWTu2y8pG'
+      retries: 0
     }
   };
 
   withdrawalFailed = {
     code: 'withdrawal/failed',
     data: {
-      address: 'TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he',
-      amount: 5,
-      appId: '84U0IRP0rdC57AHfwRQc',
-      blockHeight: 2104302,
-      failed: true,
-      fee: 10,
       id: 'mbEz7SwYhNxPRWnb8MYb',
-      lastUpdate: 1576341061152,
       paymentId: 'dd1b2917f574f5ce2b0fbbfdb0c9d0be7482125fcd93436933c8fe75c38c8a4b',
-      requestedAtBlock: 2104300,
-      status: 'completed',
+      appId: '84U0IRP0rdC57AHfwRQc',
+      accountId: 'jaKrijd8WjHRWTu2y8pG',
+      amount: 500000,
+      fees: {
+        txFee: 1500,
+        nodeFee: 10,
+        serviceFee: 0
+      },
+      userDebited: false,
+      address: 'TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he',
       timestamp: 1576340903981,
-      accountId: 'jaKrijd8WjHRWTu2y8pG'
+      lastUpdate: 1576341061152,
+      status: 'completed',
+      requestedAtBlock: 2104300,
+      blockHeight: 0,
+      failed: true,
+      preparedWithdrawalId: '35ruwGoGaaSgjYAUdpJh',
+      txHash: '07e8f4ee5a0dcdf3ca3ce987069f107d045def181d438696114fb6990fb3c72c',
+      daemonErrorCode: 31,
+      retries: 0
     }
   };
 
@@ -109,5 +125,4 @@ export class WebhooksComponent implements OnInit {
 
   ngOnInit() {
   }
-
 }
