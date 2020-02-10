@@ -484,7 +484,7 @@ export async function processWithdrawalUpdate(
     await processPendingWithdrawal(newState);
   }
 
-  if (oldState.status === 'confirming' && newState.status === 'completed') {
+  if (oldState.status !== 'completed' && newState.status === 'completed') {
     const [app, error] = await AppModule.getApp(oldState.appId);
 
     if (!app) {
