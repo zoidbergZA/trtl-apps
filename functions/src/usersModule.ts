@@ -48,7 +48,7 @@ export async function createAppAccount(app: TurtleApp): Promise<[Account | undef
     paymentId:            paymentId,
     spendSignaturePrefix: spendSignaturePrefix,
     depositAddress:       integratedAddress,
-    depositQrCode:        `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=turtlecoin://${integratedAddress}`
+    depositQrCode:        `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=${integratedAddress}`
   }
 
   try {
