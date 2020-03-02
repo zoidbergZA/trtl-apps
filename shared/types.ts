@@ -57,6 +57,7 @@ export interface TurtleApp {
 
 export interface TurtleAppUpdate {
   webhook?: string;
+  appSecret?: string;
   disabled?: boolean;
   lastAuditAt?: number;
   lastAuditPassed?: boolean;

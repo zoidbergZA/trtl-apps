@@ -40,7 +40,7 @@ export async function createApp(
       const subWalletDocRef   = admin.firestore().doc(`wallets/master/subWallets/${selectedSubWallet.id}`);
       const appDocRef         = admin.firestore().collection('apps').doc();
       const appId             = appDocRef.id;
-      const appSecret         = crypto.randomBytes(64).toString('hex');
+      const appSecret         = generateApiKey();
       const timestamp         = Date.now();
 
       const subWalletDoc = await txn.get(subWalletDocRef);
@@ -134,6 +134,29 @@ export async function disableApp(appId: string, reason: string): Promise<void> {
   }
 
   await admin.firestore().doc(`apps/${appId}`).update(appUpdate);
+}
+
+export async function resetAppSecret(owner: string, appId: string): Promise<boolean> {
+  const [app] = await getApp(appId);
+
+  if (!app) {
+    return false;
+  }
+
+  if (owner !== app.owner) {
+    return false;
+  }
+
+  const appUpdate: TurtleAppUpdate = {
+    appSecret: generateApiKey()
+  }
+
+  try {
+    await admin.firestore().doc(`apps/${appId}`).update(appUpdate);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function setAppWebhook(
@@ -324,4 +347,8 @@ async function getWithdrawals(appId: string): Promise<Withdrawal[]> {
     console.log(error);
     return [];
   }
+}
+
+function generateApiKey(): string {
+  return crypto.randomBytes(64).toString('hex');
 }
