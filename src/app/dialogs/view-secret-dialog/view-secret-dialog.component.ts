@@ -1,6 +1,7 @@
 import { Component, OnInit, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatSnackBar, MatDialog } from '@angular/material';
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
+import { ConsoleService } from 'src/app/providers/console.service';
 
 @Component({
   selector: 'view-secret-dialog',
@@ -9,6 +10,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
 })
 export class ViewSecretDialogComponent implements OnInit {
 
+  appId: string;
   appSecret: string;
   busy = false;
   errorMessage: string | undefined;
@@ -16,8 +18,11 @@ export class ViewSecretDialogComponent implements OnInit {
   constructor(
     public dialogRef: MatDialogRef<ViewSecretDialogComponent>,
     public dialog: MatDialog,
-    @Inject(MAT_DIALOG_DATA) public data: any) {
+    @Inject(MAT_DIALOG_DATA) public data: any,
+    private consoleService: ConsoleService,
+    private snackbar: MatSnackBar) {
 
+    this.appId = data.appId;
     this.appSecret = data.appSecret;
   }
 
@@ -46,7 +51,22 @@ export class ViewSecretDialogComponent implements OnInit {
     this.dialogRef.close();
   }
 
-  resetSecret() {
+  async resetSecret() {
     this.busy = true;
+    this.errorMessage = undefined;
+
+    try {
+      await this.consoleService.resetAppApiKey(this.appId);
+
+      this.snackbar.open('API key successfully changed!', undefined, {
+        duration: 6000,
+      });
+
+      this.dialogRef.close();
+    } catch (error) {
+      this.errorMessage = error;
+    } finally {
+      this.busy = false;
+    }
   }
 }

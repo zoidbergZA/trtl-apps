@@ -40,7 +40,10 @@ export class OverviewComponent implements OnInit {
 
     this.dialog.open(ViewSecretDialogComponent, {
       width: '800px',
-      data: { appSecret: this.app.appSecret }
+      data: {
+        appId: this.appId,
+        appSecret: this.app.appSecret
+      }
     });
   }
 

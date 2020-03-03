@@ -32,6 +32,12 @@ export class ConsoleService {
     }).toPromise();
   }
 
+  async resetAppApiKey(appId: string): Promise<string> {
+    return this.afFunctions.httpsCallable('resetAppSecret')({
+      appId
+    }).toPromise();
+  }
+
   getUserApps(): Observable<TurtleApp[]> {
     const uid = this.authService.getUid();
 
