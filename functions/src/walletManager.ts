@@ -533,7 +533,7 @@ export async function warmupCloudWallet(jwtToken: string, serviceConfig: Service
 
   // TODO: check status uptime if its time for an App Engine wallet restart
 
-  if (status.started || status.daemonHost === serviceConfig.daemonHost) {
+  if (status.started && status.daemonHost === serviceConfig.daemonHost) {
     return true;
   }
 
