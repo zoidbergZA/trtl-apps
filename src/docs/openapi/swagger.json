@@ -270,6 +270,70 @@
         }
       }
     },
+    "/{appId}/deposits" : {
+      "get" : {
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "app" ],
+        "summary" : "Gets the newest deposits of the supplied accountID",
+        "description" : "Returns a list of Deposits",
+        "parameters" : [ {
+          "name" : "appId",
+          "in" : "path",
+          "description" : "Your app ID.",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "accountId",
+          "in" : "query",
+          "description" : "The account ID of the deposits owner.",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "The amount of deposits to fetch.",
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1,
+            "maximum" : 100
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ArrayOfDeposits"
+                }
+              }
+            }
+          },
+          "400" : {
+            "$ref" : "#/components/responses/BadRequest"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/UnauthorizedError"
+          },
+          "500" : {
+            "description" : "Server error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/{appId}/deposits/{depositId}" : {
       "get" : {
         "security" : [ {
@@ -813,6 +877,12 @@
           "deleted" : {
             "type" : "boolean"
           }
+        }
+      },
+      "ArrayOfDeposits" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/Deposit"
         }
       },
       "Deposit" : {

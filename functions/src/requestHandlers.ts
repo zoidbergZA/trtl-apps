@@ -67,7 +67,7 @@ api.get('/:appId/deposits/:depositId', async (req, res) => {
   }
 });
 
-api.get('/:appId/deposits/', async (req, res) => {
+api.get('/:appId/deposits', async (req, res) => {
   try {
     return getDeposits(req, res);
   }
@@ -241,8 +241,8 @@ export async function getDeposits(request: any, response: any): Promise<void> {
     return;
   }
 
-  const accountId: string | undefined = request.params.accountId;
-  let limit: number | undefined = request.params.limit;
+  const accountId: string | undefined = request.query.accountId;
+  let limit: number | undefined = request.query.limit;
 
   if (!accountId) {
     response.status(400).send(new ServiceError('request/invalid-params'));
