@@ -483,7 +483,13 @@ async function authorizeAppRequest(
     return [undefined, new ServiceError('request/unauthorized')];
   }
 
-  const [serviceConfig, serviceError] = await ServiceModule.getServiceConfig();
+  const fetchResults = await Promise.all([
+    ServiceModule.getServiceConfig(),
+    admin.firestore().doc(`apps/${appId}`).get()
+  ]);
+
+  const [serviceConfig, serviceError] = fetchResults[0];
+  const appDoc = fetchResults[1];
 
   if (!serviceConfig) {
     return [undefined, serviceError];
@@ -493,14 +499,12 @@ async function authorizeAppRequest(
     return [undefined, new ServiceError('service/service-halted')];
   }
 
-  const reqSecret = authHeader.split('Bearer ')[1];
-  const docSnapshot = await admin.firestore().doc(`apps/${appId}`).get();
-
-  if (!docSnapshot.exists) {
+  if (!appDoc.exists) {
     return [undefined, new ServiceError('app/app-not-found')];
   }
 
-  const turtleApp = docSnapshot.data() as TurtleApp;
+  const reqSecret = authHeader.split('Bearer ')[1];
+  const turtleApp = appDoc.data() as TurtleApp;
 
   if (reqSecret === turtleApp.appSecret) {
     if (turtleApp.disabled) {
