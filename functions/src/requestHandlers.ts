@@ -67,6 +67,16 @@ api.get('/:appId/deposits/:depositId', async (req, res) => {
   }
 });
 
+api.get('/:appId/deposits/', async (req, res) => {
+  try {
+    return getDeposits(req, res);
+  }
+  catch (error) {
+    console.error(error);
+    res.status(500).send(new ServiceError('service/unknown-error'));
+  }
+});
+
 api.post('/:appId/prepared_withdrawals/', async (req, res) => {
   try {
     return createPreparedWithdrawal(req, res);
@@ -221,6 +231,38 @@ export async function getDeposit(request: any, response: any): Promise<void> {
   }
 
   response.status(200).send(depositRequest);
+}
+
+export async function getDeposits(request: any, response: any): Promise<void> {
+  const [app, authError] = await authorizeAppRequest(request);
+
+  if (!app) {
+    response.status(401).send((authError));
+    return;
+  }
+
+  const accountId: string | undefined = request.params.accountId;
+  let limit: number | undefined = request.params.limit;
+
+  if (!accountId) {
+    response.status(400).send(new ServiceError('request/invalid-params'));
+    return;
+  }
+
+  if (!limit) {
+    limit = 25;
+  } else {
+    limit = Math.min(100, Math.max(1, limit));
+  }
+
+  const [deposits, serviceError] = await DepositsModule.getAccountDeposits(app.appId, accountId, limit);
+
+  if (!deposits) {
+    response.status(500).send(serviceError);
+    return;
+  }
+
+  response.status(200).send(deposits);
 }
 
 export async function getWithdrawal(request: any, response: any): Promise<void> {

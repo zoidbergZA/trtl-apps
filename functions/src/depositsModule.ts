@@ -22,6 +22,22 @@ export async function getDeposit(
   }
 }
 
+export async function getAccountDeposits(
+  appId: string,
+  accountId: string,
+  limit: number): Promise<[Deposit[] | undefined, undefined | ServiceError]> {
+
+  const snapshot = await admin.firestore()
+              .collection(`apps/${appId}/deposits`)
+              .where('accountId', '==', accountId)
+              .orderBy('createdDate', 'desc')
+              .limit(limit)
+              .get();
+
+  const deposits = snapshot.docs.map(d => d.data() as Deposit);
+  return [deposits, undefined];
+}
+
 export async function updateDeposits(serviceWallet: ServiceWallet): Promise<void> {
   const [walletHeight, ,] = serviceWallet.wallet.getSyncStatus();
   const scanHeight        = Math.max(0, walletHeight - serviceWallet.serviceConfig.txScanDepth);
