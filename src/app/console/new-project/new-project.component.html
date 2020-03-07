@@ -3,7 +3,7 @@
   <div class="container">
     <mat-card>
       <mat-card-content>
-        <div *ngIf="cautionAccepted">
+        <div *ngIf="termsAgreed">
           <div class="busy-spinner" *ngIf="creatingApp">
             <mat-spinner diameter="64"></mat-spinner>
           </div>
@@ -19,7 +19,7 @@
                   autocomplete="off"
                   placeholder="app name">
               </mat-form-field>
-              <p>
+              <!-- <p>
                 This service is currently invitation-only while in alpha testing, contact us on twitter or the
                 TurtleCoin discord if you would like to participate in early testing.
               </p>
@@ -30,7 +30,7 @@
                   autocomplete="off"
                   placeholder="invite code">
               </mat-form-field>
-              <p><span class="warning-text">IMPORTANT:</span> This service is still in early testing stages, only create apps for testing purposes and use small amounts.</p>
+              <p><span class="warning-text">IMPORTANT:</span> This service is still in early testing stages, only create apps for testing purposes and use small amounts.</p> -->
               <div>
                 <button mat-stroked-button
                   type="submit"
@@ -39,13 +39,43 @@
             </form>
           </div>
         </div>
-        <div *ngIf="!cautionAccepted">
-          <p><span class="error-text">CAUTION: </span> This service is still in an early alpha stage
-          and should be used for experimental purposes only! Use of this service is strictly at your
-          own risk and TRTL apps does take any responsibilty for loss of funds.
-        </p>
-          <div class="agree-button">
-            <button mat-flat-button color="primary" (click)="onAgreeClick()">I Understand</button>
+        <div *ngIf="!termsAgreed && !creatingApp">
+          <div *ngIf="!termsAgreed">
+            <form class="form-content" [formGroup]="termsForm" (ngSubmit)="onAgree()">
+              <table>
+                <tr>
+                  <td class="table-key">
+                    <mat-checkbox formControlName="term1" required></mat-checkbox>
+                  </td>
+                  <td class="table-value">
+                    <span>I understand that network and service fees are charged when sending transactions.</span>
+                  </td>
+                </tr>
+                <tr>
+                <tr>
+                  <td class="table-key">
+                    <mat-checkbox formControlName="term2" required></mat-checkbox>
+                  </td>
+                  <td class="table-value">
+                    <span>I understand that this service is currently still in beta testing and should be used for experimental purposes only.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="table-key">
+                    <mat-checkbox formControlName="term3" required></mat-checkbox>
+                  </td>
+                  <td class="table-value">
+                    <span>I understand that no warranty or guarantee is provided, expressed, or implied when using this service and any funds lost in using this service are not the responsibility of the application creator, publisher, or distributor.</span>
+                  </td>
+                </tr>
+              </table>
+              <div class="center-text">
+                <button mat-stroked-button
+                  class="button"
+                  type="submit"
+                  [disabled]="!termsForm.valid">continue</button>
+              </div>
+            </form>
           </div>
         </div>
       </mat-card-content>

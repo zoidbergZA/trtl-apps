@@ -12,7 +12,9 @@ import * as Utils from '../../../../shared/utils';
 })
 export class NewProjectComponent implements OnInit {
 
-  cautionAccepted = false;
+  termsForm: FormGroup;
+  termsAgreed = false;
+
   form: FormGroup;
   creatingApp = false;
   errorMessage: string | undefined;
@@ -21,6 +23,12 @@ export class NewProjectComponent implements OnInit {
     private consoleService: ConsoleService,
     private router: Router,
     private snackbar: MatSnackBar) {
+
+    this.termsForm = new FormGroup({
+      term1: new FormControl(false, Validators.required),
+      term2: new FormControl(false, Validators.required),
+      term3: new FormControl(false, Validators.required)
+    });
 
     this.form = new FormGroup({
       appName: new FormControl('', Validators.compose([
@@ -32,6 +40,10 @@ export class NewProjectComponent implements OnInit {
   }
 
   ngOnInit() {
+  }
+
+  onAgree() {
+    this.termsAgreed = true;
   }
 
   onSubmit(data: any) {
@@ -49,13 +61,8 @@ export class NewProjectComponent implements OnInit {
       this.creatingApp = false;
     }).catch(error => {
       this.creatingApp = false;
-      console.log(`error creating app: ${error}`);
-      // this.snackbar.open('error creating app, please try again later.', undefined, { duration: 6000 });
+      this.snackbar.open('error creating app, please try again later.', undefined, { duration: 6000 });
     });
-  }
-
-  onAgreeClick() {
-    this.cautionAccepted = true;
   }
 }
 
