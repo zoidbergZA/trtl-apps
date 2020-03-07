@@ -6,6 +6,7 @@
       </div>
       <div *ngIf="!createNew">
         <p class="title-text">{{ name }}</p>
+        <p class="center-text error-text" *ngIf="disabled">[DISABLED]</p>
         <p class="sub-text">app ID: </p>
         <p class="sub-text">{{ appId }}</p>
       </div>

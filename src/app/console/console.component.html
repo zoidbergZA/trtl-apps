@@ -7,7 +7,11 @@
       <div class="projects-container" fxLayout="row wrap" fxLayoutGap="20px">
         <project-card class="project-card-holder" createNew=true></project-card>
         <div *ngFor="let project of projects">
-          <project-card class="project-card-holder" [name]="project.name" [appId]="project.appId"></project-card>
+          <project-card class="project-card-holder"
+            [name]="project.name"
+            [appId]="project.appId"
+            [disabled]="project.disabled">
+          </project-card>
         </div>
       </div>
     </div>

@@ -12,6 +12,7 @@ export class ProjectCardComponent implements OnInit {
   @Input() createNew = false;
   @Input() name: string | undefined;
   @Input() appId: string | undefined;
+  @Input() disabled: boolean | undefined;
 
   constructor(private router: Router) { }
 

@@ -8,7 +8,7 @@
             <td class="table-key">Status</td>
             <td class="table-value">
               <span *ngIf="!app?.disabled">Active</span>
-              <span *ngIf="app?.disabled">Disabled</span>
+              <span *ngIf="app?.disabled" class="error-text">Disabled</span>
             </td>
           </tr>
           <tr>
