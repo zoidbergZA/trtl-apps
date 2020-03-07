@@ -95,6 +95,16 @@ api.post('/:appId/withdrawals/', async (req, res) => {
   }
 });
 
+api.get('/:appId/withdrawals', async (req, res) => {
+  try {
+    return getWithdrawals(req, res);
+  }
+  catch (error) {
+    console.error(error);
+    res.status(500).send(new ServiceError('service/unknown-error'));
+  }
+});
+
 api.get('/:appId/withdrawals/:withdrawalId', async (req, res) => {
   try {
     return getWithdrawal(req, res);
@@ -109,6 +119,16 @@ api.post('/:appId/transfers/', async (req, res) => {
   try {
     return appTransfer(req, res);
   } catch (error) {
+    console.error(error);
+    res.status(500).send(new ServiceError('service/unknown-error'));
+  }
+});
+
+api.get('/:appId/transfers', async (req, res) => {
+  try {
+    return getTransfers(req, res);
+  }
+  catch (error) {
     console.error(error);
     res.status(500).send(new ServiceError('service/unknown-error'));
   }
@@ -265,6 +285,38 @@ export async function getDeposits(request: any, response: any): Promise<void> {
   response.status(200).send(deposits);
 }
 
+export async function getWithdrawals(request: any, response: any): Promise<void> {
+  const [app, authError] = await authorizeAppRequest(request);
+
+  if (!app) {
+    response.status(401).send((authError));
+    return;
+  }
+
+  const accountId: string | undefined = request.query.accountId;
+  let limit: number | undefined = request.query.limit;
+
+  if (!accountId) {
+    response.status(400).send(new ServiceError('request/invalid-params'));
+    return;
+  }
+
+  if (!limit) {
+    limit = 25;
+  } else {
+    limit = Math.min(100, Math.max(1, limit));
+  }
+
+  const [withdrawals, serviceError] = await WithdrawalsModule.getAccountWithdrawals(app.appId, accountId, limit);
+
+  if (!withdrawals) {
+    response.status(500).send(serviceError);
+    return;
+  }
+
+  response.status(200).send(withdrawals);
+}
+
 export async function getWithdrawal(request: any, response: any): Promise<void> {
   const [app, authError] = await authorizeAppRequest(request);
 
@@ -315,6 +367,38 @@ async function appTransfer(request: any, response: any): Promise<void> {
     response.status(500).send(transferError);
     return;
   }
+}
+
+export async function getTransfers(request: any, response: any): Promise<void> {
+  const [app, authError] = await authorizeAppRequest(request);
+
+  if (!app) {
+    response.status(401).send((authError));
+    return;
+  }
+
+  const accountId: string | undefined = request.query.accountId;
+  let limit: number | undefined = request.query.limit;
+
+  if (!accountId) {
+    response.status(400).send(new ServiceError('request/invalid-params'));
+    return;
+  }
+
+  if (!limit) {
+    limit = 25;
+  } else {
+    limit = Math.min(100, Math.max(1, limit));
+  }
+
+  const [transfers, serviceError] = await TransfersModule.getAccountTransfers(app.appId, accountId, limit);
+
+  if (!transfers) {
+    response.status(500).send(serviceError);
+    return;
+  }
+
+  response.status(200).send(transfers);
 }
 
 export async function getAccountTransfer(request: any, response: any): Promise<void> {

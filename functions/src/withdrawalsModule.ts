@@ -333,6 +333,22 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
   await withdrawalDocRef.update(txSentUpdate);
 }
 
+export async function getAccountWithdrawals(
+  appId: string,
+  accountId: string,
+  limit: number): Promise<[Withdrawal[] | undefined, undefined | ServiceError]> {
+
+  const snapshot = await admin.firestore()
+                  .collection(`apps/${appId}/withdrawals`)
+                  .where('accountId', '==', accountId)
+                  .orderBy('timestamp', 'desc')
+                  .limit(limit)
+                  .get();
+
+  const withdrawals = snapshot.docs.map(d => d.data() as Withdrawal);
+  return [withdrawals, undefined];
+}
+
 export async function getWithdrawal(
   appId: string,
   withdrawalId: string): Promise<[Withdrawal | undefined, undefined | ServiceError]> {

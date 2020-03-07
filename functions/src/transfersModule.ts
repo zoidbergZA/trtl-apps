@@ -108,6 +108,22 @@ export async function accountTransfer(
   }
 }
 
+export async function getAccountTransfers(
+  appId: string,
+  accountId: string,
+  limit: number): Promise<[Transfer[] | undefined, undefined | ServiceError]> {
+
+  const snapshot = await admin.firestore()
+                  .collection(`apps/${appId}/transfers`)
+                  .where('senderId', '==', accountId)
+                  .orderBy('timestamp', 'desc')
+                  .limit(limit)
+                  .get();
+
+  const transfers = snapshot.docs.map(d => d.data() as Transfer);
+  return [transfers, undefined];
+}
+
 export async function getTransfer(
   appId: string,
   transferId: string): Promise<[Transfer | undefined, undefined | ServiceError]> {
