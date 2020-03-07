@@ -5,6 +5,13 @@
       <mat-card-content>
         <table class="app-info-table">
           <tr>
+            <td class="table-key">Status</td>
+            <td class="table-value">
+              <span *ngIf="!app?.disabled">Active</span>
+              <span *ngIf="app?.disabled">Disabled</span>
+            </td>
+          </tr>
+          <tr>
             <td class="table-key">App ID</td>
             <td class="table-value"><copy-string-box [data]=app?.appId></copy-string-box></td>
           </tr>
@@ -36,6 +43,16 @@
             </td>
           </tr>
         </table>
+        <div class="spacer"></div>
+        <div *ngIf="!changingState">
+          <p *ngIf="stateErrorMessage" class="error-text">{{ stateErrorMessage }}</p>
+          <button mat-stroked-button *ngIf="!app?.disabled" (click)="setAppState(false)">Disable app</button>
+          <button mat-stroked-button *ngIf="app?.disabled" (click)="setAppState(true)">Activate app</button>
+        </div>
+        <div *ngIf="changingState">
+          <mat-spinner diameter="64"></mat-spinner>
+        </div>
+        <div class="spacer"></div>
       </mat-card-content>
     </mat-card>
   </div>

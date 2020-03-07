@@ -25,6 +25,13 @@ export class ConsoleService {
     }).toPromise();
   }
 
+  async setAppState(appId: string, active: boolean) {
+    return this.afFunctions.httpsCallable('setAppActive')({
+      appId,
+      active
+    }).toPromise();
+  }
+
   async setAppWebhook(appId: string, webhook: string | undefined) {
     return this.afFunctions.httpsCallable('setAppWebhook')({
       appId,

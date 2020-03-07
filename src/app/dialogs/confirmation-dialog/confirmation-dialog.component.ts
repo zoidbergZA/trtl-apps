@@ -11,6 +11,8 @@ export class ConfirmationDialogComponent implements OnInit {
 
   title: string | undefined;
   content: string | undefined;
+  matchString: string | undefined;
+  currentString = '';
 
   constructor(
     public dialogRef: MatDialogRef<ViewSecretDialogComponent>,
@@ -18,9 +20,14 @@ export class ConfirmationDialogComponent implements OnInit {
   ) {
     this.title = data.title;
     this.content = data.content;
+    this.matchString = data.matchString;
   }
 
   ngOnInit() {
+  }
+
+  onInputChange(event: any) {
+    this.currentString = event.target.value;
   }
 
   onConfirmClick() {

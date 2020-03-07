@@ -1,6 +1,16 @@
 <div class="container">
   <h3>{{ title }}</h3>
   <p>{{ content }}</p>
-  <button mat-flat-button color="primary" (click)="onConfirmClick()">confirm</button>
+  <div *ngIf="matchString">
+    <form>
+      <mat-form-field>
+        <input matInput placeholder="enter string" (keyup)="onInputChange($event)">
+      </mat-form-field>
+    </form>
+  </div>
+  <button mat-flat-button
+          color="primary"
+          [disabled]="matchString && matchString !== currentString"
+          (click)="onConfirmClick()">confirm</button>
   <button mat-stroked-button class="button-spacer" (click)="onCancelClick()"><mat-icon>clear</mat-icon>cancel</button>
 </div>
