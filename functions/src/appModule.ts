@@ -136,6 +136,29 @@ export async function disableApp(appId: string, reason: string): Promise<void> {
   await admin.firestore().doc(`apps/${appId}`).update(appUpdate);
 }
 
+export async function setAppState(owner: string, appId: string, active: boolean): Promise<boolean> {
+  const [app] = await getApp(appId);
+
+  if (!app) {
+    return false;
+  }
+
+  if (owner !== app.owner) {
+    return false;
+  }
+
+  const appUpdate: TurtleAppUpdate = {
+    disabled: !active
+  }
+
+  try {
+    await admin.firestore().doc(`apps/${appId}`).update(appUpdate);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function resetAppSecret(owner: string, appId: string): Promise<boolean> {
   const [app] = await getApp(appId);
 

@@ -7,7 +7,6 @@ import { Utilities } from 'src/utilities';
 import { ServiceError } from 'trtl-apps';
 
 @Component({
-  // tslint:disable-next-line:component-selector
   selector: 'withdraw-dialog',
   templateUrl: './withdraw-dialog.component.html',
   styleUrls: ['./withdraw-dialog.component.scss']
@@ -98,7 +97,6 @@ export class WithdrawDialogComponent implements OnInit {
     this.busy = false;
 
     if (!withdrawalPreview) {
-      console.log(error);
       this.errorMessage = (error as ServiceError).message;
       return;
     }

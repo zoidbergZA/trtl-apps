@@ -99,6 +99,28 @@ export const createApp = functions.https.onCall(async (data, context) => {
   return result;
 });
 
+export const setAppState = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
+  }
+
+  const owner = context.auth.uid;
+  const appId: string | undefined = data.appId;
+  const active: boolean = !!data.active;
+
+  if (!appId) {
+    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+  }
+
+  const success = await AppModule.setAppState(owner, appId, active);
+
+  if (!success) {
+    throw new functions.https.HttpsError('unknown', 'An Unknown error occured.');
+  }
+
+  return { success: true };
+});
+
 export const resetAppSecret = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');

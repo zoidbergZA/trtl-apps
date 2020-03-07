@@ -26,7 +26,7 @@ export class ConsoleService {
   }
 
   async setAppState(appId: string, active: boolean) {
-    return this.afFunctions.httpsCallable('setAppActive')({
+    return this.afFunctions.httpsCallable('setAppState')({
       appId,
       active
     }).toPromise();
