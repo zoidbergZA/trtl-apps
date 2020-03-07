@@ -276,7 +276,7 @@
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "app" ],
-        "summary" : "Gets the newest deposits of the supplied accountID",
+        "summary" : "Gets the latest deposits of the supplied account id",
         "description" : "Returns a list of Deposits",
         "parameters" : [ {
           "name" : "appId",
@@ -340,7 +340,7 @@
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "app" ],
-        "summary" : "Gets the deposit with the given ID",
+        "summary" : "Gets the deposit with the given id",
         "description" : "Returns a Deposit object",
         "parameters" : [ {
           "name" : "appId",
@@ -493,16 +493,14 @@
             }
           }
         }
-      }
-    },
-    "/{appId}/transfers/{transferId}" : {
+      },
       "get" : {
         "security" : [ {
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "app" ],
-        "summary" : "Gets the transfer with the given transfer ID",
-        "description" : "Returns a Transfer object",
+        "summary" : "Gets the newest transfers of the supplied account id",
+        "description" : "Returns a list of transfers",
         "parameters" : [ {
           "name" : "appId",
           "in" : "path",
@@ -512,9 +510,73 @@
             "type" : "string"
           }
         }, {
+          "name" : "accountId",
+          "in" : "query",
+          "description" : "The account ID of the transfers owner.",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "The amount of transfers to fetch.",
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1,
+            "maximum" : 100
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ArrayOfTransfers"
+                }
+              }
+            }
+          },
+          "400" : {
+            "$ref" : "#/components/responses/BadRequest"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/UnauthorizedError"
+          },
+          "500" : {
+            "description" : "Server error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/{appId}/transfers/{transferId}" : {
+      "get" : {
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "app" ],
+        "summary" : "Gets the transfer with the given transfer id",
+        "description" : "Returns a Transfer object",
+        "parameters" : [ {
+          "name" : "appId",
+          "in" : "path",
+          "description" : "Your app id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "name" : "transferId",
           "in" : "path",
-          "description" : "The ID of the transfer to retrieve.",
+          "description" : "The id of the transfer to retrieve",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -734,6 +796,68 @@
             }
           }
         }
+      },
+      "get" : {
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "app" ],
+        "summary" : "Gets the latest withdrawals of the supplied account id",
+        "description" : "Returns a list of withdrawals",
+        "parameters" : [ {
+          "name" : "appId",
+          "in" : "path",
+          "description" : "Your app ID.",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "accountId",
+          "in" : "query",
+          "description" : "The account ID of the withdrawals owner.",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "The amount of withdrawals to fetch.",
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1,
+            "maximum" : 100
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ArrayOfWithdrawals"
+                }
+              }
+            }
+          },
+          "400" : {
+            "$ref" : "#/components/responses/BadRequest"
+          },
+          "401" : {
+            "$ref" : "#/components/responses/UnauthorizedError"
+          },
+          "500" : {
+            "description" : "Server error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServiceError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/{appId}/withdrawals/{withdrawalId}" : {
@@ -742,12 +866,12 @@
           "bearerAuth" : [ ]
         } ],
         "tags" : [ "app" ],
-        "summary" : "Gets the withdrawal with the given ID",
+        "summary" : "Gets the withdrawal with the given id",
         "description" : "Returns a Withdrawal object",
         "parameters" : [ {
           "name" : "appId",
           "in" : "path",
-          "description" : "Your app ID.",
+          "description" : "Your app id",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -932,6 +1056,12 @@
           }
         }
       },
+      "ArrayOfTransfers" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/Transfer"
+        }
+      },
       "Transfer" : {
         "type" : "object",
         "properties" : {
@@ -993,6 +1123,12 @@
           "serviceCharge" : {
             "type" : "integer"
           }
+        }
+      },
+      "ArrayOfWithdrawals" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/Withdrawal"
         }
       },
       "Withdrawal" : {
