@@ -265,6 +265,22 @@ exports.onServiceUserCreated = functions.auth.user().onCreate(async (user) => {
 // =============================================================================
 
 
+exports.onAccountWrite = functions.firestore.document(`/apps/{appId}/accounts/accountId`)
+.onWrite(async (change, context) => {
+  const newState = change.after.data();
+
+  if (!newState) {
+    return;
+  }
+
+  const historyRef  = `/apps/${context.params.appId}/accounts/${context.params.accountId}/accountHistory`;
+  const accountData = newState as any;
+
+  accountData.timestamp = Date.now();
+
+  await admin.firestore().collection(historyRef).add(accountData);
+});
+
 exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
 .onUpdate(async (change, context) => {
   const oldState  = change.before.data() as Deposit;
@@ -275,8 +291,13 @@ exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/
 
 exports.onDepositWrite = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
 .onWrite(async (change, context) => {
-  const newState    = change.after.data() as Deposit;
-  const historyRef  = `/apps/${context.params.appId}/deposits/${context.params.depositId}/depositHistory`;
+  const newState = change.after.data();
+
+  if (!newState) {
+    return;
+  }
+
+  const historyRef = `/apps/${context.params.appId}/deposits/${context.params.depositId}/depositHistory`;
 
   await admin.firestore().collection(historyRef).add(newState);
 });
@@ -298,10 +319,15 @@ exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdr
 
 exports.onWithdrawalWrite = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
 .onWrite(async (change, context) => {
-  const state       = change.after.data() as Withdrawal;
-  const historyRef  = `/apps/${context.params.appId}/withdrawals/${context.params.withdrawalId}/withdrawalHistory`;
+  const newState = change.after.data();
 
-  await admin.firestore().collection(historyRef).add(state);
+  if (!newState) {
+    return;
+  }
+
+  const historyRef = `/apps/${context.params.appId}/withdrawals/${context.params.withdrawalId}/withdrawalHistory`;
+
+  await admin.firestore().collection(historyRef).add(newState);
 });
 
 exports.onServiceChargeUpdated = functions.firestore.document(`/apps/{appId}/serviceCharges/{chargeId}`)
