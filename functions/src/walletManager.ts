@@ -531,9 +531,21 @@ export async function warmupCloudWallet(jwtToken: string, serviceConfig: Service
     return false;
   }
 
-  // TODO: check status uptime if its time for an App Engine wallet restart
+  const maxUptime = 1000 * 60 * 60 * 4 // 4 hours
+  let restartRequired = false;
 
-  if (status.started && status.daemonHost === serviceConfig.daemonHost) {
+  if (!status.started) {
+    restartRequired = true;
+  } else {
+    if (status.daemonHost !== serviceConfig.daemonHost) {
+      restartRequired = true;
+    }
+    if (status.uptime && status.uptime > maxUptime) {
+      restartRequired = true;
+    }
+  }
+
+  if (!restartRequired) {
     return true;
   }
 
