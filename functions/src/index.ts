@@ -186,6 +186,29 @@ export const getServiceStatus = functions.https.onCall(async (data, context) => 
   return status;
 });
 
+export const rewindAppEngineWallet = functions.https.onCall(async (data, context) => {
+  const isAdmin = await isAdminUserCheck(context);
+
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
+  }
+
+  const distance: number | undefined = data.distance;
+
+  if (!distance) {
+    throw new functions.https.HttpsError('invalid-argument', 'missing distance parameter');
+  }
+
+  const [walletHeight, error] = await WalletManager.rewindAppEngineWallet(distance);
+
+  if (!walletHeight) {
+    const err = error as ServiceError;
+    throw new functions.https.HttpsError('internal', err.message);
+  }
+
+  return { walletHeight };
+});
+
 export const getDepositHistory = functions.https.onCall(async (data, context) => {
   const isAdmin = await isAdminUserCheck(context);
 

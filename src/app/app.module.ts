@@ -73,6 +73,7 @@ import { NodeManagementComponent } from './admin/node-management/node-management
 import { NodeInfoCardComponent } from './admin/node-info-card/node-info-card.component';
 import { EditNodeDialogComponent } from './admin/dialogs/edit-node-dialog/edit-node-dialog.component';
 import { ConfirmationDialogComponent } from './dialogs/confirmation-dialog/confirmation-dialog.component';
+import { RewindWalletDialogComponent } from './admin/rewind-wallet-dialog/rewind-wallet-dialog.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -139,7 +140,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     NodeManagementComponent,
     NodeInfoCardComponent,
     EditNodeDialogComponent,
-    ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    RewindWalletDialogComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
@@ -154,7 +156,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     SetWebhookDialogComponent,
     PasswordRecoveryDialogComponent,
     EditNodeDialogComponent,
-    ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    RewindWalletDialogComponent
   ],
   imports: [
     BrowserModule,

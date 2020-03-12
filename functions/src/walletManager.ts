@@ -518,6 +518,35 @@ export async function getCloudWalletStatus(jwtToken: string): Promise<WalletStat
   }
 }
 
+export async function rewindAppEngineWallet(distance: number): Promise<[number | undefined, undefined | ServiceError]> {
+  const [token, jwtError] = await getCloudWalletToken();
+
+  if (!token) {
+    console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
+    return [undefined, jwtError];
+  }
+
+  const cloudWalletApi = getCloudWalletApiBase();
+
+  const reqConfig = {
+    headers: { Authorization: "Bearer " + token }
+  }
+
+  const rewindEndpoint = `${cloudWalletApi}/rewind`;
+
+  console.log(`rewinding App Engine wallet by distance: ${distance}`);
+
+  try {
+    const reqBody = { distance: distance }
+    const rewindResponse = await axios.post(rewindEndpoint, reqBody, reqConfig);
+    const walletHeight: number = rewindResponse.data.walletHeight;
+
+    return [walletHeight, undefined];
+  } catch (error) {
+    return [undefined, new ServiceError('service/unknown-error', error)];
+  }
+}
+
 export async function warmupCloudWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
   const cloudWalletApi = getCloudWalletApiBase();
 

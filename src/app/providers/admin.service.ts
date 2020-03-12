@@ -24,6 +24,14 @@ export class AdminService {
     }
   }
 
+  async rewindAppEngineWallet(distance: number): Promise<number> {
+    const response = await this.afFunctions.httpsCallable('rewindAppEngineWallet')({
+      distance
+    }).toPromise();
+
+    return response.walletHeight;
+  }
+
   async getDepositHistory(depositId: string): Promise<Deposit[] | undefined> {
     try {
       const response = await this.afFunctions.httpsCallable('getDepositHistory')({
