@@ -199,7 +199,13 @@ export const rewindAppEngineWallet = functions.https.onCall(async (data, context
     throw new functions.https.HttpsError('invalid-argument', 'missing distance parameter');
   }
 
-  const [walletHeight, error] = await WalletManager.rewindAppEngineWallet(distance);
+  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
+
+  if (!serviceConfig) {
+    throw new functions.https.HttpsError('internal', (configError as ServiceError).message);
+  }
+
+  const [walletHeight, error] = await WalletManager.rewindAppEngineWallet(distance, serviceConfig);
 
   if (!walletHeight) {
     const err = error as ServiceError;

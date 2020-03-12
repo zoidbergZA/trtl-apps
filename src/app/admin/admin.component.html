@@ -57,7 +57,7 @@
                 </tr>
                 <tr *ngIf="info?.networkHeight && info?.walletHeight">
                   <td class="table-key">Height delta</td>
-                  <td class="table-value">{{ (info?.networkHeight || 0) - (info?.networkHeight || 0) }}</td>
+                  <td class="table-value">{{ (info?.networkHeight || 0) - (info?.walletHeight || 0) }}</td>
                 </tr>
               </table>
             </div>
