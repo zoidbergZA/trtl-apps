@@ -27,7 +27,7 @@ export class AdminComponent implements OnInit {
     this.fetchingStatus = false;
   }
 
-  rewindAppEngineWalletClick() {
+  rewindServiceWallet() {
     this.dialog.open(RewindWalletDialogComponent, {
       width: '800px',
     });
@@ -56,5 +56,5 @@ export class AdminComponent implements OnInit {
         .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
     return result;
-  };
+  }
 }

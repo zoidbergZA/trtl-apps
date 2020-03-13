@@ -12,7 +12,7 @@ export class RewindWalletDialogComponent implements OnInit {
 
   form: FormGroup;
   working = false;
-  newWalletHeight: number | undefined;
+  succeeded = false;
   errorMessage: string | undefined;
 
   constructor(
@@ -30,13 +30,13 @@ export class RewindWalletDialogComponent implements OnInit {
   }
 
   onSubmit(result: any) {
-    this.newWalletHeight = undefined;
+    this.succeeded = false;
     this.errorMessage = undefined;
     this.working = true;
 
     this.adminService
-      .rewindAppEngineWallet(result.distance)
-      .then(height => this.newWalletHeight = height)
+      .rewindServiceWallet(result.distance)
+      .then(_ => this.succeeded = true)
       .catch(error => this.errorMessage = error.message)
       .finally(() => this.working = false);
   }

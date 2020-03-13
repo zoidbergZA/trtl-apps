@@ -186,7 +186,7 @@ export const getServiceStatus = functions.https.onCall(async (data, context) => 
   return status;
 });
 
-export const rewindAppEngineWallet = functions.https.onCall(async (data, context) => {
+export const rewindWallet = functions.https.onCall(async (data, context) => {
   const isAdmin = await isAdminUserCheck(context);
 
   if (!isAdmin) {
@@ -199,20 +199,38 @@ export const rewindAppEngineWallet = functions.https.onCall(async (data, context
     throw new functions.https.HttpsError('invalid-argument', 'missing distance parameter');
   }
 
-  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
+  const fetchResults = await Promise.all([
+    WalletManager.getServiceWallet(false),
+    WalletManager.getCloudWalletToken()
+  ]);
 
-  if (!serviceConfig) {
-    throw new functions.https.HttpsError('internal', (configError as ServiceError).message);
+  const [serviceWallet, serviceError] = fetchResults[0];
+  const [token, tokenError] = fetchResults[1];
+
+  if (!serviceWallet) {
+    throw new functions.https.HttpsError('internal', (serviceError as ServiceError).message);
   }
 
-  const [walletHeight, error] = await WalletManager.rewindAppEngineWallet(distance, serviceConfig);
-
-  if (!walletHeight) {
-    const err = error as ServiceError;
-    throw new functions.https.HttpsError('internal', err.message);
+  if (!token) {
+    throw new functions.https.HttpsError('internal', (tokenError as ServiceError).message);
   }
 
-  return { walletHeight };
+  const [wHeight, ,] = serviceWallet.wallet.getSyncStatus();
+  const rewindHeight = wHeight - distance;
+
+  console.log(`rewind wallet to height: ${rewindHeight}`);
+  await serviceWallet.wallet.rewind(rewindHeight);
+
+  const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
+  const appEngineRestarted = await WalletManager.startAppEngineWallet(token, serviceWallet.serviceConfig);
+
+  console.log(`app engine wallet successfully restarted? ${appEngineRestarted}`);
+
+  if (!saveTimestamp) {
+    throw new functions.https.HttpsError('internal', (saveError as ServiceError).message);
+  }
+
+  return { status: 'OK' };
 });
 
 export const getDepositHistory = functions.https.onCall(async (data, context) => {
@@ -459,50 +477,6 @@ export const createInvitationsBatch = functions.https.onRequest(async (request, 
 //     console.log(JSON.stringify(request.body));
 //     response.status(200).send('OK');
 // });
-
-export const rewindMasterWallet = functions.https.onRequest(async (request, response) => {
-  const adminSignature = request.get(Constants.serviceAdminRequestHeader);
-
-  if (adminSignature !== functions.config().serviceadmin.password) {
-    response.status(403).send('bad request');
-    return;
-  }
-
-  const [serviceWallet, error] = await WalletManager.getServiceWallet(false);
-
-  if (!serviceWallet) {
-    response.status(500).send((error as ServiceError).message);
-    return;
-  }
-
-  let rewindHeight: number | undefined = Number(request.query.height);
-
-  const rewindDistance: number | undefined = Number(request.query.distance);
-
-  if (rewindDistance) {
-    const [wHeight, ,] = serviceWallet.wallet.getSyncStatus();
-
-    rewindHeight = wHeight - rewindDistance;
-  }
-
-  console.log(`rewind to height: ${rewindHeight}`);
-
-  if (!rewindHeight) {
-    response.status(400).send('bad request');
-    return;
-  }
-
-  await serviceWallet.wallet.rewind(rewindHeight);
-
-  const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
-
-  if (!saveTimestamp) {
-    response.status(500).send((saveError as ServiceError).message);
-    return;
-  }
-
-  response.status(200).send(`OK! :: rewind saved at ${saveTimestamp}`);
-});
 
 
 // =============================================================================

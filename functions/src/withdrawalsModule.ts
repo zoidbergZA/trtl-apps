@@ -689,6 +689,8 @@ async function processConfirmingWithdrawal(
   const withdrawalPath  = `apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`;
   const transaction     = transactions.find(tx => tx.paymentID === withdrawal.paymentId);
 
+  console.log(`process confirming withdrawal => hash [${withdrawal.txHash}]`);
+
   if (transaction) {
     const blockHeight = transaction.blockHeight;
 
@@ -710,6 +712,8 @@ async function processConfirmingWithdrawal(
       }
     }
   } else {
+    console.log(`confirming withdrawal not found in wallet transactions => hash [${withdrawal.txHash}]`);
+
     // check if the withdrawal request failed
     const failureHeight = withdrawal.requestedAtBlock + serviceConfig.withdrawTimoutBlocks;
 

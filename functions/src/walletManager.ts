@@ -557,12 +557,6 @@ export async function rewindAppEngineWallet(
 }
 
 export async function warmupCloudWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
-  const cloudWalletApi = getCloudWalletApiBase();
-
-  const reqConfig = {
-    headers: { Authorization: "Bearer " + jwtToken }
-  }
-
   const status = await getCloudWalletStatus(jwtToken);
 
   if (!status) {
@@ -587,7 +581,17 @@ export async function warmupCloudWallet(jwtToken: string, serviceConfig: Service
     return true;
   }
 
+
+  return await startAppEngineWallet(jwtToken, serviceConfig);
+}
+
+export async function startAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
   console.log(`starting up coud wallet...`);
+  const cloudWalletApi = getCloudWalletApiBase();
+
+  const reqConfig = {
+    headers: { Authorization: "Bearer " + jwtToken }
+  }
 
   const startEndpoint = `${cloudWalletApi}/start`;
 

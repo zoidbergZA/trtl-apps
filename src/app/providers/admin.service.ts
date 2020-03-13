@@ -24,8 +24,8 @@ export class AdminService {
     }
   }
 
-  async rewindAppEngineWallet(distance: number): Promise<number> {
-    const response = await this.afFunctions.httpsCallable('rewindAppEngineWallet')({
+  async rewindServiceWallet(distance: number): Promise<number> {
+    const response = await this.afFunctions.httpsCallable('rewindWallet')({
       distance
     }).toPromise();
 
