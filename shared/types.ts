@@ -221,3 +221,12 @@ export interface WalletStatus {
   walletHeight?: number;
   networkHeight?: number;
 }
+
+export interface DaemonErrorEvent {
+  id: string;
+  timestamp: number;
+  appId: string;
+  accountId: string;
+  preparedWithdrawalId: string;
+  daemonErrorCode: number;
+}

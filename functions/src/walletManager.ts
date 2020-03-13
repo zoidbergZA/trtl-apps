@@ -280,7 +280,7 @@ export async function sendPreparedTransaction(
 
     return [sendResult, undefined];
   } catch (error) {
-    return [undefined, error.response.data];
+    return [undefined, new ServiceError('service/unknown-error', error.response.data)];
   }
 }
 

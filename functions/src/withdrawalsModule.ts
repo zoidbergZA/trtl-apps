@@ -9,7 +9,8 @@ import { createCallback, CallbackCode } from './webhookModule';
 import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate,
   ServiceCharge, ServiceChargeUpdate, PreparedWithdrawal,
   PreparedWithdrawalUpdate,
-  Fees} from '../../shared/types';
+  Fees,
+  DaemonErrorEvent} from '../../shared/types';
 import { generateRandomSignatureSegement } from './utils';
 import { ServiceConfig, ServiceWallet } from './types';
 import { Transaction, PreparedTransaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
@@ -322,6 +323,19 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
     txSentUpdate.status = 'faulty';
     txSentUpdate.daemonErrorCode = sendTxResult.error.errorCode;
 
+    const errorDocRef = admin.firestore().collection('daemonErrors').doc();
+
+    const errorEvent: DaemonErrorEvent = {
+      id: errorDocRef.id,
+      timestamp: Date.now(),
+      appId: pendingWithdrawal.appId,
+      accountId: pendingWithdrawal.accountId,
+      preparedWithdrawalId: pendingWithdrawal.id,
+      daemonErrorCode: sendTxResult.error.errorCode
+    }
+
+    await errorDocRef.set(errorEvent);
+
     Analytics.trackEvent('withdrawal daemon error', {
       name: "withdrawal daemon error",
       properties: {
@@ -462,7 +476,7 @@ async function processLostWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
   const [walletHeight, ,] = serviceWallet.wallet.getSyncStatus();
 
   // a lost withdrawal can be safely cancelled based on some node error codes.
-  if (hasConfirmedFailureErrorCode(withdrawal, walletHeight, serviceWallet.serviceConfig)) {
+  if (hasConfirmedFailureErrorCode(withdrawal)) {
     return cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
   }
 
@@ -532,7 +546,7 @@ async function processFaultyWithdrawal(
     return await admin.firestore().doc(`apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`).update(updateObject);
   }
 
-  if (hasConfirmedFailureErrorCode(withdrawal, walletHeight, serviceWallet.serviceConfig)) {
+  if (hasConfirmedFailureErrorCode(withdrawal)) {
     await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
     return;
   } else if (withdrawal.retries < 5) {
@@ -632,10 +646,7 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
   }
 }
 
-function hasConfirmedFailureErrorCode(
-  withdrawal: Withdrawal,
-  walletHeight: number,
-  serviceConfig: ServiceConfig): boolean {
+function hasConfirmedFailureErrorCode(withdrawal: Withdrawal): boolean {
 
   if (!withdrawal.daemonErrorCode) {
     return false;
