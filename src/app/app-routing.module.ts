@@ -19,6 +19,7 @@ import { DepositInspectorComponent } from './admin/deposit-inspector/deposit-ins
 import { ServiceChargeManagementComponent } from './admin/service-charge-management/service-charge-management.component';
 import { ConfigManagementComponent } from './admin/config-management/config-management.component';
 import { ReportsComponent } from './admin/reports/reports.component';
+import { AdminGuard } from './guards/admin-guard.service';
 
 const redirectUnauthorizedToSignIn  = () => redirectUnauthorizedTo(['/signin']);
 const redirectLoggedInToConsole     = () => redirectLoggedInTo(['/console']);
@@ -67,38 +68,32 @@ const routes: Routes = [
   {
     path:         'admin',
     component:    AdminComponent,
-    canActivate:  [AngularFireAuthGuard],
-    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
+    canActivate:  [AdminGuard]
   },
   {
     path:         'admin/config-management',
     component:    ConfigManagementComponent,
-    canActivate:  [AngularFireAuthGuard],
-    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
+    canActivate:  [AdminGuard]
   },
   {
     path:         'admin/reports',
     component:    ReportsComponent,
-    canActivate:  [AngularFireAuthGuard],
-    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
+    canActivate:  [AdminGuard]
   },
   {
     path:         'admin/charges-management',
     component:    ServiceChargeManagementComponent,
-    canActivate:  [AngularFireAuthGuard],
-    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
+    canActivate:  [AdminGuard]
   },
   {
     path:         'admin/deposit-inspector',
     component:    DepositInspectorComponent,
-    canActivate:  [AngularFireAuthGuard],
-    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
+    canActivate:  [AdminGuard]
   },
   {
     path:         'admin/withdrawal-inspector',
     component:    WithdrawalInspectorComponent,
-    canActivate:  [AngularFireAuthGuard],
-    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
+    canActivate:  [AdminGuard]
   },
   {
     path:         'newapp',
