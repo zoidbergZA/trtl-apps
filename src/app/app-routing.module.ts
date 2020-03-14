@@ -8,9 +8,6 @@ import { RegisterComponent } from './sign-in/register/register.component';
 import { NewProjectComponent } from './console/new-project/new-project.component';
 import { OverviewComponent } from './console/project/overview/overview.component';
 import { WebapiComponent } from './console/project/webapi/webapi.component';
-// import { GetStartedNodeComponent } from './getting-started/get-started-node/get-started-node.component';
-// import { GetStartedUnityComponent } from './getting-started/get-started-unity/get-started-unity.component';
-// import { GetStartedHttpComponent } from './getting-started/get-started-http/get-started-http.component';
 import { GettingStartedComponent } from './getting-started/getting-started.component';
 import { SupportComponent } from './support/support.component';
 import { WebhooksComponent } from './documentation/webhooks/webhooks.component';
@@ -21,6 +18,7 @@ import { WithdrawalInspectorComponent } from './admin/withdrawal-inspector/withd
 import { DepositInspectorComponent } from './admin/deposit-inspector/deposit-inspector.component';
 import { ServiceChargeManagementComponent } from './admin/service-charge-management/service-charge-management.component';
 import { ConfigManagementComponent } from './admin/config-management/config-management.component';
+import { ReportsComponent } from './admin/reports/reports.component';
 
 const redirectUnauthorizedToSignIn  = () => redirectUnauthorizedTo(['/signin']);
 const redirectLoggedInToConsole     = () => redirectLoggedInTo(['/console']);
@@ -38,18 +36,6 @@ const routes: Routes = [
     path:         'getstarted',
     component:    GettingStartedComponent,
   },
-  // {
-  //   path:         'getstarted/node',
-  //   component:    GetStartedNodeComponent,
-  // },
-  // {
-  //   path:         'getstarted/unity',
-  //   component:    GetStartedUnityComponent,
-  // },
-  // {
-  //   path:         'getstarted/http',
-  //   component:    GetStartedHttpComponent,
-  // },
   {
     path:         'support',
     component:    SupportComponent,
@@ -87,6 +73,12 @@ const routes: Routes = [
   {
     path:         'admin/config-management',
     component:    ConfigManagementComponent,
+    canActivate:  [AngularFireAuthGuard],
+    data:         { authGuardPipe: redirectUnauthorizedToSignIn }
+  },
+  {
+    path:         'admin/reports',
+    component:    ReportsComponent,
     canActivate:  [AngularFireAuthGuard],
     data:         { authGuardPipe: redirectUnauthorizedToSignIn }
   },

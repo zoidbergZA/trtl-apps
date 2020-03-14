@@ -74,6 +74,7 @@ import { NodeInfoCardComponent } from './admin/node-info-card/node-info-card.com
 import { EditNodeDialogComponent } from './admin/dialogs/edit-node-dialog/edit-node-dialog.component';
 import { ConfirmationDialogComponent } from './dialogs/confirmation-dialog/confirmation-dialog.component';
 import { RewindWalletDialogComponent } from './admin/rewind-wallet-dialog/rewind-wallet-dialog.component';
+import { ReportsComponent } from './admin/reports/reports.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -141,7 +142,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     NodeInfoCardComponent,
     EditNodeDialogComponent,
     ConfirmationDialogComponent,
-    RewindWalletDialogComponent
+    RewindWalletDialogComponent,
+    ReportsComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
