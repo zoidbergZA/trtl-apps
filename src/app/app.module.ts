@@ -75,6 +75,7 @@ import { EditNodeDialogComponent } from './admin/dialogs/edit-node-dialog/edit-n
 import { ConfirmationDialogComponent } from './dialogs/confirmation-dialog/confirmation-dialog.component';
 import { RewindWalletDialogComponent } from './admin/rewind-wallet-dialog/rewind-wallet-dialog.component';
 import { ReportsComponent } from './admin/reports/reports.component';
+import { DaemonErrorsComponent } from './admin/daemon-errors/daemon-errors.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -143,7 +144,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     EditNodeDialogComponent,
     ConfirmationDialogComponent,
     RewindWalletDialogComponent,
-    ReportsComponent
+    ReportsComponent,
+    DaemonErrorsComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,

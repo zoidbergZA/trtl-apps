@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireFunctions } from '@angular/fire/functions';
-import { ServiceStatus, Withdrawal, Deposit, Account } from 'shared/types';
+import { ServiceStatus, Withdrawal, Deposit, Account, DaemonErrorEvent } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { ServiceConfig, ServiceNode } from 'functions/src/types';
@@ -65,6 +65,14 @@ export class AdminService {
   getServiceNodes$(): Observable<ServiceNode[]> {
     return this.afs
       .collection<ServiceNode>('nodes', ref => ref.orderBy('priority', 'desc'))
+      .valueChanges();
+  }
+
+  getDaemonErrors$(): Observable<DaemonErrorEvent[]> {
+    return this.afs.
+      collection<DaemonErrorEvent>('admin/reports/daemonErrors', ref =>
+        ref.orderBy('timestamp', 'desc')
+        .limit(50))
       .valueChanges();
   }
 

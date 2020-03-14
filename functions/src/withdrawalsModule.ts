@@ -323,7 +323,7 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
     txSentUpdate.status = 'faulty';
     txSentUpdate.daemonErrorCode = sendTxResult.error.errorCode;
 
-    const errorDocRef = admin.firestore().collection('reports/daemonErrors').doc();
+    const errorDocRef = admin.firestore().collection('admin/reports/daemonErrors').doc();
 
     const errorEvent: DaemonErrorEvent = {
       id: errorDocRef.id,
