@@ -205,14 +205,14 @@ export async function prepareAccountTransaction(
   paymentId: string,
   amount: number): Promise<[SendTransactionResult | undefined, undefined | ServiceError]> {
 
-  const [token, jwtError] = await getCloudWalletToken();
+  const [token, jwtError] = await getAppEngineToken();
 
   if (!token) {
     console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
     return [undefined, jwtError];
   }
 
-  const walletReady = await warmupCloudWallet(token, serviceConfig);
+  const walletReady = await warmupAppEngineWallet(token, serviceConfig);
 
   console.log(`wallet ready? ${walletReady}`);
 
@@ -250,14 +250,14 @@ export async function sendPreparedTransaction(
   preparedTxHash: string,
   serviceConfig: ServiceConfig): Promise<[SendTransactionResult | undefined, undefined | ServiceError]> {
 
-  const [token, jwtError] = await getCloudWalletToken();
+  const [token, jwtError] = await getAppEngineToken();
 
   if (!token) {
     console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
     return [undefined, jwtError];
   }
 
-  const walletReady = await warmupCloudWallet(token, serviceConfig);
+  const walletReady = await warmupAppEngineWallet(token, serviceConfig);
 
   if (!walletReady) {
     return [undefined, new ServiceError('service/unknown-error', 'cloud wallet not ready.')];
@@ -522,7 +522,7 @@ export async function rewindAppEngineWallet(
   distance: number,
   serviceConfig: ServiceConfig): Promise<[number | undefined, undefined | ServiceError]> {
 
-  const [token, jwtError] = await getCloudWalletToken();
+  const [token, jwtError] = await getAppEngineToken();
 
   if (!token) {
     console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
@@ -535,7 +535,7 @@ export async function rewindAppEngineWallet(
     headers: { Authorization: "Bearer " + token }
   }
 
-  const walletStarted = await warmupCloudWallet(token, serviceConfig);
+  const walletStarted = await warmupAppEngineWallet(token, serviceConfig);
 
   if (!walletStarted) {
     return [undefined, new ServiceError('service/unknown-error', 'failed to warmup app engine wallet.')]
@@ -556,7 +556,7 @@ export async function rewindAppEngineWallet(
   }
 }
 
-export async function warmupCloudWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
+export async function warmupAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
   const status = await getCloudWalletStatus(jwtToken);
 
   if (!status) {
@@ -610,7 +610,7 @@ export async function startAppEngineWallet(jwtToken: string, serviceConfig: Serv
   }
 }
 
-export async function getCloudWalletToken(): Promise<[string | undefined, undefined | ServiceError]> {
+export async function getAppEngineToken(): Promise<[string | undefined, undefined | ServiceError]> {
   const client_email    = functions.config().cloudwallet.client_email;
   const target_audience = functions.config().cloudwallet.target_audience;
   const private_key_raw = functions.config().cloudwallet.private_key;

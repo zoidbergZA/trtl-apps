@@ -180,10 +180,11 @@ export async function getServiceStatus(): Promise<[ServiceStatus | undefined, un
     console.log((serviceWalletError as ServiceError).message);
   }
 
-  const [cloudWalletToken, tokenError] = await WalletManager.getCloudWalletToken();
+  const [cloudWalletToken, tokenError] = await WalletManager.getAppEngineToken();
 
   if (cloudWalletToken && serviceWallet) {
-    await WalletManager.warmupCloudWallet(cloudWalletToken, serviceWallet.serviceConfig);
+    await WalletManager.warmupAppEngineWallet(cloudWalletToken, serviceWallet.serviceConfig);
+
     const walletStatus = await WalletManager.getCloudWalletStatus(cloudWalletToken);
     status.appEngineWalletStatus = walletStatus;
 

@@ -201,7 +201,7 @@ export const rewindWallet = functions.https.onCall(async (data, context) => {
 
   const fetchResults = await Promise.all([
     WalletManager.getServiceWallet(false),
-    WalletManager.getCloudWalletToken()
+    WalletManager.getAppEngineToken()
   ]);
 
   const [serviceWallet, serviceError] = fetchResults[0];
@@ -493,7 +493,7 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
-exports.warmupCloudWallet = functions.pubsub.schedule('every 2 hours').onRun(async (context) => {
+exports.warmupAppEngineWallet = functions.pubsub.schedule('every 2 hours').onRun(async (context) => {
   const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
 
   if (!serviceConfig) {
@@ -501,21 +501,32 @@ exports.warmupCloudWallet = functions.pubsub.schedule('every 2 hours').onRun(asy
     return;
   }
 
-  const [token, tokenError] = await WalletManager.getCloudWalletToken();
+  const [token, tokenError] = await WalletManager.getAppEngineToken();
 
   if (!token) {
     console.log((tokenError as ServiceError).message);
     return;
   }
 
-  await WalletManager.warmupCloudWallet(token, serviceConfig);
+  await WalletManager.warmupAppEngineWallet(token, serviceConfig);
 });
 
-exports.maintenanceJobs = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
-  const [serviceWallet, error] = await WalletManager.getServiceWallet();
+exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(async (context) => {
+  const fetchResults = await Promise.all([
+    WalletManager.getServiceWallet(false),
+    WalletManager.getAppEngineToken()
+  ]);
+
+  const [serviceWallet, serviceError] = fetchResults[0];
+  const [token, tokenError] = fetchResults[1];
 
   if (!serviceWallet) {
-    console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
+    console.error(`failed to get service wallet: ${(serviceError as ServiceError).message}`);
+    return;
+  }
+
+  if (!token) {
+    console.error(`failed to get app engine token: ${(tokenError as ServiceError).message}`);
     return;
   }
 
@@ -526,6 +537,24 @@ exports.maintenanceJobs = functions.pubsub.schedule('every 6 hours').onRun(async
   jobs.push(WithdrawalsModule.processLostWithdrawals(serviceWallet));
 
   await Promise.all(jobs);
+
+  const rewindDistance  = 2000;
+  const [wHeight, ,]    = serviceWallet.wallet.getSyncStatus();
+  const rewindHeight    = wHeight - rewindDistance;
+
+  console.log(`rewind wallet to height: ${rewindHeight}`);
+  await serviceWallet.wallet.rewind(rewindHeight);
+
+  const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
+  const appEngineRestarted = await WalletManager.startAppEngineWallet(token, serviceWallet.serviceConfig);
+
+  if (saveTimestamp) {
+    console.log(`wallet rewind to height ${rewindHeight} successfully saved at: ${saveTimestamp}`);
+  } else {
+    console.error((saveError as ServiceError).message);
+  }
+
+  console.log(`app engine wallet restart successful: ${appEngineRestarted}`);
 });
 
 exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (context) => {
@@ -538,11 +567,6 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
     console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
     return;
   }
-
-  // const txs = serviceWallet.wallet.getTransactions(undefined, undefined, false);
-  // console.log(`all txs:`);
-  // console.log(JSON.stringify(txs));
-
 
   const updateDeposits    = DepositsModule.updateDeposits(serviceWallet);
   const updateWithdrawals = WithdrawalsModule.updateWithdrawals(serviceWallet);
