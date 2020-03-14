@@ -331,7 +331,9 @@ export async function processPendingWithdrawal(pendingWithdrawal: Withdrawal): P
       appId: pendingWithdrawal.appId,
       accountId: pendingWithdrawal.accountId,
       preparedWithdrawalId: pendingWithdrawal.id,
-      daemonErrorCode: sendTxResult.error.errorCode
+      daemonErrorCode: sendTxResult.error.errorCode,
+      nodeUrl: serviceWallet.serviceConfig.daemonHost,
+      port: serviceWallet.serviceConfig.daemonPort
     }
 
     await errorDocRef.set(errorEvent);

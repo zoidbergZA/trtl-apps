@@ -229,4 +229,6 @@ export interface DaemonErrorEvent {
   accountId: string;
   preparedWithdrawalId: string;
   daemonErrorCode: number;
+  nodeUrl: string;
+  port: number;
 }
