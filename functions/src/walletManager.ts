@@ -368,6 +368,14 @@ export async function saveMasterWallet(wallet: WalletBackend): Promise<[number |
   console.log(`save wallet firebase succeeded? ${saveResults[0]}`);
   console.log(`save wallet appEngine succeeded? ${saveResults[1]}`);
 
+  if (saveResults[0]) {
+    const updateObject: WalletInfoUpdate = {
+      lastSaveAt: Date.now()
+    }
+
+    await admin.firestore().doc('wallets/master').update(updateObject);
+  }
+
   return [timestamp, undefined];
 }
 
@@ -377,13 +385,6 @@ async function saveWalletFirebase(filepath: string, encryptedWallet: string): Pr
     const file = bucket.file(filepath);
 
     await file.save(encryptedWallet);
-
-    const updateObject: WalletInfoUpdate = {
-      lastSaveAt: Date.now()
-    }
-
-    await admin.firestore().doc('wallets/master').update(updateObject);
-
     return true;
   } catch (error) {
     console.error(error);
