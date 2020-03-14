@@ -532,7 +532,7 @@ exports.rewindServiceWallet = functions.pubsub.schedule('every 2 hours').onRun(a
 });
 
 exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(async (context) => {
-  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false),;
+  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false);
 
   if (!serviceWallet) {
     console.error(`failed to get service wallet: ${(serviceError as ServiceError).message}`);
