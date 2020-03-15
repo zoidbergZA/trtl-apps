@@ -512,7 +512,7 @@ exports.rewindServiceWallet = functions.pubsub.schedule('every 2 hours').onRun(a
     return;
   }
 
-  const rewindDistance  = 400;
+  const rewindDistance  = 480;
   const [wHeight, ,]    = serviceWallet.wallet.getSyncStatus();
   const rewindHeight    = wHeight - rewindDistance;
 

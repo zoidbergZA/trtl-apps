@@ -119,7 +119,11 @@ export async function getServiceWallet(
   return [serviceWallet, undefined];
 }
 
-export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart = false): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
+export async function getMasterWallet(
+  serviceConfig: ServiceConfig,
+  forceRestart = false,
+  rewindDistanceOnStart = 40): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
+
   const walletInfo = await getMasterWalletInfo();
 
   if(!walletInfo) {
@@ -151,10 +155,6 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
     if (restartNeeded || forceRestart) {
       console.log(`starting new wallet instance...`);
 
-      await masterWallet.stop();
-      masterWallet.removeAllListeners();
-      masterWallet = undefined;
-
       // load and swap to a new instance of the master wallet
       const encryptedString = await getMasterWalletString();
 
@@ -168,9 +168,18 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
         return [undefined, error];
       }
 
+      if (rewindDistanceOnStart > 0) {
+        await rewindWallet(newWallet, rewindDistanceOnStart);
+      }
+
+      const oldWalletInstance = masterWallet;
+
       masterWallet = newWallet;
       masterWalletLastSaveAt = walletInfo.lastSaveAt;
       console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
+
+      await oldWalletInstance.stop();
+      oldWalletInstance.removeAllListeners();
 
       return [masterWallet, undefined];
     } else {
@@ -188,9 +197,14 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
     const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
 
     if (wallet) {
+      console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
+
+      if (rewindDistanceOnStart > 0) {
+        await rewindWallet(wallet, rewindDistanceOnStart);
+      }
+
       masterWallet = wallet;
       masterWalletLastSaveAt = walletInfo.lastSaveAt;
-      console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
     }
 
     return [wallet, error];
@@ -642,6 +656,13 @@ export async function getAppEngineToken(): Promise<[string | undefined, undefine
 
 function getCloudWalletApiBase(): string {
   return functions.config().cloudwallet.api_base;
+}
+
+async function rewindWallet(wallet: WalletBackend, distance :number): Promise<void> {
+  const [wHeight] = wallet.getSyncStatus();
+  const rewindHeight = wHeight - distance;
+
+  await wallet.rewind(rewindHeight);
 }
 
 async function startWalletFromString(
