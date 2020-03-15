@@ -119,7 +119,11 @@ export async function getServiceWallet(
   return [serviceWallet, undefined];
 }
 
-export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart = false): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
+export async function getMasterWallet(
+  serviceConfig: ServiceConfig,
+  forceRestart = false,
+  rewindDistanceOnStart = 40): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
+
   const walletInfo = await getMasterWalletInfo();
 
   if(!walletInfo) {
@@ -151,10 +155,6 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
     if (restartNeeded || forceRestart) {
       console.log(`starting new wallet instance...`);
 
-      await masterWallet.stop();
-      masterWallet.removeAllListeners();
-      masterWallet = undefined;
-
       // load and swap to a new instance of the master wallet
       const encryptedString = await getMasterWalletString();
 
@@ -168,9 +168,18 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
         return [undefined, error];
       }
 
+      if (rewindDistanceOnStart > 0) {
+        await rewindWallet(newWallet, rewindDistanceOnStart);
+      }
+
+      const oldWalletInstance = masterWallet;
+
       masterWallet = newWallet;
       masterWalletLastSaveAt = walletInfo.lastSaveAt;
       console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
+
+      await oldWalletInstance.stop();
+      oldWalletInstance.removeAllListeners();
 
       return [masterWallet, undefined];
     } else {
@@ -188,9 +197,14 @@ export async function getMasterWallet(serviceConfig: ServiceConfig, forceRestart
     const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
 
     if (wallet) {
+      console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
+
+      if (rewindDistanceOnStart > 0) {
+        await rewindWallet(wallet, rewindDistanceOnStart);
+      }
+
       masterWallet = wallet;
       masterWalletLastSaveAt = walletInfo.lastSaveAt;
-      console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
     }
 
     return [wallet, error];
@@ -205,14 +219,14 @@ export async function prepareAccountTransaction(
   paymentId: string,
   amount: number): Promise<[SendTransactionResult | undefined, undefined | ServiceError]> {
 
-  const [token, jwtError] = await getCloudWalletToken();
+  const [token, jwtError] = await getAppEngineToken();
 
   if (!token) {
     console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
     return [undefined, jwtError];
   }
 
-  const walletReady = await warmupCloudWallet(token, serviceConfig);
+  const walletReady = await warmupAppEngineWallet(token, serviceConfig);
 
   console.log(`wallet ready? ${walletReady}`);
 
@@ -250,14 +264,14 @@ export async function sendPreparedTransaction(
   preparedTxHash: string,
   serviceConfig: ServiceConfig): Promise<[SendTransactionResult | undefined, undefined | ServiceError]> {
 
-  const [token, jwtError] = await getCloudWalletToken();
+  const [token, jwtError] = await getAppEngineToken();
 
   if (!token) {
     console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
     return [undefined, jwtError];
   }
 
-  const walletReady = await warmupCloudWallet(token, serviceConfig);
+  const walletReady = await warmupAppEngineWallet(token, serviceConfig);
 
   if (!walletReady) {
     return [undefined, new ServiceError('service/unknown-error', 'cloud wallet not ready.')];
@@ -280,7 +294,7 @@ export async function sendPreparedTransaction(
 
     return [sendResult, undefined];
   } catch (error) {
-    return [undefined, error.response.data];
+    return [undefined, new ServiceError('service/unknown-error', error.response.data)];
   }
 }
 
@@ -368,6 +382,14 @@ export async function saveMasterWallet(wallet: WalletBackend): Promise<[number |
   console.log(`save wallet firebase succeeded? ${saveResults[0]}`);
   console.log(`save wallet appEngine succeeded? ${saveResults[1]}`);
 
+  if (saveResults[0]) {
+    const updateObject: WalletInfoUpdate = {
+      lastSaveAt: Date.now()
+    }
+
+    await admin.firestore().doc('wallets/master').update(updateObject);
+  }
+
   return [timestamp, undefined];
 }
 
@@ -377,13 +399,6 @@ async function saveWalletFirebase(filepath: string, encryptedWallet: string): Pr
     const file = bucket.file(filepath);
 
     await file.save(encryptedWallet);
-
-    const updateObject: WalletInfoUpdate = {
-      lastSaveAt: Date.now()
-    }
-
-    await admin.firestore().doc('wallets/master').update(updateObject);
-
     return true;
   } catch (error) {
     console.error(error);
@@ -518,13 +533,45 @@ export async function getCloudWalletStatus(jwtToken: string): Promise<WalletStat
   }
 }
 
-export async function warmupCloudWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
+export async function rewindAppEngineWallet(
+  distance: number,
+  serviceConfig: ServiceConfig): Promise<[number | undefined, undefined | ServiceError]> {
+
+  const [token, jwtError] = await getAppEngineToken();
+
+  if (!token) {
+    console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
+    return [undefined, jwtError];
+  }
+
   const cloudWalletApi = getCloudWalletApiBase();
 
   const reqConfig = {
-    headers: { Authorization: "Bearer " + jwtToken }
+    headers: { Authorization: "Bearer " + token }
   }
 
+  const walletStarted = await warmupAppEngineWallet(token, serviceConfig);
+
+  if (!walletStarted) {
+    return [undefined, new ServiceError('service/unknown-error', 'failed to warmup app engine wallet.')]
+  }
+
+  const rewindEndpoint = `${cloudWalletApi}/rewind`;
+
+  console.log(`rewinding App Engine wallet by distance: ${distance}`);
+
+  try {
+    const reqBody = { distance: distance }
+    const rewindResponse = await axios.post(rewindEndpoint, reqBody, reqConfig);
+    const walletHeight: number = rewindResponse.data.walletHeight;
+
+    return [walletHeight, undefined];
+  } catch (error) {
+    return [undefined, new ServiceError('service/unknown-error', error)];
+  }
+}
+
+export async function warmupAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
   const status = await getCloudWalletStatus(jwtToken);
 
   if (!status) {
@@ -549,7 +596,17 @@ export async function warmupCloudWallet(jwtToken: string, serviceConfig: Service
     return true;
   }
 
+
+  return await startAppEngineWallet(jwtToken, serviceConfig);
+}
+
+export async function startAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
   console.log(`starting up coud wallet...`);
+  const cloudWalletApi = getCloudWalletApiBase();
+
+  const reqConfig = {
+    headers: { Authorization: "Bearer " + jwtToken }
+  }
 
   const startEndpoint = `${cloudWalletApi}/start`;
 
@@ -568,7 +625,7 @@ export async function warmupCloudWallet(jwtToken: string, serviceConfig: Service
   }
 }
 
-export async function getCloudWalletToken(): Promise<[string | undefined, undefined | ServiceError]> {
+export async function getAppEngineToken(): Promise<[string | undefined, undefined | ServiceError]> {
   const client_email    = functions.config().cloudwallet.client_email;
   const target_audience = functions.config().cloudwallet.target_audience;
   const private_key_raw = functions.config().cloudwallet.private_key;
@@ -599,6 +656,13 @@ export async function getCloudWalletToken(): Promise<[string | undefined, undefi
 
 function getCloudWalletApiBase(): string {
   return functions.config().cloudwallet.api_base;
+}
+
+async function rewindWallet(wallet: WalletBackend, distance :number): Promise<void> {
+  const [wHeight] = wallet.getSyncStatus();
+  const rewindHeight = wHeight - distance;
+
+  await wallet.rewind(rewindHeight);
 }
 
 async function startWalletFromString(

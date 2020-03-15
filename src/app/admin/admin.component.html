@@ -57,12 +57,14 @@
                 </tr>
                 <tr *ngIf="info?.networkHeight && info?.walletHeight">
                   <td class="table-key">Height delta</td>
-                  <td class="table-value">{{ (info?.networkHeight || 0) - (info?.networkHeight || 0) }}</td>
+                  <td class="table-value">{{ (info?.networkHeight || 0) - (info?.walletHeight || 0) }}</td>
                 </tr>
               </table>
             </div>
           </div>
         </div>
+        <mat-card-title>Wallet operations</mat-card-title>
+        <button mat-stroked-button (click)="rewindServiceWallet()">rewind service wallet</button>
       </mat-card-content>
     </mat-card>
   </div>

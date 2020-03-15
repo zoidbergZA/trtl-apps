@@ -1,0 +1,14 @@
+<div class="page-content">
+  <div class="container">
+    <mat-card>
+      <mat-card-title class="title">Recent daemon errors</mat-card-title>
+      <mat-card-content>
+        <div *ngFor="let daemonError of daemonErrors$ | async">
+          <h4>{{ daemonError.timestamp | date: 'short' }}</h4>
+          <generic-object-inspector [object]="daemonError"></generic-object-inspector>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
+

@@ -186,6 +186,53 @@ export const getServiceStatus = functions.https.onCall(async (data, context) => 
   return status;
 });
 
+export const rewindWallet = functions.https.onCall(async (data, context) => {
+  const isAdmin = await isAdminUserCheck(context);
+
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
+  }
+
+  const distance: number | undefined = data.distance;
+
+  if (!distance) {
+    throw new functions.https.HttpsError('invalid-argument', 'missing distance parameter');
+  }
+
+  const fetchResults = await Promise.all([
+    WalletManager.getServiceWallet(false),
+    WalletManager.getAppEngineToken()
+  ]);
+
+  const [serviceWallet, serviceError] = fetchResults[0];
+  const [token, tokenError] = fetchResults[1];
+
+  if (!serviceWallet) {
+    throw new functions.https.HttpsError('internal', (serviceError as ServiceError).message);
+  }
+
+  if (!token) {
+    throw new functions.https.HttpsError('internal', (tokenError as ServiceError).message);
+  }
+
+  const [wHeight, ,] = serviceWallet.wallet.getSyncStatus();
+  const rewindHeight = wHeight - distance;
+
+  console.log(`rewind wallet to height: ${rewindHeight}`);
+  await serviceWallet.wallet.rewind(rewindHeight);
+
+  const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
+  const appEngineRestarted = await WalletManager.startAppEngineWallet(token, serviceWallet.serviceConfig);
+
+  console.log(`app engine wallet successfully restarted? ${appEngineRestarted}`);
+
+  if (!saveTimestamp) {
+    throw new functions.https.HttpsError('internal', (saveError as ServiceError).message);
+  }
+
+  return { status: 'OK' };
+});
+
 export const getDepositHistory = functions.https.onCall(async (data, context) => {
   const isAdmin = await isAdminUserCheck(context);
 
@@ -431,50 +478,6 @@ export const createInvitationsBatch = functions.https.onRequest(async (request, 
 //     response.status(200).send('OK');
 // });
 
-export const rewindMasterWallet = functions.https.onRequest(async (request, response) => {
-  const adminSignature = request.get(Constants.serviceAdminRequestHeader);
-
-  if (adminSignature !== functions.config().serviceadmin.password) {
-    response.status(403).send('bad request');
-    return;
-  }
-
-  const [serviceWallet, error] = await WalletManager.getServiceWallet(false);
-
-  if (!serviceWallet) {
-    response.status(500).send((error as ServiceError).message);
-    return;
-  }
-
-  let rewindHeight: number | undefined = Number(request.query.height);
-
-  const rewindDistance: number | undefined = Number(request.query.distance);
-
-  if (rewindDistance) {
-    const [wHeight, ,] = serviceWallet.wallet.getSyncStatus();
-
-    rewindHeight = wHeight - rewindDistance;
-  }
-
-  console.log(`rewind to height: ${rewindHeight}`);
-
-  if (!rewindHeight) {
-    response.status(400).send('bad request');
-    return;
-  }
-
-  await serviceWallet.wallet.rewind(rewindHeight);
-
-  const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
-
-  if (!saveTimestamp) {
-    response.status(500).send((saveError as ServiceError).message);
-    return;
-  }
-
-  response.status(200).send(`OK! :: rewind saved at ${saveTimestamp}`);
-});
-
 
 // =============================================================================
 //                              Scheduled functions
@@ -490,29 +493,49 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
-exports.warmupCloudWallet = functions.pubsub.schedule('every 2 hours').onRun(async (context) => {
-  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
+exports.rewindServiceWallet = functions.pubsub.schedule('every 2 hours').onRun(async (context) => {
+  const fetchResults = await Promise.all([
+    WalletManager.getServiceWallet(false),
+    WalletManager.getAppEngineToken()
+  ]);
 
-  if (!serviceConfig) {
-    console.log((configError as ServiceError).message);
-    return;
-  }
-
-  const [token, tokenError] = await WalletManager.getCloudWalletToken();
-
-  if (!token) {
-    console.log((tokenError as ServiceError).message);
-    return;
-  }
-
-  await WalletManager.warmupCloudWallet(token, serviceConfig);
-});
-
-exports.maintenanceJobs = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
-  const [serviceWallet, error] = await WalletManager.getServiceWallet();
+  const [serviceWallet, serviceError] = fetchResults[0];
+  const [token, tokenError] = fetchResults[1];
 
   if (!serviceWallet) {
-    console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
+    console.error(`failed to get service wallet: ${(serviceError as ServiceError).message}`);
+    return;
+  }
+
+  if (!token) {
+    console.error(`failed to get app engine token: ${(tokenError as ServiceError).message}`);
+    return;
+  }
+
+  const rewindDistance  = 480;
+  const [wHeight, ,]    = serviceWallet.wallet.getSyncStatus();
+  const rewindHeight    = wHeight - rewindDistance;
+
+  console.log(`rewinding wallet to height: ${rewindHeight}`);
+  await serviceWallet.wallet.rewind(rewindHeight);
+
+  const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
+  const appEngineRestarted = await WalletManager.startAppEngineWallet(token, serviceWallet.serviceConfig);
+
+  if (saveTimestamp) {
+    console.log(`wallet rewind to height ${rewindHeight} successfully saved at: ${saveTimestamp}`);
+  } else {
+    console.error((saveError as ServiceError).message);
+  }
+
+  console.log(`app engine wallet restart successful: ${appEngineRestarted}`);
+});
+
+exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(async (context) => {
+  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false);
+
+  if (!serviceWallet) {
+    console.error(`failed to get service wallet: ${(serviceError as ServiceError).message}`);
     return;
   }
 
@@ -535,11 +558,6 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
     console.error(`failed to get service wallet: ${(error as ServiceError).message}`);
     return;
   }
-
-  // const txs = serviceWallet.wallet.getTransactions(undefined, undefined, false);
-  // console.log(`all txs:`);
-  // console.log(JSON.stringify(txs));
-
 
   const updateDeposits    = DepositsModule.updateDeposits(serviceWallet);
   const updateWithdrawals = WithdrawalsModule.updateWithdrawals(serviceWallet);
