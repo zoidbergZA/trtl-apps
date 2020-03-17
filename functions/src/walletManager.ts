@@ -509,9 +509,9 @@ export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
   const delta = networkHeight - walletHeight;
 
   return {
-    walletHeight: walletHeight,
-    networkHeight: networkHeight,
-    heightDelta: delta
+    walletHeight:   walletHeight,
+    networkHeight:  networkHeight,
+    heightDelta:    delta
   };
 }
 
@@ -561,9 +561,9 @@ export async function rewindAppEngineWallet(
   console.log(`rewinding App Engine wallet by distance: ${distance}`);
 
   try {
-    const reqBody = { distance: distance }
-    const rewindResponse = await axios.post(rewindEndpoint, reqBody, reqConfig);
-    const walletHeight: number = rewindResponse.data.walletHeight;
+    const reqBody               = { distance: distance }
+    const rewindResponse        = await axios.post(rewindEndpoint, reqBody, reqConfig);
+    const walletHeight: number  = rewindResponse.data.walletHeight;
 
     return [walletHeight, undefined];
   } catch (error) {
@@ -596,12 +596,12 @@ export async function warmupAppEngineWallet(jwtToken: string, serviceConfig: Ser
     return true;
   }
 
-
   return await startAppEngineWallet(jwtToken, serviceConfig);
 }
 
 export async function startAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
   console.log(`starting up coud wallet...`);
+
   const cloudWalletApi = getCloudWalletApiBase();
 
   const reqConfig = {

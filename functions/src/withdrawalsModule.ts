@@ -38,32 +38,32 @@ export async function createPreparedWithdrawal(
 
   const paymentId = account.spendSignaturePrefix.concat(generateRandomSignatureSegement());
 
-  const [sendResult, serviceError] = await WalletManager.prepareAccountTransaction(
-                                    serviceConfig,
-                                    app.subWallet,
-                                    account.id,
-                                    address,
-                                    paymentId,
-                                    amount);
+  const [prepareTxResult, serviceError] = await WalletManager.prepareAccountTransaction(
+                                            serviceConfig,
+                                            app.subWallet,
+                                            account.id,
+                                            address,
+                                            paymentId,
+                                            amount);
 
-  if (!sendResult) {
+  if (!prepareTxResult) {
     console.log((serviceError as ServiceError));
     return [undefined, serviceError];
   }
 
-  if (sendResult.transactionHash
-      && sendResult.preparedTransaction
-      && sendResult.fee !== undefined
-      && sendResult.nodeFee !== undefined) {
+  if (prepareTxResult.transactionHash &&
+      prepareTxResult.preparedTransaction &&
+      prepareTxResult.fee !== undefined &&
+      prepareTxResult.nodeFee !== undefined) {
 
-    const txFee           = sendResult.fee;
+    const txFee           = prepareTxResult.fee;
     const timestamp       = Date.now();
     const preparedDocRef  = admin.firestore().collection(`apps/${app.appId}/preparedWithdrawals`).doc();
-    const preparedTxJson  = JSON.stringify(sendResult.preparedTransaction);
+    const preparedTxJson  = JSON.stringify(prepareTxResult.preparedTransaction);
 
     const fees: Fees = {
       txFee: txFee,
-      nodeFee: sendResult.nodeFee,
+      nodeFee: prepareTxResult.nodeFee,
       serviceFee: serviceCharge
     }
 
@@ -79,36 +79,29 @@ export async function createPreparedWithdrawal(
       amount:         amount,
       fees:           fees,
       paymentId:      paymentId,
-      txHash:         sendResult.transactionHash
+      txHash:         prepareTxResult.transactionHash
     }
 
     try {
       await preparedDocRef.create(preparedWithdrawal);
     } catch (error) {
       console.log(error);
-      return [undefined, new ServiceError('service/unknown-error', sendResult.error.toString())];
+      return [undefined, new ServiceError('service/unknown-error', prepareTxResult.error.toString())];
     }
 
     return [preparedWithdrawal, undefined];
   } else {
-    const e = new WalletError(sendResult.error.errorCode);
+    const e = new WalletError(prepareTxResult.error.errorCode);
 
     const sendErrorMessage = e.toString();
-    console.log(`send error: [${sendResult.error.errorCode}] ${sendErrorMessage}`);
+    console.log(`send error: [${prepareTxResult.error.errorCode}] ${sendErrorMessage}`);
     return [undefined, new ServiceError('service/unknown-error', sendErrorMessage)];
   }
 }
 
-export async function processPreparedWithdrawal(
+export async function getPreparedWithdrawal(
   appId: string,
-  preparedWithdrawalId: string): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
-
-  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
-
-  if (!serviceConfig) {
-    console.log((configError as ServiceError).message);
-    return [undefined, configError];
-  }
+  preparedWithdrawalId: string): Promise<[PreparedWithdrawal | undefined, undefined | ServiceError]> {
 
   const preparedDocRef  = admin.firestore().doc(`apps/${appId}/preparedWithdrawals/${preparedWithdrawalId}`);
   const preparedDoc     = await preparedDocRef.get();
@@ -123,6 +116,14 @@ export async function processPreparedWithdrawal(
     return [undefined, new ServiceError('app/invalid-prepared-withdrawal', `invalid status: ${preparedWithdrawal.status}`)];
   }
 
+  return [preparedWithdrawal, undefined];
+}
+
+export async function processPreparedWithdrawal(
+  preparedWithdrawal: PreparedWithdrawal,
+  serviceConfig: ServiceConfig): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
+
+  const appId = preparedWithdrawal.appId;
   const preparedTransaction = JSON.parse(preparedWithdrawal.preparedTxJson) as PreparedTransaction;
 
   if (!preparedTransaction) {
@@ -158,7 +159,7 @@ export async function processPreparedWithdrawal(
     amount:               preparedWithdrawal.amount,
     fees:                 preparedWithdrawal.fees,
     address:              preparedWithdrawal.address,
-    preparedWithdrawalId: preparedWithdrawalId,
+    preparedWithdrawalId: preparedWithdrawal.id,
     requestedAtBlock:     0,
     timestamp:            timestamp,
     lastUpdate:           timestamp,
@@ -217,6 +218,8 @@ export async function processPreparedWithdrawal(
           lastUpdate: timestamp,
           status: 'sent'
         }
+
+        const preparedDocRef = admin.firestore().doc(`apps/${appId}/preparedWithdrawals/${preparedWithdrawal.id}`);
 
         txn.create(withdrawDoc, withdrawal);
         txn.update(accountDocRef, accountUpdate);
