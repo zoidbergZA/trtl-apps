@@ -352,8 +352,14 @@ exports.onDepositWrite = functions.firestore.document(`/apps/{appId}/deposits/{d
 exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
 .onCreate(async (snapshot, context) => {
   const state = snapshot.data() as Withdrawal;
+  const [serviceWallet, error] = await WalletManager.getServiceWallet();
 
-  await WithdrawalsModule.processPendingWithdrawal(state);
+  if (!serviceWallet) {
+    console.log((error as ServiceError).message);
+    return;
+  }
+
+  await WithdrawalsModule.processPendingWithdrawal(state, serviceWallet);
 });
 
 exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
