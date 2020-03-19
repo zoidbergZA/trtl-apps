@@ -477,13 +477,6 @@ export const createInvitationsBatch = functions.https.onRequest(async (request, 
   });
 });
 
-// // ******   FOR TESTING WEBHOOK   *****
-// // can be commented out in production
-// export const webhookTest = functions.https.onRequest((request, response) => {
-//     console.log(JSON.stringify(request.body));
-//     response.status(200).send('OK');
-// });
-
 
 // =============================================================================
 //                              Scheduled functions
