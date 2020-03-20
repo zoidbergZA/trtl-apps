@@ -242,8 +242,8 @@ export async function prepareAccountTransaction(
     paymentId: paymentId
   }
 
-  const cloudWalletApi = getCloudWalletApiBase();
-  const endpoint = `${cloudWalletApi}/prepare_transaction`;
+  const appEngineApi = getAppEngineApiBase();
+  const endpoint = `${appEngineApi}/prepare_transaction`;
 
   const reqConfig = {
     headers: { Authorization: "Bearer " + token }
@@ -281,8 +281,8 @@ export async function sendPreparedTransaction(
     preparedTxHash: preparedTxHash
   }
 
-  const cloudWalletApi = getCloudWalletApiBase();
-  const endpoint = `${cloudWalletApi}/send`;
+  const appEngineApi = getAppEngineApiBase();
+  const endpoint = `${appEngineApi}/send`;
 
   const reqConfig = {
     headers: { Authorization: "Bearer " + token }
@@ -515,9 +515,9 @@ export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
   };
 }
 
-export async function getCloudWalletStatus(jwtToken: string): Promise<WalletStatus | undefined> {
-  const cloudWalletApi = getCloudWalletApiBase();
-  const statusEndpoint = `${cloudWalletApi}/status`;
+export async function getAppEngineStatus(jwtToken: string): Promise<WalletStatus | undefined> {
+  const appEngineApi = getAppEngineApiBase();
+  const statusEndpoint = `${appEngineApi}/status`;
 
   const reqConfig = {
     headers: { Authorization: "Bearer " + jwtToken }
@@ -544,7 +544,7 @@ export async function rewindAppEngineWallet(
     return [undefined, jwtError];
   }
 
-  const cloudWalletApi = getCloudWalletApiBase();
+  const appEngineApi = getAppEngineApiBase();
 
   const reqConfig = {
     headers: { Authorization: "Bearer " + token }
@@ -556,7 +556,7 @@ export async function rewindAppEngineWallet(
     return [undefined, new ServiceError('service/unknown-error', 'failed to warmup app engine wallet.')]
   }
 
-  const rewindEndpoint = `${cloudWalletApi}/rewind`;
+  const rewindEndpoint = `${appEngineApi}/rewind`;
 
   console.log(`rewinding App Engine wallet by distance: ${distance}`);
 
@@ -572,7 +572,7 @@ export async function rewindAppEngineWallet(
 }
 
 export async function warmupAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
-  const status = await getCloudWalletStatus(jwtToken);
+  const status = await getAppEngineStatus(jwtToken);
 
   if (!status) {
     return false;
@@ -600,15 +600,15 @@ export async function warmupAppEngineWallet(jwtToken: string, serviceConfig: Ser
 }
 
 export async function startAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
-  console.log(`starting up coud wallet...`);
+  console.log(`starting up App Engine wallet...`);
 
-  const cloudWalletApi = getCloudWalletApiBase();
+  const appEngineApi = getAppEngineApiBase();
 
   const reqConfig = {
     headers: { Authorization: "Bearer " + jwtToken }
   }
 
-  const startEndpoint = `${cloudWalletApi}/start`;
+  const startEndpoint = `${appEngineApi}/start`;
 
   const startBody: StartWalletRequest = {
     daemonHost: serviceConfig.daemonHost,
@@ -654,7 +654,7 @@ export async function getAppEngineToken(): Promise<[string | undefined, undefine
   }
 }
 
-function getCloudWalletApiBase(): string {
+function getAppEngineApiBase(): string {
   return functions.config().appengine.api_base;
 }
 
