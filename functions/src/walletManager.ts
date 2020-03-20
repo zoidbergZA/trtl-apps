@@ -418,10 +418,10 @@ async function saveWalletAppEngine(encryptedWallet: string): Promise<boolean> {
 
     const gcp_storage = new Storage({
       keyFilename: keyFilePath,
-      projectId: functions.config().cloudwallet.project_id
+      projectId: functions.config().appengine.project_id
     });
 
-    const gcpBucket = gcp_storage.bucket(functions.config().cloudwallet.wallets_bucket);
+    const gcpBucket = gcp_storage.bucket(functions.config().appengine.wallets_bucket);
     const file      = gcpBucket.file(Constants.gcpWalletFilename);
 
     await file.save(encryptedWallet);
@@ -626,9 +626,9 @@ export async function startAppEngineWallet(jwtToken: string, serviceConfig: Serv
 }
 
 export async function getAppEngineToken(): Promise<[string | undefined, undefined | ServiceError]> {
-  const client_email    = functions.config().cloudwallet.client_email;
-  const target_audience = functions.config().cloudwallet.target_audience;
-  const private_key_raw = functions.config().cloudwallet.private_key;
+  const client_email    = functions.config().appengine.client_email;
+  const target_audience = functions.config().appengine.target_audience;
+  const private_key_raw = functions.config().appengine.private_key;
   const private_key     = private_key_raw.replace(new RegExp("\\\\n", "\g"), "\n");
 
   // configure a JWT auth client
@@ -655,7 +655,7 @@ export async function getAppEngineToken(): Promise<[string | undefined, undefine
 }
 
 function getCloudWalletApiBase(): string {
-  return functions.config().cloudwallet.api_base;
+  return functions.config().appengine.api_base;
 }
 
 async function rewindWallet(wallet: WalletBackend, distance :number): Promise<void> {
