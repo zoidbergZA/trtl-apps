@@ -2,7 +2,7 @@ import * as cors from 'cors';
 import * as express from 'express';
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import * as UsersModule from './usersModule';
+import * as AccountsModule from './accountsModule';
 import * as ServiceModule from './serviceModule';
 import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
@@ -170,7 +170,7 @@ async function createAccount(request: any, response: any): Promise<void> {
     return;
   }
 
-  const [account, createError] = await UsersModule.createAppAccount(app);
+  const [account, createError] = await AccountsModule.createAppAccount(app);
 
   if (!account) {
     response.status(500).send((createError));
@@ -218,7 +218,7 @@ async function getAppAccount(request: any, response: any): Promise<void> {
     return;
   }
 
-  const [appAccount, accountError] = await UsersModule.getAppAccount(app.appId, accountId);
+  const [appAccount, accountError] = await AccountsModule.getAppAccount(app.appId, accountId);
 
   if (!appAccount) {
     response.status(500).send(accountError);
@@ -448,7 +448,7 @@ async function createPreparedWithdrawal(request: any, response: any): Promise<vo
     return;
   }
 
-  const [appAccount, accountError] = await UsersModule.getAppAccount(app.appId, accountId);
+  const [appAccount, accountError] = await AccountsModule.getAppAccount(app.appId, accountId);
 
   if (!appAccount) {
     response.status(400).send((accountError));
@@ -562,7 +562,7 @@ async function setWithdrawAddress(request: any, response: any): Promise<void> {
     return;
   }
 
-  const [appAccount, accountError] = await UsersModule.getAppAccount(app.appId, accountId);
+  const [appAccount, accountError] = await AccountsModule.getAppAccount(app.appId, accountId);
 
   if (!appAccount) {
     response.status(400).send((accountError));

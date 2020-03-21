@@ -9,9 +9,8 @@ import * as WithdrawalsModule from './withdrawalsModule';
 import * as Analytics from './analyticsModule';
 import * as WalletManager from './walletManager';
 import * as WebhooksModule from './webhookModule';
-import * as UsersModule from './usersModule';
 import { api } from './requestHandlers';
-import { Deposit, Withdrawal, ServiceCharge } from '../../shared/types';
+import { Deposit, Withdrawal, ServiceCharge, ServiceUser } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
 
@@ -48,8 +47,33 @@ try {
 
 
 exports.onServiceUserCreated = functions.auth.user().onCreate(async (user) => {
-  await UsersModule.createServiceUser(user);
+  await createServiceUser(user);
 });
+
+export async function createServiceUser(userRecord: admin.auth.UserRecord): Promise<void> {
+  const id = userRecord.uid;
+
+  let displayName = userRecord.displayName;
+
+  if (!displayName) {
+    if (userRecord.email) {
+      displayName = userRecord.email;
+    } else {
+      displayName = 'Service user';
+    }
+  }
+
+  const serviceUser: ServiceUser = {
+    id: id,
+    displayName: displayName
+  }
+
+  if (userRecord.email) {
+    serviceUser.email = userRecord.email;
+  }
+
+  await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
+}
 
 
 // =============================================================================
