@@ -352,8 +352,14 @@ exports.onDepositWrite = functions.firestore.document(`/apps/{appId}/deposits/{d
 exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
 .onCreate(async (snapshot, context) => {
   const state = snapshot.data() as Withdrawal;
+  const [serviceWallet, error] = await WalletManager.getServiceWallet();
 
-  await WithdrawalsModule.processPendingWithdrawal(state);
+  if (!serviceWallet) {
+    console.log((error as ServiceError).message);
+    return;
+  }
+
+  await WithdrawalsModule.processPendingWithdrawal(state, serviceWallet);
 });
 
 exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
@@ -470,13 +476,6 @@ export const createInvitationsBatch = functions.https.onRequest(async (request, 
     });
   });
 });
-
-// // ******   FOR TESTING WEBHOOK   *****
-// // can be commented out in production
-// export const webhookTest = functions.https.onRequest((request, response) => {
-//     console.log(JSON.stringify(request.body));
-//     response.status(200).send('OK');
-// });
 
 
 // =============================================================================

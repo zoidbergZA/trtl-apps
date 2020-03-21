@@ -9,8 +9,8 @@
         is sent to the webhook URL. Each event type has a unique code, and a data property containing the event details.
       </p>
       <p>
-        The backend expects a 2xx response code to indicate that the notification was received. In the event of failure,
-        the backend will retry the sending the event a few times in larger time intervals.
+        The service expects a 2xx response code to indicate that the notification was received. In the event of failure,
+        the service will retry the sending the event a few times in larger time intervals.
       </p>
       <div class="section-spacer"></div>
       <mat-card-title>Validating payloads from TRTL apps</mat-card-title>
@@ -19,18 +19,18 @@
         This hash signature is passed along with each request in the headers as <span class="code-block">x-trtl-apps-signature</span>.
       </p>
       <p>
-        To validate a request, compute a hash using your APP_SECRET, and ensure that the hash from the request header matches. TRTL apps
-        uses a HMAC hexdigest to compute the hash. An example validation function in node.js using the <span class="code-block">crypto</span> module:
+        To validate a request, compute a hash using your APP_SECRET and check that it matches the hash from the request header. TRTL apps
+        uses a HMAC hexdigest to compute the hash. Below is an example validation function in node.js using the <span class="code-block">crypto</span> module:
       </p>
       <pre class="code-block">
+        const appSecret = 'YOUR_APP_SECRET';
+
         const hash = 'sha256=' + crypto
-                      .createHmac("sha256", 'YOUR_APP_SECRET')
+                      .createHmac("sha256", appSecret)
                       .update(JSON.stringify(request.body))
                       .digest("hex");
 
         const isValid = hash === requestSignature;
-
-        return isValid;
       </pre>
       <p>
         Your language and server implementations may differ from this code, however no matter which implementation
@@ -40,7 +40,8 @@
       <div class="section-spacer"></div>
       <mat-card-title>Examples</mat-card-title>
       <p>
-        Below the different event types are listed along with example payloads.
+        Below the different event types are listed along with example payloads. Each event object has a <span class="code-block">code</span>
+        property indicating which event was fired, and a <span class="code-block">data</span> property containing the event data.
       </p>
       <h2>New deposit</h2>
       <p>

@@ -511,7 +511,21 @@ async function executePreparedWithdrawal(request: any, response: any): Promise<v
     return;
   }
 
-  const [withdrawal, withdrawError] = await WithdrawalsModule.processPreparedWithdrawal(app.appId, preparedWithdrawalId);
+    const [serviceConfig] = await ServiceModule.getServiceConfig();
+
+  if (!serviceConfig) {
+    response.status(500).send(new ServiceError('service/unknown-error'));
+    return;
+  }
+
+  const [preparedWithdrawal, preparedError] = await WithdrawalsModule.getPreparedWithdrawal(app.appId, preparedWithdrawalId);
+
+  if (!preparedWithdrawal) {
+    response.status(500).send((preparedError));
+    return;
+  }
+
+  const [withdrawal, withdrawError] = await WithdrawalsModule.processPreparedWithdrawal(preparedWithdrawal, serviceConfig);
 
   if (!withdrawal) {
     response.status(500).send((withdrawError));
