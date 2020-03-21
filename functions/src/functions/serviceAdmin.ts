@@ -4,7 +4,10 @@ import * as ServiceModule from '../serviceModule';
 import * as WalletManager from '../walletManager';
 import * as DepositsModule from '../depositsModule';
 import * as WithdrawalsModule from '../withdrawalsModule';
+import * as Constants from '../constants';
 import { ServiceError } from '../serviceError';
+
+const cors = require('cors')({ origin: true });
 
 export const getServiceStatus = functions.https.onCall(async (data, context) => {
   const isAdmin = await isAdminUserCheck(context);
@@ -133,6 +136,77 @@ export const getServiceChargeAccounts = functions.https.onCall(async (data, cont
   return accounts;
 });
 
+export const giveUserAdminRights = functions.https.onRequest(async (request, response) => {
+  cors(request, response, () => {
+    if (!validateAdminHeader(request)) {
+      response.status(403).send('unauthorized request.');
+      return;
+    }
+
+    const userId: string | undefined = request.query.uid;
+
+    if (!userId) {
+      response.status(400).send('bad request');
+      return;
+    }
+
+    return ServiceModule.giveUserAdminRights(userId).then(succeeded => {
+      response.status(200).send({ succeeded: succeeded });
+    }).catch(error => {
+      console.log(error);
+      response.status(500).send({ error: error });
+    });
+  });
+});
+
+export const createInvitationsBatch = functions.https.onRequest(async (request, response) => {
+  cors(request, response, () => {
+    if (!validateAdminHeader(request)) {
+      response.status(403).send('unauthorized request.');
+      return;
+    }
+
+    return ServiceModule.createInvitationsBatch(10).then(result => {
+      const invitesCount = result[0];
+      const serviceError = result[1];
+
+      if (invitesCount) {
+        response.status(200).send(`created ${invitesCount} new invitations.`);
+      } else {
+        response.status(500).send(serviceError as ServiceError);
+      }
+    }).catch(error => {
+      console.log(error);
+      response.status(500).send(new ServiceError('service/unknown-error'));
+    });
+  });
+});
+
+export const bootstrap = functions.https.onRequest(async (request, response) => {
+  cors(request, response, () => {
+    if (!validateAdminHeader(request)) {
+      response.status(403).send('unauthorized request.');
+      return;
+    }
+
+    return ServiceModule.boostrapService().then(result => {
+      const mnemonicSeed = result[0];
+      const serviceError = result[1];
+
+      if (mnemonicSeed) {
+        response.status(200).send({
+          error: false,
+          mnemonicSeed: mnemonicSeed
+        });
+      } else {
+        response.status(405).send((serviceError as ServiceError).message);
+      }
+    }).catch(error => {
+      response.status(405).send(error);
+    });
+  });
+});
+
 async function isAdminUserCheck(context: functions.https.CallableContext): Promise<boolean> {
   if (!context.auth) {
     return false;
@@ -150,4 +224,10 @@ async function isAdminUserCheck(context: functions.https.CallableContext): Promi
   }
 
   return false;
+}
+
+function validateAdminHeader(request: functions.https.Request): boolean {
+  const adminSignature = request.get(Constants.serviceAdminRequestHeader);
+
+  return adminSignature === functions.config().serviceadmin.password;
 }

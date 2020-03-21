@@ -3,7 +3,6 @@ import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 import * as AppModule from './appModule';
 import * as ServiceAdmin from './functions/serviceAdmin';
-import * as Constants from './constants';
 import * as ServiceModule from './serviceModule';
 import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
@@ -24,12 +23,13 @@ export const appModule = AppModule;
 // =============================================================================
 
 
-const cors = require('cors')({ origin: true });
 admin.initializeApp();
 
 // Create "main" function to host all other top-level functions
 const expressApp = express();
 expressApp.use('/api', api);
+
+export const endpoints = functions.https.onRequest(expressApp);
 
 try {
   const appInsightsApiKey = functions.config().azure.appinsights;
@@ -139,91 +139,6 @@ exports.onServiceChargeUpdated = functions.firestore.document(`/apps/{appId}/ser
 
 
 // =============================================================================
-//                              HTTP Triggers
-// =============================================================================
-
-
-export const endpoints = functions.https.onRequest(expressApp);
-
-export const bootstrap = functions.https.onRequest(async (request, response) => {
-  cors(request, response, () => {
-    const adminSignature = request.get(Constants.serviceAdminRequestHeader);
-
-    if (adminSignature !== functions.config().serviceadmin.password) {
-      response.status(403).send('unauthorized request.');
-      return;
-    }
-
-    return ServiceModule.boostrapService().then(result => {
-      const mnemonicSeed = result[0];
-      const serviceError = result[1];
-
-      if (mnemonicSeed) {
-        response.status(200).send({
-          error: false,
-          mnemonicSeed: mnemonicSeed
-        });
-      } else {
-        response.status(405).send((serviceError as ServiceError).message);
-      }
-    }).catch(error => {
-      response.status(405).send(error);
-    });
-  });
-});
-
-export const giveUserAdminRights = functions.https.onRequest(async (request, response) => {
-  cors(request, response, () => {
-    const adminSignature = request.get(Constants.serviceAdminRequestHeader);
-
-    if (adminSignature !== functions.config().serviceadmin.password) {
-      response.status(403).send('unauthorized request.');
-      return;
-    }
-
-    const userId: string | undefined = request.query.uid;
-
-    if (!userId) {
-      response.status(400).send('bad request');
-      return;
-    }
-
-    return ServiceModule.giveUserAdminRights(userId).then(succeeded => {
-      response.status(200).send({ succeeded: succeeded });
-    }).catch(error => {
-      console.log(error);
-      response.status(500).send({ error: error });
-    });
-  });
-});
-
-export const createInvitationsBatch = functions.https.onRequest(async (request, response) => {
-  cors(request, response, () => {
-    const adminSignature = request.get(Constants.serviceAdminRequestHeader);
-
-    if (adminSignature !== functions.config().serviceadmin.password) {
-      response.status(403).send('unauthorized request.');
-      return;
-    }
-
-    return ServiceModule.createInvitationsBatch(10).then(result => {
-      const invitesCount = result[0];
-      const serviceError = result[1];
-
-      if (invitesCount) {
-        response.status(200).send(`created ${invitesCount} new invitations.`);
-      } else {
-        response.status(500).send(serviceError as ServiceError);
-      }
-    }).catch(error => {
-      console.log(error);
-      response.status(500).send(new ServiceError('service/unknown-error'));
-    });
-  });
-});
-
-
-// =============================================================================
 //                              Scheduled functions
 // =============================================================================
 
@@ -317,28 +232,3 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
     console.error(e);
   });
 });
-
-
-// =============================================================================
-//                              Utility functions
-// =============================================================================
-
-
-// async function isAdminUserCheck(context: functions.https.CallableContext): Promise<boolean> {
-//   if (!context.auth) {
-//     return false;
-//   }
-
-//   try {
-//     const user    = await admin.auth().getUser(context.auth.uid);
-//     const claims  = user.customClaims as any;
-
-//     if (claims && !!claims.admin) {
-//       return true;
-//     }
-//   } catch (error) {
-//     console.log(error);
-//   }
-
-//   return false;
-// }
