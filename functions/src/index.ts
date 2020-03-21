@@ -15,7 +15,7 @@ import { ServiceUser } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
 export const serviceAdmin = ServiceAdmin;
-export const appModule    = AppModule; // TODO: rename to apps
+export const apps         = AppModule;
 export const accounts     = AccountsModule;
 export const deposits     = DepositsModule;
 export const withdrawals  = WithdrawalsModule;
