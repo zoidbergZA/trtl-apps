@@ -1,15 +1,143 @@
+import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import * as WalletManager from './walletManager';
+import * as ServiceModule from './serviceModule';
 import * as Utils from '../../shared/utils';
 import { serviceChargesAccountId } from './constants';
-import { createIntegratedAddress, WalletBackend } from 'turtlecoin-wallet-backend';
+import { createIntegratedAddress } from 'turtlecoin-wallet-backend';
 import { ServiceError } from './serviceError';
-import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Deposit, Withdrawal, Account } from '../../shared/types';
+import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Account } from '../../shared/types';
 import { generateRandomPaymentId, generateRandomSignatureSegement } from './utils';
-import { AppAuditResult } from './types';
+// import { AppAuditResult } from './types';
 
-export async function createApp(
+export const createApp = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
+  }
+
+  const owner = context.auth.uid;
+  const appName: string = data.appName;
+  const inviteCode: string | undefined = data.inviteCode;
+
+  if (!owner || !appName) {
+    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+  }
+
+  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
+
+  if (!serviceConfig) {
+    console.log((configError as ServiceError).message);
+
+    return {
+      error: true,
+      message: 'Service currently unavailable.'
+    }
+  }
+
+  if (serviceConfig.inviteOnly) {
+    if (!inviteCode) {
+      return {
+        error: true,
+        message: 'Invitation code required.'
+      }
+    }
+
+    const isValidCode = await ServiceModule.validateInviteCode(inviteCode);
+
+    if (!isValidCode) {
+      return {
+        error: true,
+        message: 'Invalid invitation code.'
+      }
+    }
+  }
+
+  const [app, appError] = await processCreateApp(owner, appName, inviteCode);
+  const result: any = {};
+
+  if (appError) {
+    result.error = true;
+    result.message = appError.message;
+  } else if (app) {
+    result.error = false;
+    result.appId = app.appId;
+  }
+
+  return result;
+});
+
+export const setAppState = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
+  }
+
+  const owner = context.auth.uid;
+  const appId: string | undefined = data.appId;
+  const active: boolean = !!data.active;
+
+  if (!appId) {
+    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+  }
+
+  const success = await processSetAppState(owner, appId, active);
+
+  if (!success) {
+    throw new functions.https.HttpsError('unknown', 'An Unknown error occured.');
+  }
+
+  return { success: true };
+});
+
+export const resetAppSecret = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
+  }
+
+  const owner = context.auth.uid;
+  const appId: string = data.appId;
+
+  if (!appId) {
+    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+  }
+
+  const success = await processResetAppSecret(owner, appId);
+
+  if (!success) {
+    throw new functions.https.HttpsError('unknown', 'An Unknown error occured.');
+  }
+
+  return { success: true };
+});
+
+export const setAppWebhook = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
+  }
+
+  const owner = context.auth.uid;
+  const appId: string = data.appId;
+  const webhook: string | undefined = data.webhook;
+
+  if (!appId) {
+    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+  }
+
+  const [newWebhook, error] = await processSetAppWebhook(owner, appId, webhook);
+  const result: any = {};
+
+  if (error) {
+    result.error = true;
+    result.message = error.message;
+  } else if (newWebhook) {
+    result.error = false;
+    result.webhook = newWebhook;
+  }
+
+  return result;
+});
+
+async function processCreateApp(
   owner: string,
   appName: string,
   inviteCode?: string) : Promise<[TurtleApp | undefined, undefined | ServiceError]> {
@@ -126,17 +254,17 @@ export async function getApp(appId: string): Promise<[TurtleApp | undefined, und
   return [appDoc.data() as TurtleApp, undefined];
 }
 
-export async function disableApp(appId: string, reason: string): Promise<void> {
-  console.error(`disabled app [${appId}]. reason: ${reason}`);
+// async function disableApp(appId: string, reason: string): Promise<void> {
+//   console.error(`disabled app [${appId}]. reason: ${reason}`);
 
-  const appUpdate: TurtleAppUpdate = {
-    disabled: true
-  }
+//   const appUpdate: TurtleAppUpdate = {
+//     disabled: true
+//   }
 
-  await admin.firestore().doc(`apps/${appId}`).update(appUpdate);
-}
+//   await admin.firestore().doc(`apps/${appId}`).update(appUpdate);
+// }
 
-export async function setAppState(owner: string, appId: string, active: boolean): Promise<boolean> {
+async function processSetAppState(owner: string, appId: string, active: boolean): Promise<boolean> {
   const [app] = await getApp(appId);
 
   if (!app) {
@@ -159,7 +287,7 @@ export async function setAppState(owner: string, appId: string, active: boolean)
   }
 }
 
-export async function resetAppSecret(owner: string, appId: string): Promise<boolean> {
+async function processResetAppSecret(owner: string, appId: string): Promise<boolean> {
   const [app] = await getApp(appId);
 
   if (!app) {
@@ -182,7 +310,7 @@ export async function resetAppSecret(owner: string, appId: string): Promise<bool
   }
 }
 
-export async function setAppWebhook(
+async function processSetAppWebhook(
   owner: string,
   appId: string,
   webhook: string | undefined): Promise<[string | undefined, undefined | ServiceError]> {
@@ -221,156 +349,156 @@ export async function setAppWebhook(
   }
 }
 
-export async function runAppAudits(appCount: number): Promise<void> {
-  const querySnapshot = await admin.firestore()
-                        .collectionGroup('apps')
-                        .orderBy('lastAuditAt', 'asc')
-                        .limit(appCount)
-                        .get();
+// async function runAppAudits(appCount: number): Promise<void> {
+//   const querySnapshot = await admin.firestore()
+//                         .collectionGroup('apps')
+//                         .orderBy('lastAuditAt', 'asc')
+//                         .limit(appCount)
+//                         .get();
 
-  if (querySnapshot.size === 0) {
-    return;
-  }
+//   if (querySnapshot.size === 0) {
+//     return;
+//   }
 
-  const [serviceWallet, walletError] = await WalletManager.getServiceWallet();
+//   const [serviceWallet, walletError] = await WalletManager.getServiceWallet();
 
-  if (!serviceWallet) {
-    console.log((walletError as ServiceError).message);
-    return;
-  }
+//   if (!serviceWallet) {
+//     console.log((walletError as ServiceError).message);
+//     return;
+//   }
 
-  const apps        = querySnapshot.docs.map(d => d.data() as TurtleApp);
-  const auditsJobs  = apps.map(app => auditApp(app, serviceWallet.wallet));
+//   const apps        = querySnapshot.docs.map(d => d.data() as TurtleApp);
+//   const auditsJobs  = apps.map(app => auditApp(app, serviceWallet.wallet));
 
-  await Promise.all(auditsJobs);
-}
+//   await Promise.all(auditsJobs);
+// }
 
-export async function getAppAccounts(appId: string): Promise<Account[]> {
-  const accountDocs = await admin.firestore().collection(`apps/${appId}/accounts`).get();
+// async function getAppAccounts(appId: string): Promise<Account[]> {
+//   const accountDocs = await admin.firestore().collection(`apps/${appId}/accounts`).get();
 
-  return accountDocs.docs.map(d => d.data() as Account);
-}
+//   return accountDocs.docs.map(d => d.data() as Account);
+// }
 
-async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
-  console.log(`starting audit for app: ${app.appId}`);
+// async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
+//   console.log(`starting audit for app: ${app.appId}`);
 
-  const appTransactions   = wallet.getTransactions(undefined, undefined, false, app.subWallet);
-  const allDeposits       = await getDeposits(app.appId);
-  const allWithdrawals    = await getWithdrawals(app.appId);
-  let summary             = '';
+//   const appTransactions   = wallet.getTransactions(undefined, undefined, false, app.subWallet);
+//   const allDeposits       = await getDeposits(app.appId);
+//   const allWithdrawals    = await getWithdrawals(app.appId);
+//   let summary             = '';
 
-  // check for missing deposits
-  const completedDeposits = allDeposits.filter(d => d.status === 'completed');
-  const missingDeposits: Deposit[] = [];
+//   // check for missing deposits
+//   const completedDeposits = allDeposits.filter(d => d.status === 'completed');
+//   const missingDeposits: Deposit[] = [];
 
-  completedDeposits.forEach(deposit => {
-    if (!appTransactions.find(tx => tx.hash === deposit.txHash)) {
-      summary = summary.concat(`completed deposit with hash [${deposit.txHash}] missing from wallet. \n`);
-      missingDeposits.push(deposit);
-    }
-  });
+//   completedDeposits.forEach(deposit => {
+//     if (!appTransactions.find(tx => tx.hash === deposit.txHash)) {
+//       summary = summary.concat(`completed deposit with hash [${deposit.txHash}] missing from wallet. \n`);
+//       missingDeposits.push(deposit);
+//     }
+//   });
 
-  // check for missing withdrawal
-  const successfulWithdrawals = allWithdrawals.filter(w => w.status === 'completed' && !w.failed);
-  const missingWithdrawals: Withdrawal[] = [];
+//   // check for missing withdrawal
+//   const successfulWithdrawals = allWithdrawals.filter(w => w.status === 'completed' && !w.failed);
+//   const missingWithdrawals: Withdrawal[] = [];
 
-  successfulWithdrawals.forEach(withdrawal => {
-    if (!appTransactions.find(tx => tx.hash === withdrawal.txHash)) {
-      missingWithdrawals.push(withdrawal);
-      summary = summary.concat(`successful withdrawal with hash [${withdrawal.txHash}] missing from wallet. \n`);
-    }
-  });
+//   successfulWithdrawals.forEach(withdrawal => {
+//     if (!appTransactions.find(tx => tx.hash === withdrawal.txHash)) {
+//       missingWithdrawals.push(withdrawal);
+//       summary = summary.concat(`successful withdrawal with hash [${withdrawal.txHash}] missing from wallet. \n`);
+//     }
+//   });
 
-  const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
+//   const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
 
-  const totalCredited = completedDeposits
-                          .map(d => d.amount)
-                          .reduce((prev, next) => prev + next, 0);
+//   const totalCredited = completedDeposits
+//                           .map(d => d.amount)
+//                           .reduce((prev, next) => prev + next, 0);
 
-  const totalDebited = successfulWithdrawals
-                        .map(w => w.amount + w.fees.txFee + w.fees.nodeFee + w.fees.serviceFee)
-                        .reduce((prev, next) => prev + next, 0);
+//   const totalDebited = successfulWithdrawals
+//                         .map(w => w.amount + w.fees.txFee + w.fees.nodeFee + w.fees.serviceFee)
+//                         .reduce((prev, next) => prev + next, 0);
 
-  const auditResult: AppAuditResult = {
-    appId:                        app.appId,
-    timestamp:                    Date.now(),
-    passed:                       true,
-    walletLockedBalance:          lockedBalance,
-    walletUnlockedBalance:        unlockedBalance,
-    totalCredited:                totalCredited,
-    totalDebited:                 totalDebited,
-    appBalance:                   totalCredited - totalDebited
-  }
+//   const auditResult: AppAuditResult = {
+//     appId:                        app.appId,
+//     timestamp:                    Date.now(),
+//     passed:                       true,
+//     walletLockedBalance:          lockedBalance,
+//     walletUnlockedBalance:        unlockedBalance,
+//     totalCredited:                totalCredited,
+//     totalDebited:                 totalDebited,
+//     appBalance:                   totalCredited - totalDebited
+//   }
 
-  if (summary !== '') {
-    auditResult.summary = summary;
-  }
+//   if (summary !== '') {
+//     auditResult.summary = summary;
+//   }
 
-  if (missingDeposits.length > 0) {
-    const missingHashes: string[] = [];
+//   if (missingDeposits.length > 0) {
+//     const missingHashes: string[] = [];
 
-    missingDeposits.forEach(d => {
-      if (d.txHash) {
-        missingHashes.push(d.txHash);
-      }
-    });
+//     missingDeposits.forEach(d => {
+//       if (d.txHash) {
+//         missingHashes.push(d.txHash);
+//       }
+//     });
 
-    auditResult.missingDepositHashes = missingHashes;
-    auditResult.passed = false;
-  }
+//     auditResult.missingDepositHashes = missingHashes;
+//     auditResult.passed = false;
+//   }
 
-  if (missingWithdrawals.length > 0) {
-    const missingHashes: string[] = [];
+//   if (missingWithdrawals.length > 0) {
+//     const missingHashes: string[] = [];
 
-    missingWithdrawals.forEach(w => {
-      if (w.txHash) {
-        missingHashes.push(w.txHash);
-      }
-    });
+//     missingWithdrawals.forEach(w => {
+//       if (w.txHash) {
+//         missingHashes.push(w.txHash);
+//       }
+//     });
 
-    auditResult.missingWithdrawalHashes = missingHashes;
-    auditResult.passed = false;
-  }
+//     auditResult.missingWithdrawalHashes = missingHashes;
+//     auditResult.passed = false;
+//   }
 
-  console.log(`app ${app.appId} audit completed, passed: ${auditResult.passed}`);
-  console.log(summary);
+//   console.log(`app ${app.appId} audit completed, passed: ${auditResult.passed}`);
+//   console.log(summary);
 
-  const appUpdate: TurtleAppUpdate = {
-    lastAuditAt: Date.now(),
-    lastAuditPassed: auditResult.passed
-  }
+//   const appUpdate: TurtleAppUpdate = {
+//     lastAuditAt: Date.now(),
+//     lastAuditPassed: auditResult.passed
+//   }
 
-  await admin.firestore().collection('appAudits').add(auditResult);
-  await admin.firestore().doc(`apps/${app.appId}`).update(appUpdate);
+//   await admin.firestore().collection('appAudits').add(auditResult);
+//   await admin.firestore().doc(`apps/${app.appId}`).update(appUpdate);
 
-  return auditResult;
-}
+//   return auditResult;
+// }
 
-async function getDeposits(appId: string): Promise<Deposit[]> {
-  try {
-    const querySnapshot = await admin.firestore()
-                            .collection(`apps/${appId}/deposits`)
-                            .get();
+// async function getDeposits(appId: string): Promise<Deposit[]> {
+//   try {
+//     const querySnapshot = await admin.firestore()
+//                             .collection(`apps/${appId}/deposits`)
+//                             .get();
 
-    return querySnapshot.docs.map(d => d.data() as Deposit);
-  } catch (error) {
-    console.log(error);
-    return [];
-  }
-}
+//     return querySnapshot.docs.map(d => d.data() as Deposit);
+//   } catch (error) {
+//     console.log(error);
+//     return [];
+//   }
+// }
 
-async function getWithdrawals(appId: string): Promise<Withdrawal[]> {
-  try {
-    const querySnapshot = await admin.firestore()
-                            .collection(`apps/${appId}/withdrawals`)
-                            .get();
+// async function getWithdrawals(appId: string): Promise<Withdrawal[]> {
+//   try {
+//     const querySnapshot = await admin.firestore()
+//                             .collection(`apps/${appId}/withdrawals`)
+//                             .get();
 
-    return querySnapshot.docs.map(d => d.data() as Withdrawal);
-  } catch (error) {
-    console.log(error);
-    return [];
-  }
-}
+//     return querySnapshot.docs.map(d => d.data() as Withdrawal);
+//   } catch (error) {
+//     console.log(error);
+//     return [];
+//   }
+// }
 
 function generateApiKey(): string {
   return crypto.randomBytes(64).toString('hex');

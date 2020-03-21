@@ -1,8 +1,9 @@
 import * as express from 'express';
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import * as Constants from './constants';
 import * as AppModule from './appModule';
+import * as ServiceAdmin from './functions/serviceAdmin';
+import * as Constants from './constants';
 import * as ServiceModule from './serviceModule';
 import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
@@ -14,9 +15,9 @@ import { api } from './requestHandlers';
 import { Deposit, Withdrawal, ServiceCharge } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
-import * as ServiceAdmin from './functions/serviceAdmin';
 
 export const serviceAdmin = ServiceAdmin;
+export const appModule = AppModule;
 
 // =============================================================================
 //                              Initialization
@@ -39,138 +40,6 @@ try {
 } catch (error) {
   // no app insights API key set
 }
-
-
-// =============================================================================
-//                              Callable functions
-// =============================================================================
-
-
-export const createApp = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
-  }
-
-  const owner = context.auth.uid;
-  const appName: string = data.appName;
-  const inviteCode: string | undefined = data.inviteCode;
-
-  if (!owner || !appName) {
-    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
-  }
-
-  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
-
-  if (!serviceConfig) {
-    console.log((configError as ServiceError).message);
-
-    return {
-      error: true,
-      message: 'Service currently unavailable.'
-    }
-  }
-
-  if (serviceConfig.inviteOnly) {
-    if (!inviteCode) {
-      return {
-        error: true,
-        message: 'Invitation code required.'
-      }
-    }
-
-    const isValidCode = await ServiceModule.validateInviteCode(inviteCode);
-
-    if (!isValidCode) {
-      return {
-        error: true,
-        message: 'Invalid invitation code.'
-      }
-    }
-  }
-
-  const [app, appError] = await AppModule.createApp(owner, appName, inviteCode);
-  const result: any = {};
-
-  if (appError) {
-    result.error = true;
-    result.message = appError.message;
-  } else if (app) {
-    result.error = false;
-    result.appId = app.appId;
-  }
-
-  return result;
-});
-
-export const setAppState = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
-  }
-
-  const owner = context.auth.uid;
-  const appId: string | undefined = data.appId;
-  const active: boolean = !!data.active;
-
-  if (!appId) {
-    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
-  }
-
-  const success = await AppModule.setAppState(owner, appId, active);
-
-  if (!success) {
-    throw new functions.https.HttpsError('unknown', 'An Unknown error occured.');
-  }
-
-  return { success: true };
-});
-
-export const resetAppSecret = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
-  }
-
-  const owner = context.auth.uid;
-  const appId: string = data.appId;
-
-  if (!appId) {
-    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
-  }
-
-  const success = await AppModule.resetAppSecret(owner, appId);
-
-  if (!success) {
-    throw new functions.https.HttpsError('unknown', 'An Unknown error occured.');
-  }
-
-  return { success: true };
-});
-
-export const setAppWebhook = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('failed-precondition', 'The function must be called while authenticated.');
-  }
-
-  const owner = context.auth.uid;
-  const appId: string = data.appId;
-  const webhook: string | undefined = data.webhook;
-
-  if (!appId) {
-    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
-  }
-
-  const [newWebhook, error] = await AppModule.setAppWebhook(owner, appId, webhook);
-  const result: any = {};
-
-  if (error) {
-    result.error = true;
-    result.message = error.message;
-  } else if (newWebhook) {
-    result.error = false;
-    result.webhook = newWebhook;
-  }
-
-  return result;
-});
 
 
 // =============================================================================
@@ -417,7 +286,7 @@ exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(asyn
   const jobs: Promise<any>[] = [];
 
   jobs.push(WalletManager.backupMasterWallet());
-  jobs.push(AppModule.runAppAudits(10));
+  // jobs.push(AppModule.runAppAudits(10));
   jobs.push(WithdrawalsModule.processLostWithdrawals(serviceWallet));
 
   await Promise.all(jobs);
