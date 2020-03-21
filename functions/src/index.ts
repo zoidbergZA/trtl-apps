@@ -2,20 +2,23 @@ import * as express from 'express';
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 import * as AppModule from './appModule';
-import * as ServiceAdmin from './functions/serviceAdmin';
+import * as AccountsModule from './accountsModule';
+import * as ServiceAdmin from './modules/serviceAdmin';
 import * as ServiceModule from './serviceModule';
 import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
 import * as Analytics from './analyticsModule';
 import * as WalletManager from './walletManager';
 import * as WebhooksModule from './webhookModule';
-import { api } from './requestHandlers';
-import { Deposit, Withdrawal, ServiceCharge, ServiceUser } from '../../shared/types';
+import { api as serviceApi } from './serviceApi';
+import { ServiceUser } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
-
 export const serviceAdmin = ServiceAdmin;
-export const appModule = AppModule;
+export const appModule    = AppModule; // TODO: rename to apps
+export const accounts     = AccountsModule;
+export const deposits     = DepositsModule;
+export const withdrawals  = WithdrawalsModule;
 
 // =============================================================================
 //                              Initialization
@@ -26,7 +29,7 @@ admin.initializeApp();
 
 // Create "main" function to host all other top-level functions
 const expressApp = express();
-expressApp.use('/api', api);
+expressApp.use('/api', serviceApi);
 
 export const endpoints = functions.https.onRequest(expressApp);
 
@@ -74,92 +77,6 @@ export async function createServiceUser(userRecord: admin.auth.UserRecord): Prom
 
   await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
 }
-
-
-// =============================================================================
-//                              Firestore Triggers
-// =============================================================================
-
-
-exports.onAccountWrite = functions.firestore.document(`/apps/{appId}/accounts/accountId`)
-.onWrite(async (change, context) => {
-  const newState = change.after.data();
-
-  if (!newState) {
-    return;
-  }
-
-  const historyRef  = `/apps/${context.params.appId}/accounts/${context.params.accountId}/accountHistory`;
-  const accountData = newState as any;
-
-  accountData.timestamp = Date.now();
-
-  await admin.firestore().collection(historyRef).add(accountData);
-});
-
-exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
-.onUpdate(async (change, context) => {
-  const oldState  = change.before.data() as Deposit;
-  const newState  = change.after.data() as Deposit;
-
-  await DepositsModule.processAccountDepositUpdate(oldState, newState);
-});
-
-exports.onDepositWrite = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
-.onWrite(async (change, context) => {
-  const newState = change.after.data();
-
-  if (!newState) {
-    return;
-  }
-
-  const historyRef = `/apps/${context.params.appId}/deposits/${context.params.depositId}/depositHistory`;
-
-  await admin.firestore().collection(historyRef).add(newState);
-});
-
-exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
-.onCreate(async (snapshot, context) => {
-  const state = snapshot.data() as Withdrawal;
-  const [serviceWallet, error] = await WalletManager.getServiceWallet();
-
-  if (!serviceWallet) {
-    console.log((error as ServiceError).message);
-    return;
-  }
-
-  await WithdrawalsModule.processPendingWithdrawal(state, serviceWallet);
-});
-
-exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
-.onUpdate(async (change, context) => {
-  const oldState  = change.before.data() as Withdrawal;
-  const newState  = change.after.data() as Withdrawal;
-
-  await WithdrawalsModule.processWithdrawalUpdate(oldState, newState);
-});
-
-exports.onWithdrawalWrite = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
-.onWrite(async (change, context) => {
-  const newState = change.after.data();
-
-  if (!newState) {
-    return;
-  }
-
-  const historyRef = `/apps/${context.params.appId}/withdrawals/${context.params.withdrawalId}/withdrawalHistory`;
-
-  await admin.firestore().collection(historyRef).add(newState);
-});
-
-exports.onServiceChargeUpdated = functions.firestore.document(`/apps/{appId}/serviceCharges/{chargeId}`)
-.onUpdate(async (change, context) => {
-  const charge = change.after.data() as ServiceCharge;
-
-  if (charge.status === 'completed' && !charge.cancelled) {
-    Analytics.trackMetric('successful service charge', charge.amount * 0.01);
-  }
-});
 
 
 // =============================================================================

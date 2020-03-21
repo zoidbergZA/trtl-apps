@@ -1,3 +1,4 @@
+import * as functions from 'firebase-functions';
 import { ServiceError as AccountsModule } from "./serviceError";
 import { Account, TurtleApp } from "../../shared/types";
 import { generateRandomPaymentId, generateRandomSignatureSegement } from './utils';
@@ -5,6 +6,22 @@ import { createIntegratedAddress } from 'turtlecoin-wallet-backend';
 import * as admin from 'firebase-admin';
 
 export type AccountsOrderBy = 'accountId' | 'createdAt' | 'balanceUnlocked';
+
+exports.onAccountWrite = functions.firestore.document(`/apps/{appId}/accounts/accountId`)
+.onWrite(async (change, context) => {
+  const newState = change.after.data();
+
+  if (!newState) {
+    return;
+  }
+
+  const historyRef  = `/apps/${context.params.appId}/accounts/${context.params.accountId}/accountHistory`;
+  const accountData = newState as any;
+
+  accountData.timestamp = Date.now();
+
+  await admin.firestore().collection(historyRef).add(accountData);
+});
 
 export async function createAppAccount(app: TurtleApp): Promise<[Account | undefined, undefined | AccountsModule]> {
   const accountDoc            = admin.firestore().collection(`apps/${app.appId}/accounts`).doc();

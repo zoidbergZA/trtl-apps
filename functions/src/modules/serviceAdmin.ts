@@ -4,8 +4,10 @@ import * as ServiceModule from '../serviceModule';
 import * as WalletManager from '../walletManager';
 import * as DepositsModule from '../depositsModule';
 import * as WithdrawalsModule from '../withdrawalsModule';
+import * as Analytics from '../analyticsModule';
 import * as Constants from '../constants';
 import { ServiceError } from '../serviceError';
+import { ServiceCharge } from '../../../shared/types';
 
 const cors = require('cors')({ origin: true });
 
@@ -205,6 +207,15 @@ export const bootstrap = functions.https.onRequest(async (request, response) => 
       response.status(405).send(error);
     });
   });
+});
+
+exports.onServiceChargeUpdated = functions.firestore.document(`/apps/{appId}/serviceCharges/{chargeId}`)
+.onUpdate(async (change, context) => {
+  const charge = change.after.data() as ServiceCharge;
+
+  if (charge.status === 'completed' && !charge.cancelled) {
+    Analytics.trackMetric('successful service charge', charge.amount * 0.01);
+  }
 });
 
 async function isAdminUserCheck(context: functions.https.CallableContext): Promise<boolean> {

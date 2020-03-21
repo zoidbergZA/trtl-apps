@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import * as admin from 'firebase-admin';
+import * as functions from 'firebase-functions';
 import * as AppModule from './appModule';
 import { ServiceError } from './serviceError';
 import { createCallback } from './webhookModule';
@@ -7,6 +8,27 @@ import { Transaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { ServiceWallet } from './types';
 import { Account, AccountUpdate, TurtleApp, SubWalletInfo,
   Deposit, DepositStatus, AppDepositUpdate } from '../../shared/types';
+
+exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
+.onUpdate(async (change, context) => {
+  const oldState  = change.before.data() as Deposit;
+  const newState  = change.after.data() as Deposit;
+
+  await processAccountDepositUpdate(oldState, newState);
+});
+
+exports.onDepositWrite = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
+.onWrite(async (change, context) => {
+  const newState = change.after.data();
+
+  if (!newState) {
+    return;
+  }
+
+  const historyRef = `/apps/${context.params.appId}/deposits/${context.params.depositId}/depositHistory`;
+
+  await admin.firestore().collection(historyRef).add(newState);
+});
 
 export async function getDeposit(
   appId: string,
