@@ -16,7 +16,7 @@ export class AdminService {
 
   async getServiceStatus(): Promise<ServiceStatus | undefined> {
     try {
-      const response = await this.afFunctions.httpsCallable('getServiceStatus')({ }).toPromise();
+      const response = await this.afFunctions.httpsCallable('serviceAdmin-getServiceStatus')({ }).toPromise();
       return response as ServiceStatus;
     } catch (error) {
       console.log(error);
@@ -25,7 +25,7 @@ export class AdminService {
   }
 
   async rewindServiceWallet(distance: number): Promise<number> {
-    const response = await this.afFunctions.httpsCallable('rewindWallet')({
+    const response = await this.afFunctions.httpsCallable('serviceAdmin-rewindWallet')({
       distance
     }).toPromise();
 
@@ -34,7 +34,7 @@ export class AdminService {
 
   async getDepositHistory(depositId: string): Promise<Deposit[] | undefined> {
     try {
-      const response = await this.afFunctions.httpsCallable('getDepositHistory')({
+      const response = await this.afFunctions.httpsCallable('serviceAdmin-getDepositHistory')({
         depositId
       }).toPromise();
 
@@ -47,11 +47,22 @@ export class AdminService {
 
   async getWithdrawalHistory(withdrawalId: string): Promise<Withdrawal[] | undefined> {
     try {
-      const response = await this.afFunctions.httpsCallable('getWithdrawalHistory')({
+      const response = await this.afFunctions.httpsCallable('serviceAdmin-getWithdrawalHistory')({
         withdrawalId
       }).toPromise();
 
       return response as Withdrawal[];
+    } catch (error) {
+      console.log(error);
+      return undefined;
+    }
+  }
+
+  async getServiceChargeAccounts(): Promise<Account[] | undefined> {
+    try {
+      const response = await this.afFunctions.httpsCallable('serviceAdmin-getServiceChargeAccounts')({}).toPromise();
+
+      return response as Account[];
     } catch (error) {
       console.log(error);
       return undefined;
@@ -74,16 +85,5 @@ export class AdminService {
         ref.orderBy('timestamp', 'desc')
         .limit(50))
       .valueChanges();
-  }
-
-  async getServiceChargeAccounts(): Promise<Account[] | undefined> {
-    try {
-      const response = await this.afFunctions.httpsCallable('getServiceChargeAccounts')({}).toPromise();
-
-      return response as Account[];
-    } catch (error) {
-      console.log(error);
-      return undefined;
-    }
   }
 }
