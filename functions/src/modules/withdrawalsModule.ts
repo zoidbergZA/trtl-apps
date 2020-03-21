@@ -1,19 +1,19 @@
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import * as WalletManager from './walletManager';
-import * as AppModule from './appModule';
+import * as WalletManager from '../walletManager';
+import * as AppModule from './appsModule';
 import * as ServiceModule from './serviceModule';
 import * as Analytics from './analyticsModule';
-import { serviceChargesAccountId } from './constants';
-import { ServiceError } from './serviceError';
+import { serviceChargesAccountId } from '../constants';
+import { ServiceError } from '../serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
 import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate,
   ServiceCharge, ServiceChargeUpdate, PreparedWithdrawal,
   PreparedWithdrawalUpdate,
   Fees,
-  DaemonErrorEvent} from '../../shared/types';
-import { generateRandomSignatureSegement } from './utils';
-import { ServiceConfig, ServiceWallet } from './types';
+  DaemonErrorEvent} from '../../../shared/types';
+import { generateRandomSignatureSegement } from '../utils';
+import { ServiceConfig, ServiceWallet } from '../types';
 import { Transaction, PreparedTransaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { WalletErrorCode, WalletError } from 'turtlecoin-wallet-backend';
 import { FeeType } from 'turtlecoin-wallet-backend/dist/lib/FeeType';

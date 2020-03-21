@@ -1,13 +1,13 @@
 import * as crypto from 'crypto';
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import * as AppModule from './appModule';
-import { ServiceError } from './serviceError';
+import * as AppModule from './appsModule';
+import { ServiceError } from '../serviceError';
 import { createCallback } from './webhookModule';
 import { Transaction } from 'turtlecoin-wallet-backend/dist/lib/Types';
-import { ServiceWallet } from './types';
+import { ServiceWallet } from '../types';
 import { Account, AccountUpdate, TurtleApp, SubWalletInfo,
-  Deposit, DepositStatus, AppDepositUpdate } from '../../shared/types';
+  Deposit, DepositStatus, AppDepositUpdate } from '../../../shared/types';
 
 exports.onDepositUpdated = functions.firestore.document(`/apps/{appId}/deposits/{depositId}`)
 .onUpdate(async (change, context) => {

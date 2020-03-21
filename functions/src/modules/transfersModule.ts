@@ -1,5 +1,5 @@
-import { TurtleApp, Transfer, Recipient, Account, AccountUpdate } from "../../shared/types";
-import { ServiceError } from "./serviceError";
+import { TurtleApp, Transfer, Recipient, Account, AccountUpdate } from "../../../shared/types";
+import { ServiceError } from "../serviceError";
 import * as admin from 'firebase-admin';
 
 export async function accountTransfer(

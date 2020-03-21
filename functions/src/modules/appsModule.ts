@@ -1,14 +1,14 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
-import * as WalletManager from './walletManager';
+import * as WalletManager from '../walletManager';
 import * as ServiceModule from './serviceModule';
-import * as Utils from '../../shared/utils';
-import { serviceChargesAccountId } from './constants';
+import * as Utils from '../../../shared/utils';
+import { serviceChargesAccountId } from '../constants';
 import { createIntegratedAddress } from 'turtlecoin-wallet-backend';
-import { ServiceError } from './serviceError';
-import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Account } from '../../shared/types';
-import { generateRandomPaymentId, generateRandomSignatureSegement } from './utils';
+import { ServiceError } from '../serviceError';
+import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Account } from '../../../shared/types';
+import { generateRandomPaymentId, generateRandomSignatureSegement } from '../utils';
 // import { AppAuditResult } from './types';
 
 export const createApp = functions.https.onCall(async (data, context) => {

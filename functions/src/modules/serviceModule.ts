@@ -1,12 +1,13 @@
 import * as admin from 'firebase-admin';
-import * as WalletManager from './walletManager';
+import * as functions from 'firebase-functions';
+import * as WalletManager from '../walletManager';
 import * as axios from 'axios';
-import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from './types';
-import { sleep } from './utils';
+import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from '../types';
+import { sleep } from '../utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
-import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceStatus } from '../../shared/types';
-import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId } from './constants';
-import { ServiceError } from './serviceError';
+import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceStatus, ServiceUser } from '../../../shared/types';
+import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId } from '../constants';
+import { ServiceError } from '../serviceError';
 
 export async function boostrapService(): Promise<[string | undefined, undefined | ServiceError]> {
   const masterWalletInfo = await WalletManager.getMasterWalletInfo();
@@ -88,6 +89,31 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
 
   return await WalletManager.createMasterWallet(serviceConfig);
 }
+
+exports.onServiceUserCreated = functions.auth.user().onCreate(async (userRecord) => {
+  const id = userRecord.uid;
+
+  let displayName = userRecord.displayName;
+
+  if (!displayName) {
+    if (userRecord.email) {
+      displayName = userRecord.email;
+    } else {
+      displayName = 'Service user';
+    }
+  }
+
+  const serviceUser: ServiceUser = {
+    id: id,
+    displayName: displayName
+  }
+
+  if (userRecord.email) {
+    serviceUser.email = userRecord.email;
+  }
+
+  await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
+});
 
 export async function giveUserAdminRights(uid: string): Promise<boolean> {
   await admin.auth().setCustomUserClaims(uid, { admin: true });

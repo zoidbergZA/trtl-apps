@@ -1,7 +1,7 @@
 import * as functions from 'firebase-functions';
-import { ServiceError as AccountsModule } from "./serviceError";
-import { Account, TurtleApp } from "../../shared/types";
-import { generateRandomPaymentId, generateRandomSignatureSegement } from './utils';
+import { ServiceError as AccountsModule } from "../serviceError";
+import { Account, TurtleApp } from "../../../shared/types";
+import { generateRandomPaymentId, generateRandomSignatureSegement } from '../utils';
 import { createIntegratedAddress } from 'turtlecoin-wallet-backend';
 import * as admin from 'firebase-admin';
 

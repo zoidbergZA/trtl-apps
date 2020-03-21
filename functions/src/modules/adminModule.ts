@@ -1,10 +1,10 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as ServiceModule from '../serviceModule';
+import * as ServiceModule from './serviceModule';
 import * as WalletManager from '../walletManager';
-import * as DepositsModule from '../depositsModule';
-import * as WithdrawalsModule from '../withdrawalsModule';
-import * as Analytics from '../analyticsModule';
+import * as DepositsModule from './depositsModule';
+import * as WithdrawalsModule from './withdrawalsModule';
+import * as Analytics from './analyticsModule';
 import * as Constants from '../constants';
 import { ServiceError } from '../serviceError';
 import { ServiceCharge } from '../../../shared/types';
