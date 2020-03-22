@@ -48,6 +48,16 @@ api.get('/:appId/accounts/:accountId', async (req, res) => {
   }
 });
 
+api.get('/:appId/accounts/:accountId/qrcode', async (req, res) => {
+  try {
+    return getAccountQrCode(req, res);
+  }
+  catch (error) {
+    console.error(error);
+    res.status(500).send(new ServiceError('service/unknown-error'));
+  }
+});
+
 api.put('/:appId/accounts/:accountId/withdrawaddress', async (req, res) => {
   try {
     return setWithdrawAddress(req, res);
@@ -226,6 +236,59 @@ async function getAppAccount(request: any, response: any): Promise<void> {
   }
 
   response.status(200).send(appAccount);
+}
+
+async function getAccountQrCode(request: any, response: any): Promise<void> {
+  const [app, authError] = await authorizeAppRequest(request);
+
+  if (!app) {
+    response.status(401).send((authError));
+    return;
+  }
+
+  const accountId: string = request.params.accountId;
+
+  if (!accountId) {
+    response.status(400).send(new ServiceError('request/invalid-params'));
+    return;
+  }
+
+  const [account, accError] = await AccountsModule.getAppAccount(app.appId, accountId);
+
+  if (!account) {
+    response.status(500).send(accError);
+    return;
+  }
+
+  const name: string | undefined = request.query.name;
+  const amount: number |undefined = Number(request.query.amount);
+  const paymentid: string | undefined = request.query.paymentid;
+
+  if (!Number.isInteger(amount) || amount <= 0) {
+    response.status(400).send(new ServiceError('request/invalid-params', 'Invalid amount.'));
+    return;
+  }
+
+  let qrcode = `turtlecoin://${account.depositAddress}`;
+  const queryParams = new URLSearchParams();
+
+  if (name) {
+    queryParams.append('name', name);
+  }
+  if (amount) {
+    queryParams.append('amount', amount.toString());
+  }
+  if (paymentid) {
+    queryParams.append('paymentid', paymentid);
+  }
+
+  const queryString = queryParams.toString();
+
+  if (queryString.length > 0) {
+    qrcode += ('?' + queryString);
+  }
+
+  response.status(200).send({ qrcode: qrcode });
 }
 
 export async function getDeposit(request: any, response: any): Promise<void> {
