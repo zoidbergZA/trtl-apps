@@ -10,19 +10,18 @@ import * as WithdrawalsModule from './modules/withdrawalsModule';
 import * as Analytics from './modules/analyticsModule';
 import { api as serviceApi } from './serviceApi';
 
+admin.initializeApp();
+
+const expressApp = express();
+expressApp.use('/api', serviceApi);
+
 export const serviceAdmin = ServiceAdmin;
 export const scheduled    = CronJobsModule;
 export const apps         = AppModule;
 export const accounts     = AccountsModule;
 export const deposits     = DepositsModule;
 export const withdrawals  = WithdrawalsModule;
-
-admin.initializeApp();
-
-const expressApp = express();
-expressApp.use('/api', serviceApi);
-
-export const endpoints = functions.https.onRequest(expressApp);
+export const endpoints    = functions.https.onRequest(expressApp);
 
 try {
   const appInsightsApiKey = functions.config().azure.appinsights;
