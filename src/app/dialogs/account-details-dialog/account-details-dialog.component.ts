@@ -5,7 +5,6 @@ import { Account, TurtleApp } from 'shared/types';
 import { Observable } from 'rxjs';
 
 @Component({
-  // tslint:disable-next-line:component-selector
   selector: 'account-details-dialog',
   templateUrl: './account-details-dialog.component.html',
   styleUrls: ['./account-details-dialog.component.scss']
@@ -26,7 +25,14 @@ export class AccountDetailsDialogComponent implements OnInit {
     this.appAccount$  = this.consoleService.getAppAccount$(this.app.appId, this.accountId);
   }
 
-  ngOnInit() {
+  async ngOnInit() {
+    // const [qrCode, err] = await this.consoleService.getQrCode(this.app.appId, this.app.appSecret, this.accountId, 120, 'turtle shop');
+
+    // if (qrCode) {
+    //   console.log(qrCode);
+    // } else {
+    //   console.log(err);
+    // }
   }
 
   onCloseClick(): void {
