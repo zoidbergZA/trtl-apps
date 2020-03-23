@@ -1,9 +1,9 @@
 import * as admin from 'firebase-admin';
 import * as axios from 'axios';
 import * as crypto from 'crypto';
-import * as AppModule from './appModule';
-import { TurtleApp } from '../../shared/types';
-import { ServiceError } from './serviceError';
+import * as AppModule from './appsModule';
+import { TurtleApp } from '../../../shared/types';
+import { ServiceError } from '../serviceError';
 
 const retryIntervals: number[] = [
   1  * 60 * 1000,

@@ -1,21 +1,56 @@
 import * as admin from 'firebase-admin';
-import * as WalletManager from './walletManager';
-import * as AppModule from './appModule';
+import * as functions from 'firebase-functions';
+import * as WalletManager from '../walletManager';
+import * as AppModule from './appsModule';
 import * as ServiceModule from './serviceModule';
 import * as Analytics from './analyticsModule';
-import { serviceChargesAccountId } from './constants';
-import { ServiceError } from './serviceError';
+import { serviceChargesAccountId } from '../constants';
+import { ServiceError } from '../serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
 import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate,
   ServiceCharge, ServiceChargeUpdate, PreparedWithdrawal,
   PreparedWithdrawalUpdate,
   Fees,
-  DaemonErrorEvent} from '../../shared/types';
-import { generateRandomSignatureSegement } from './utils';
-import { ServiceConfig, ServiceWallet } from './types';
+  DaemonErrorEvent} from '../../../shared/types';
+import { generateRandomSignatureSegement } from '../utils';
+import { ServiceConfig, ServiceWallet } from '../types';
 import { Transaction, PreparedTransaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { WalletErrorCode, WalletError } from 'turtlecoin-wallet-backend';
 import { FeeType } from 'turtlecoin-wallet-backend/dist/lib/FeeType';
+
+exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
+.onCreate(async (snapshot, context) => {
+  const state = snapshot.data() as Withdrawal;
+  const [serviceWallet, error] = await WalletManager.getServiceWallet();
+
+  if (!serviceWallet) {
+    console.log((error as ServiceError).message);
+    return;
+  }
+
+  await processPendingWithdrawal(state, serviceWallet);
+});
+
+exports.onWithdrawalUpdated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
+.onUpdate(async (change, context) => {
+  const oldState  = change.before.data() as Withdrawal;
+  const newState  = change.after.data() as Withdrawal;
+
+  await processWithdrawalUpdate(oldState, newState);
+});
+
+exports.onWithdrawalWrite = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
+.onWrite(async (change, context) => {
+  const newState = change.after.data();
+
+  if (!newState) {
+    return;
+  }
+
+  const historyRef = `/apps/${context.params.appId}/withdrawals/${context.params.withdrawalId}/withdrawalHistory`;
+
+  await admin.firestore().collection(historyRef).add(newState);
+});
 
 export async function createPreparedWithdrawal(
   app: TurtleApp,

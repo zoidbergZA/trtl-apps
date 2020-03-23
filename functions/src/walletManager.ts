@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as functions from 'firebase-functions';
-import * as ServiceModule from './serviceModule';
+import * as ServiceModule from './modules/serviceModule';
 import * as Constants from './constants';
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';

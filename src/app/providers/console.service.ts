@@ -19,28 +19,28 @@ export class ConsoleService {
     private firestore: AngularFirestore) { }
 
   async createApp(appName: string, inviteCode?: string): Promise<any> {
-    return this.afFunctions.httpsCallable('createApp')({
+    return this.afFunctions.httpsCallable('apps-createApp')({
       appName,
       inviteCode
     }).toPromise();
   }
 
   async setAppState(appId: string, active: boolean) {
-    return this.afFunctions.httpsCallable('setAppState')({
+    return this.afFunctions.httpsCallable('apps-setAppState')({
       appId,
       active
     }).toPromise();
   }
 
   async setAppWebhook(appId: string, webhook: string | undefined) {
-    return this.afFunctions.httpsCallable('setAppWebhook')({
+    return this.afFunctions.httpsCallable('apps-setAppWebhook')({
       appId,
       webhook
     }).toPromise();
   }
 
   async resetAppApiKey(appId: string): Promise<string> {
-    return this.afFunctions.httpsCallable('resetAppSecret')({
+    return this.afFunctions.httpsCallable('apps-resetAppSecret')({
       appId
     }).toPromise();
   }

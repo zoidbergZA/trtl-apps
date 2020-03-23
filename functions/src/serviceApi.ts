@@ -2,11 +2,11 @@ import * as cors from 'cors';
 import * as express from 'express';
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import * as UsersModule from './usersModule';
-import * as ServiceModule from './serviceModule';
-import * as DepositsModule from './depositsModule';
-import * as WithdrawalsModule from './withdrawalsModule';
-import * as TransfersModule from './transfersModule';
+import * as AccountsModule from './modules/accountsModule';
+import * as ServiceModule from './modules/serviceModule';
+import * as DepositsModule from './modules/depositsModule';
+import * as WithdrawalsModule from './modules/withdrawalsModule';
+import * as TransfersModule from './modules/transfersModule';
 import { validateAddress as backendValidateAddress } from 'turtlecoin-wallet-backend';
 import { TurtleApp, AccountUpdate, Recipient, WithdrawalPreview } from '../../shared/types';
 import { ServiceError } from './serviceError';
@@ -41,6 +41,16 @@ api.post('/:appId/accounts/', async (req, res) => {
 api.get('/:appId/accounts/:accountId', async (req, res) => {
   try {
     return getAppAccount(req, res);
+  }
+  catch (error) {
+    console.error(error);
+    res.status(500).send(new ServiceError('service/unknown-error'));
+  }
+});
+
+api.get('/:appId/accounts/:accountId/qrcode', async (req, res) => {
+  try {
+    return getAccountQrCode(req, res);
   }
   catch (error) {
     console.error(error);
@@ -170,7 +180,7 @@ async function createAccount(request: any, response: any): Promise<void> {
     return;
   }
 
-  const [account, createError] = await UsersModule.createAppAccount(app);
+  const [account, createError] = await AccountsModule.createAppAccount(app);
 
   if (!account) {
     response.status(500).send((createError));
@@ -218,7 +228,7 @@ async function getAppAccount(request: any, response: any): Promise<void> {
     return;
   }
 
-  const [appAccount, accountError] = await UsersModule.getAppAccount(app.appId, accountId);
+  const [appAccount, accountError] = await AccountsModule.getAppAccount(app.appId, accountId);
 
   if (!appAccount) {
     response.status(500).send(accountError);
@@ -226,6 +236,57 @@ async function getAppAccount(request: any, response: any): Promise<void> {
   }
 
   response.status(200).send(appAccount);
+}
+
+async function getAccountQrCode(request: any, response: any): Promise<void> {
+  const [app, authError] = await authorizeAppRequest(request);
+
+  if (!app) {
+    response.status(401).send((authError));
+    return;
+  }
+
+  const accountId: string = request.params.accountId;
+
+  if (!accountId) {
+    response.status(400).send(new ServiceError('request/invalid-params'));
+    return;
+  }
+
+  const [account, accError] = await AccountsModule.getAppAccount(app.appId, accountId);
+
+  if (!account) {
+    response.status(500).send(accError);
+    return;
+  }
+
+  const name: string | undefined = request.query.name;
+  const amount: number |undefined = Number(request.query.amount);
+
+  if (amount && !Number.isInteger(amount) || amount <= 0) {
+    response.status(400).send(new ServiceError('request/invalid-params', 'Invalid amount.'));
+    return;
+  }
+
+  let qrcode = `turtlecoin://${account.depositAddress}`;
+  const queryParams = new URLSearchParams();
+
+  if (name) {
+    queryParams.append('name', name);
+  }
+  if (amount) {
+    queryParams.append('amount', amount.toString());
+  }
+
+  const queryString = queryParams.toString();
+
+  if (queryString.length > 0) {
+    qrcode += ('?' + queryString);
+  }
+
+  const img = `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=${qrcode}`
+
+  response.status(200).send({ qrcode: img });
 }
 
 export async function getDeposit(request: any, response: any): Promise<void> {
@@ -448,7 +509,7 @@ async function createPreparedWithdrawal(request: any, response: any): Promise<vo
     return;
   }
 
-  const [appAccount, accountError] = await UsersModule.getAppAccount(app.appId, accountId);
+  const [appAccount, accountError] = await AccountsModule.getAppAccount(app.appId, accountId);
 
   if (!appAccount) {
     response.status(400).send((accountError));
@@ -562,7 +623,7 @@ async function setWithdrawAddress(request: any, response: any): Promise<void> {
     return;
   }
 
-  const [appAccount, accountError] = await UsersModule.getAppAccount(app.appId, accountId);
+  const [appAccount, accountError] = await AccountsModule.getAppAccount(app.appId, accountId);
 
   if (!appAccount) {
     response.status(400).send((accountError));

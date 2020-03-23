@@ -1,37 +1,29 @@
-import { ServiceError } from "./serviceError";
-import { ServiceUser, Account, TurtleApp } from "../../shared/types";
-import { generateRandomPaymentId, generateRandomSignatureSegement } from './utils';
+import * as functions from 'firebase-functions';
+import { ServiceError as AccountsModule } from "../serviceError";
+import { Account, TurtleApp } from "../../../shared/types";
+import { generateRandomPaymentId, generateRandomSignatureSegement } from '../utils';
 import { createIntegratedAddress } from 'turtlecoin-wallet-backend';
 import * as admin from 'firebase-admin';
 
 export type AccountsOrderBy = 'accountId' | 'createdAt' | 'balanceUnlocked';
 
-export async function createServiceUser(userRecord: admin.auth.UserRecord): Promise<void> {
-  const id = userRecord.uid;
+exports.onAccountWrite = functions.firestore.document(`/apps/{appId}/accounts/accountId`)
+.onWrite(async (change, context) => {
+  const newState = change.after.data();
 
-  let displayName = userRecord.displayName;
-
-  if (!displayName) {
-    if (userRecord.email) {
-      displayName = userRecord.email;
-    } else {
-      displayName = 'Service user';
-    }
+  if (!newState) {
+    return;
   }
 
-  const serviceUser: ServiceUser = {
-    id: id,
-    displayName: displayName
-  }
+  const historyRef  = `/apps/${context.params.appId}/accounts/${context.params.accountId}/accountHistory`;
+  const accountData = newState as any;
 
-  if (userRecord.email) {
-    serviceUser.email = userRecord.email;
-  }
+  accountData.timestamp = Date.now();
 
-  await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
-}
+  await admin.firestore().collection(historyRef).add(accountData);
+});
 
-export async function createAppAccount(app: TurtleApp): Promise<[Account | undefined, undefined | ServiceError]> {
+export async function createAppAccount(app: TurtleApp): Promise<[Account | undefined, undefined | AccountsModule]> {
   const accountDoc            = admin.firestore().collection(`apps/${app.appId}/accounts`).doc();
   const timestamp             = Date.now();
   const paymentId             = generateRandomPaymentId();
@@ -56,7 +48,7 @@ export async function createAppAccount(app: TurtleApp): Promise<[Account | undef
     return [account, undefined];
   } catch (error) {
     console.error(error);
-    return [undefined, new ServiceError('app/create-account-failed')];
+    return [undefined, new AccountsModule('app/create-account-failed')];
   }
 }
 
@@ -64,7 +56,7 @@ export async function getAppAccounts(
   appId: string,
   orderBy: AccountsOrderBy,
   limit: number,
-  startAfterAccount?: string): Promise<[Account[] | undefined, undefined | ServiceError]> {
+  startAfterAccount?: string): Promise<[Account[] | undefined, undefined | AccountsModule]> {
 
   try {
     let querySnapshot: FirebaseFirestore.QuerySnapshot;
@@ -73,7 +65,7 @@ export async function getAppAccounts(
       const startAfterDoc = await admin.firestore().doc(`apps/${appId}/accounts/${startAfterAccount}`).get();
 
       if (!startAfterDoc.exists) {
-        return [undefined, new ServiceError('app/account-not-found')];
+        return [undefined, new AccountsModule('app/account-not-found')];
       }
 
       querySnapshot = await admin.firestore().collection(`apps/${appId}/accounts`)
@@ -90,13 +82,13 @@ export async function getAppAccounts(
       const accounts = querySnapshot.docs.map(d => d.data() as Account);
     return [accounts, undefined];
   } catch (error) {
-    return [undefined, new ServiceError('service/unknown-error')];
+    return [undefined, new AccountsModule('service/unknown-error')];
   }
 }
 
 export async function getAppAccount(
   appId: string,
-  accountId: string): Promise<[Account | undefined, undefined | ServiceError]> {
+  accountId: string): Promise<[Account | undefined, undefined | AccountsModule]> {
 
   const accountDoc = await admin.firestore().doc(`apps/${appId}/accounts/${accountId}`).get();
 
@@ -104,7 +96,7 @@ export async function getAppAccount(
     const account = accountDoc.data() as Account;
     return [account, undefined];
   } else {
-    return [undefined, new ServiceError('app/account-not-found')];
+    return [undefined, new AccountsModule('app/account-not-found')];
   }
 }
 

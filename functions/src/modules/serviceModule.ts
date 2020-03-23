@@ -1,12 +1,14 @@
 import * as admin from 'firebase-admin';
-import * as WalletManager from './walletManager';
+import * as functions from 'firebase-functions';
+import * as WalletManager from '../walletManager';
 import * as axios from 'axios';
-import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from './types';
-import { sleep } from './utils';
+import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from '../types';
+import { sleep } from '../utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
-import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceStatus } from '../../shared/types';
-import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId } from './constants';
-import { ServiceError } from './serviceError';
+import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceStatus, ServiceUser } from '../../../shared/types';
+import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId,
+  defaultServiceConfig, defaultNodes } from '../constants';
+import { ServiceError } from '../serviceError';
 
 export async function boostrapService(): Promise<[string | undefined, undefined | ServiceError]> {
   const masterWalletInfo = await WalletManager.getMasterWalletInfo();
@@ -15,79 +17,45 @@ export async function boostrapService(): Promise<[string | undefined, undefined 
     return [undefined, new ServiceError('service/master-wallet-info', 'Service already bootstrapped!')];
   }
 
-  const serviceConfig: ServiceConfig = {
-    daemonHost:             'blockapi.turtlepay.io',  // Default daemon to connect to
-    daemonPort:             443,                      // Port number of the daemon
-    txScanDepth:            2 * 60 * 24 * 7,          // Scan transactions up to aprox 7 days in the past
-    txConfirmations:        6,                        // Amount of blocks needed to confirm a deposit/withdrawal
-    withdrawTimoutBlocks:   2 * 60 * 24 * 4,          // Amount of blocks since a confirming withdrawal tx was not found before it is considered failed
-    waitForSyncTimeout:     20000,                    // Max time is miliseconds for the master wallet to sync
-    serviceHalted:          false,                    // If true, the service is disables and doesn't process transactions
-    inviteOnly:             true,                     // An invitation code is required to create an app
-    serviceCharge:          0                         // default service charge
-  }
-
-  const nodes: ServiceNode[] = [
-  {
-    id: 'node1',
-    name: 'TurtlePay Blockchain Cache - SSL',
-    url: 'blockapi.turtlepay.io',
-    port: 443,
-    ssl: true,
-    cache: true,
-    fee: 0,
-    availability: 0,
-    online: false,
-    version:'',
-    priority: 100,
-    lastUpdateAt: 0,
-    lastDropAt: 0
-  },
-  {
-    id: 'node2',
-    name: 'TurtlePay Blockchain Cache',
-    url: 'node.trtlpay.com',
-    port: 80,
-    ssl: false,
-    cache: true,
-    fee: 0,
-    availability: 0,
-    online: false,
-    version:'',
-    priority: 99,
-    lastUpdateAt: 0,
-    lastDropAt: 0
-  },
-  {
-    id: 'node3',
-    name: 'Bot.Tips Blockchain Cache',
-    url: 'trtl.bot.tips',
-    port: 80,
-    ssl: false,
-    cache: true,
-    fee: 0,
-    availability: 0,
-    online: false,
-    version:'',
-    priority: 98,
-    lastUpdateAt: 0,
-    lastDropAt: 0
-  }];
-
   const batch = admin.firestore().batch();
 
-  nodes.forEach(node => {
+  defaultNodes.forEach(node => {
     const docRef = admin.firestore().doc(`nodes/${node.id}`);
     batch.set(docRef, node);
   });
 
   await batch.commit();
-  await admin.firestore().doc('globals/config').set(serviceConfig);
+  await admin.firestore().doc('globals/config').set(defaultServiceConfig);
 
   console.log('service config created! creating master wallet...');
 
-  return await WalletManager.createMasterWallet(serviceConfig);
+  return await WalletManager.createMasterWallet(defaultServiceConfig);
 }
+
+exports.onServiceUserCreated = functions.auth.user().onCreate(async (userRecord) => {
+  const id = userRecord.uid;
+
+  let displayName = userRecord.displayName;
+
+  if (!displayName) {
+    if (userRecord.email) {
+      displayName = userRecord.email;
+    } else {
+      displayName = 'Service user';
+    }
+  }
+
+  const serviceUser: ServiceUser = {
+    id: id,
+    displayName: displayName
+  }
+
+  if (userRecord.email) {
+    serviceUser.email = userRecord.email;
+  }
+
+  await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
+});
 
 export async function giveUserAdminRights(uid: string): Promise<boolean> {
   await admin.auth().setCustomUserClaims(uid, { admin: true });
