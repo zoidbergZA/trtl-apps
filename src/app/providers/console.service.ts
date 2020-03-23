@@ -184,10 +184,16 @@ export class ConsoleService {
     return await TA.transferMany(senderId, recipients);
   }
 
-  // async getFee(appId: string, appSecret: string): Promise<[number | undefined, undefined | ServiceError]> {
-  //   TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
-  //   return await TA.getFee();
-  // }
+  async getQrCode(
+    appId: string,
+    appSecret: string,
+    accountId: string,
+    amount: number,
+    name: string): Promise<[string | undefined, undefined | ServiceError]> {
+
+    TA.initialize(appId, appSecret, { apiBase: environment.apiBase });
+    return await TA.getAccountQrCode(accountId, amount, name);
+  }
 
   async prepareWithdrawal(
     appId: string,
