@@ -7,7 +7,7 @@ import * as ServiceModule from './modules/serviceModule';
 import * as DepositsModule from './modules/depositsModule';
 import * as WithdrawalsModule from './modules/withdrawalsModule';
 import * as TransfersModule from './modules/transfersModule';
-import { validateAddress as backendValidateAddress } from 'turtlecoin-wallet-backend';
+import { validateAddress as backendValidateAddress, validatePaymentID } from 'turtlecoin-wallet-backend';
 import { TurtleApp, AccountUpdate, Recipient, WithdrawalPreview } from '../../shared/types';
 import { ServiceError } from './serviceError';
 
@@ -264,7 +264,7 @@ async function getAccountQrCode(request: any, response: any): Promise<void> {
   const amount: number |undefined = Number(request.query.amount);
   const paymentid: string | undefined = request.query.paymentid;
 
-  if (!Number.isInteger(amount) || amount <= 0) {
+  if (amount && !Number.isInteger(amount) || amount <= 0) {
     response.status(400).send(new ServiceError('request/invalid-params', 'Invalid amount.'));
     return;
   }
@@ -279,7 +279,12 @@ async function getAccountQrCode(request: any, response: any): Promise<void> {
     queryParams.append('amount', amount.toString());
   }
   if (paymentid) {
-    queryParams.append('paymentid', paymentid);
+    if (validatePaymentID(paymentid, false)) {
+      queryParams.append('paymentid', paymentid);
+    } else {
+      response.status(400).send(new ServiceError('request/invalid-params', 'Invalid payment ID.'));
+      return;
+    }
   }
 
   const queryString = queryParams.toString();
@@ -288,7 +293,9 @@ async function getAccountQrCode(request: any, response: any): Promise<void> {
     qrcode += ('?' + queryString);
   }
 
-  response.status(200).send({ qrcode: qrcode });
+  const img = `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=${qrcode}`
+
+  response.status(200).send({ qrcode: img });
 }
 
 export async function getDeposit(request: any, response: any): Promise<void> {
