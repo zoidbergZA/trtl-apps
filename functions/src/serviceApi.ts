@@ -272,7 +272,7 @@ async function getAccountQrCode(request: any, response: any): Promise<void> {
   const queryParams = new URLSearchParams();
 
   if (name) {
-    queryParams.append('name', name);
+    queryParams.append('name', encodeURIComponent(name));
   }
   if (amount) {
     queryParams.append('amount', amount.toString());
