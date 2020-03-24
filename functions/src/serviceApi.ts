@@ -268,23 +268,18 @@ async function getAccountQrCode(request: any, response: any): Promise<void> {
     return;
   }
 
-  let qrcode = `turtlecoin://${account.depositAddress}`;
-  const queryParams = new URLSearchParams();
+  const baseCode = `turtlecoin://${account.depositAddress}`;
+  const params: any = {};
 
   if (name) {
-    queryParams.append('name', encodeURIComponent(name));
+    params.name = decodeURIComponent(name);
   }
   if (amount) {
-    queryParams.append('amount', amount.toString());
+    params.amount = amount;
   }
 
-  const queryString = queryParams.toString();
-
-  if (queryString.length > 0) {
-    qrcode += ('?' + queryString);
-  }
-
-  const img = `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=${qrcode}`
+  const qrCode = buildQueryUrl(baseCode, params);
+  const img = `https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=${qrCode}`
 
   response.status(200).send({ qrcode: img });
 }
@@ -716,4 +711,20 @@ async function authorizeAppRequest(
   }
 
   return [undefined, new ServiceError('request/unauthorized')];
+}
+
+function buildQueryUrl(baseUrl: string, parameters: any): string {
+  let url = baseUrl;
+  let qs = '';
+
+  for(const key in parameters) {
+    const value = parameters[key];
+    qs += encodeURI(key) + '=' + encodeURI(value) + '%26';
+  }
+
+  if (qs.length > 0){
+    qs = qs.substring(0, qs.length - 3); //chop off last "&" ("%26")
+    url = baseUrl + "?" + qs;
+  }
+  return url;
 }
