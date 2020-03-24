@@ -719,11 +719,11 @@ function buildQueryUrl(baseUrl: string, parameters: any): string {
 
   for(const key in parameters) {
     const value = parameters[key];
-    qs += encodeURI(key) + '=' + encodeURI(value) + '&';
+    qs += encodeURI(key) + '=' + encodeURI(value) + '%26';
   }
 
   if (qs.length > 0){
-    qs = qs.substring(0, qs.length - 1); //chop off last "&"
+    qs = qs.substring(0, qs.length - 3); //chop off last "&" ("%26")
     url = baseUrl + "?" + qs;
   }
   return url;
