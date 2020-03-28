@@ -67,6 +67,23 @@ export const createApp = functions.https.onCall(async (data, context) => {
   return result;
 });
 
+exports.onAuditCreated = functions.firestore.document('/appAudits/{auditId}')
+.onCreate(async (snapshot, context) => {
+
+  const audit = snapshot.data() as AppAuditResult;
+
+  if (!audit.passed) {
+    const title = `Alert: app audit failed`;
+    let message = `App with id ${audit.appId} audit failed. Audit id: ${audit.id} \n`
+
+    audit.logs?.forEach(log => {
+      message += `${log} \n`;
+    });
+
+    await ServiceModule.sendAdminEmail(title, message);
+  }
+});
+
 export async function getApp(appId: string): Promise<[TurtleApp | undefined, undefined | ServiceError]> {
   const appDoc = await admin.firestore().doc(`apps/${appId}`).get();
 
@@ -411,7 +428,10 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
 
   // TODO: check that app total account unlocked balances <= wallet locked(tx change) + unlocked balance
 
+  const auditRef = admin.firestore().collection('appAudits').doc();
+
   const auditResult: AppAuditResult = {
+    id:                           auditRef.id,
     appId:                        app.appId,
     timestamp:                    Date.now(),
     passed:                       true,
@@ -459,7 +479,7 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     lastAuditPassed: auditResult.passed
   }
 
-  await admin.firestore().collection('appAudits').add(auditResult);
+  await auditRef.set(auditResult);
   await admin.firestore().doc(`apps/${app.appId}`).update(appUpdate);
 
   return auditResult;

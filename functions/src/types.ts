@@ -33,6 +33,7 @@ export interface ServiceConfig {
   serviceHalted: boolean;
   inviteOnly: boolean;
   serviceCharge: number;
+  adminEmail?: string;
 }
 
 export interface ServiceConfigUpdate {
@@ -93,6 +94,7 @@ export interface AppInviteCode {
 }
 
 export interface AppAuditResult {
+  id: string,
   appId: string,
   timestamp: number,
   passed: boolean,
