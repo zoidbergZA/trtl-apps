@@ -103,7 +103,7 @@ export interface AppAuditResult {
   totalCredited: number,
   totalDebited: number,
   appBalance: number;
-  summary?: string;
+  logs?: string[];
 }
 
 export interface PrepareTransactionRequest {

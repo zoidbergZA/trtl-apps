@@ -5,11 +5,11 @@ import * as WalletManager from '../walletManager';
 import * as ServiceModule from './serviceModule';
 import * as Utils from '../../../shared/utils';
 import { serviceChargesAccountId } from '../constants';
-import { createIntegratedAddress } from 'turtlecoin-wallet-backend';
+import { createIntegratedAddress, WalletBackend } from 'turtlecoin-wallet-backend';
 import { ServiceError } from '../serviceError';
-import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Account } from '../../../shared/types';
+import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Account, Deposit, Withdrawal } from '../../../shared/types';
 import { generateRandomPaymentId, generateRandomSignatureSegement } from '../utils';
-// import { AppAuditResult } from './types';
+import { AppAuditResult } from '../types';
 
 export const createApp = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -66,6 +66,16 @@ export const createApp = functions.https.onCall(async (data, context) => {
 
   return result;
 });
+
+export async function getApp(appId: string): Promise<[TurtleApp | undefined, undefined | ServiceError]> {
+  const appDoc = await admin.firestore().doc(`apps/${appId}`).get();
+
+  if (!appDoc.exists) {
+    return [undefined, new ServiceError('app/app-not-found')];
+  }
+
+  return [appDoc.data() as TurtleApp, undefined];
+}
 
 export const setAppState = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -136,6 +146,30 @@ export const setAppWebhook = functions.https.onCall(async (data, context) => {
 
   return result;
 });
+
+export async function runAppAudits(appCount: number): Promise<void> {
+  const querySnapshot = await admin.firestore()
+                        .collectionGroup('apps')
+                        .orderBy('lastAuditAt', 'asc')
+                        .limit(appCount)
+                        .get();
+
+  if (querySnapshot.size === 0) {
+    return;
+  }
+
+  const [serviceWallet, walletError] = await WalletManager.getServiceWallet();
+
+  if (!serviceWallet) {
+    console.log((walletError as ServiceError).message);
+    return;
+  }
+
+  const apps        = querySnapshot.docs.map(d => d.data() as TurtleApp);
+  const auditsJobs  = apps.map(app => auditApp(app, serviceWallet.wallet));
+
+  await Promise.all(auditsJobs);
+}
 
 async function processCreateApp(
   owner: string,
@@ -244,26 +278,6 @@ async function processCreateApp(
   }
 }
 
-export async function getApp(appId: string): Promise<[TurtleApp | undefined, undefined | ServiceError]> {
-  const appDoc = await admin.firestore().doc(`apps/${appId}`).get();
-
-  if (!appDoc.exists) {
-    return [undefined, new ServiceError('app/app-not-found')];
-  }
-
-  return [appDoc.data() as TurtleApp, undefined];
-}
-
-// async function disableApp(appId: string, reason: string): Promise<void> {
-//   console.error(`disabled app [${appId}]. reason: ${reason}`);
-
-//   const appUpdate: TurtleAppUpdate = {
-//     disabled: true
-//   }
-
-//   await admin.firestore().doc(`apps/${appId}`).update(appUpdate);
-// }
-
 async function processSetAppState(owner: string, appId: string, active: boolean): Promise<boolean> {
   const [app] = await getApp(appId);
 
@@ -349,156 +363,133 @@ async function processSetAppWebhook(
   }
 }
 
-// async function runAppAudits(appCount: number): Promise<void> {
-//   const querySnapshot = await admin.firestore()
-//                         .collectionGroup('apps')
-//                         .orderBy('lastAuditAt', 'asc')
-//                         .limit(appCount)
-//                         .get();
-
-//   if (querySnapshot.size === 0) {
-//     return;
-//   }
-
-//   const [serviceWallet, walletError] = await WalletManager.getServiceWallet();
-
-//   if (!serviceWallet) {
-//     console.log((walletError as ServiceError).message);
-//     return;
-//   }
-
-//   const apps        = querySnapshot.docs.map(d => d.data() as TurtleApp);
-//   const auditsJobs  = apps.map(app => auditApp(app, serviceWallet.wallet));
-
-//   await Promise.all(auditsJobs);
-// }
-
 // async function getAppAccounts(appId: string): Promise<Account[]> {
 //   const accountDocs = await admin.firestore().collection(`apps/${appId}/accounts`).get();
 
 //   return accountDocs.docs.map(d => d.data() as Account);
 // }
 
-// async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
-//   console.log(`starting audit for app: ${app.appId}`);
+async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
+  console.log(`starting audit for app: ${app.appId}`);
 
-//   const appTransactions   = wallet.getTransactions(undefined, undefined, false, app.subWallet);
-//   const allDeposits       = await getDeposits(app.appId);
-//   const allWithdrawals    = await getWithdrawals(app.appId);
-//   let summary             = '';
+  const appTransactions   = wallet.getTransactions(undefined, undefined, false, app.subWallet);
+  const allDeposits       = await getDeposits(app.appId);
+  const allWithdrawals    = await getWithdrawals(app.appId);
+  const logs: string[]    = [];
 
-//   // check for missing deposits
-//   const completedDeposits = allDeposits.filter(d => d.status === 'completed');
-//   const missingDeposits: Deposit[] = [];
+  // check for missing deposits
+  const completedDeposits = allDeposits.filter(d => d.status === 'completed');
+  const missingDeposits: Deposit[] = [];
 
-//   completedDeposits.forEach(deposit => {
-//     if (!appTransactions.find(tx => tx.hash === deposit.txHash)) {
-//       summary = summary.concat(`completed deposit with hash [${deposit.txHash}] missing from wallet. \n`);
-//       missingDeposits.push(deposit);
-//     }
-//   });
+  completedDeposits.forEach(deposit => {
+    if (!appTransactions.find(tx => tx.hash === deposit.txHash)) {
+      missingDeposits.push(deposit);
+      logs.push(`completed deposit with hash [${deposit.txHash}] missing from wallet.`);
+    }
+  });
 
-//   // check for missing withdrawal
-//   const successfulWithdrawals = allWithdrawals.filter(w => w.status === 'completed' && !w.failed);
-//   const missingWithdrawals: Withdrawal[] = [];
+  // check for missing withdrawal
+  const successfulWithdrawals = allWithdrawals.filter(w => w.status === 'completed' && !w.failed);
+  const missingWithdrawals: Withdrawal[] = [];
 
-//   successfulWithdrawals.forEach(withdrawal => {
-//     if (!appTransactions.find(tx => tx.hash === withdrawal.txHash)) {
-//       missingWithdrawals.push(withdrawal);
-//       summary = summary.concat(`successful withdrawal with hash [${withdrawal.txHash}] missing from wallet. \n`);
-//     }
-//   });
+  successfulWithdrawals.forEach(withdrawal => {
+    if (!appTransactions.find(tx => tx.hash === withdrawal.txHash)) {
+      missingWithdrawals.push(withdrawal);
+      logs.push(`successful withdrawal with hash [${withdrawal.txHash}] missing from wallet.`);
+    }
+  });
 
-//   const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
+  const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
 
-//   const totalCredited = completedDeposits
-//                           .map(d => d.amount)
-//                           .reduce((prev, next) => prev + next, 0);
+  const confirmedCredited = completedDeposits
+                            .map(d => d.amount)
+                            .reduce((prev, next) => prev + next, 0);
 
-//   const totalDebited = successfulWithdrawals
-//                         .map(w => w.amount + w.fees.txFee + w.fees.nodeFee + w.fees.serviceFee)
-//                         .reduce((prev, next) => prev + next, 0);
+  const confirmedDebited = successfulWithdrawals
+                            .map(w => w.amount + w.fees.txFee + w.fees.nodeFee + w.fees.serviceFee)
+                            .reduce((prev, next) => prev + next, 0);
 
-//   const auditResult: AppAuditResult = {
-//     appId:                        app.appId,
-//     timestamp:                    Date.now(),
-//     passed:                       true,
-//     walletLockedBalance:          lockedBalance,
-//     walletUnlockedBalance:        unlockedBalance,
-//     totalCredited:                totalCredited,
-//     totalDebited:                 totalDebited,
-//     appBalance:                   totalCredited - totalDebited
-//   }
+  // TODO: check that app total account unlocked balances <= wallet locked(tx change) + unlocked balance
 
-//   if (summary !== '') {
-//     auditResult.summary = summary;
-//   }
+  const auditResult: AppAuditResult = {
+    appId:                        app.appId,
+    timestamp:                    Date.now(),
+    passed:                       true,
+    walletLockedBalance:          lockedBalance,
+    walletUnlockedBalance:        unlockedBalance,
+    totalCredited:                confirmedCredited,
+    totalDebited:                 confirmedDebited,
+    appBalance:                   confirmedCredited - confirmedDebited
+  }
 
-//   if (missingDeposits.length > 0) {
-//     const missingHashes: string[] = [];
+  if (logs.length > 0) {
+    auditResult.logs = logs;
+  }
 
-//     missingDeposits.forEach(d => {
-//       if (d.txHash) {
-//         missingHashes.push(d.txHash);
-//       }
-//     });
+  if (missingDeposits.length > 0) {
+    const missingHashes: string[] = [];
 
-//     auditResult.missingDepositHashes = missingHashes;
-//     auditResult.passed = false;
-//   }
+    missingDeposits.forEach(d => {
+      if (d.txHash) {
+        missingHashes.push(d.txHash);
+      }
+    });
 
-//   if (missingWithdrawals.length > 0) {
-//     const missingHashes: string[] = [];
+    auditResult.missingDepositHashes = missingHashes;
+    auditResult.passed = false;
+  }
 
-//     missingWithdrawals.forEach(w => {
-//       if (w.txHash) {
-//         missingHashes.push(w.txHash);
-//       }
-//     });
+  if (missingWithdrawals.length > 0) {
+    const missingHashes: string[] = [];
 
-//     auditResult.missingWithdrawalHashes = missingHashes;
-//     auditResult.passed = false;
-//   }
+    missingWithdrawals.forEach(w => {
+      if (w.txHash) {
+        missingHashes.push(w.txHash);
+      }
+    });
 
-//   console.log(`app ${app.appId} audit completed, passed: ${auditResult.passed}`);
-//   console.log(summary);
+    auditResult.missingWithdrawalHashes = missingHashes;
+    auditResult.passed = false;
+  }
 
-//   const appUpdate: TurtleAppUpdate = {
-//     lastAuditAt: Date.now(),
-//     lastAuditPassed: auditResult.passed
-//   }
+  console.log(`app ${app.appId} completed, passed: ${auditResult.passed}`);
 
-//   await admin.firestore().collection('appAudits').add(auditResult);
-//   await admin.firestore().doc(`apps/${app.appId}`).update(appUpdate);
+  const appUpdate: TurtleAppUpdate = {
+    lastAuditAt: Date.now(),
+    lastAuditPassed: auditResult.passed
+  }
 
-//   return auditResult;
-// }
+  await admin.firestore().collection('appAudits').add(auditResult);
+  await admin.firestore().doc(`apps/${app.appId}`).update(appUpdate);
 
-// async function getDeposits(appId: string): Promise<Deposit[]> {
-//   try {
-//     const querySnapshot = await admin.firestore()
-//                             .collection(`apps/${appId}/deposits`)
-//                             .get();
+  return auditResult;
+}
 
-//     return querySnapshot.docs.map(d => d.data() as Deposit);
-//   } catch (error) {
-//     console.log(error);
-//     return [];
-//   }
-// }
+async function getDeposits(appId: string): Promise<Deposit[]> {
+  try {
+    const querySnapshot = await admin.firestore()
+                            .collection(`apps/${appId}/deposits`)
+                            .get();
 
-// async function getWithdrawals(appId: string): Promise<Withdrawal[]> {
-//   try {
-//     const querySnapshot = await admin.firestore()
-//                             .collection(`apps/${appId}/withdrawals`)
-//                             .get();
+    return querySnapshot.docs.map(d => d.data() as Deposit);
+  } catch (error) {
+    console.log(error);
+    return [];
+  }
+}
 
-//     return querySnapshot.docs.map(d => d.data() as Withdrawal);
-//   } catch (error) {
-//     console.log(error);
-//     return [];
-//   }
-// }
+async function getWithdrawals(appId: string): Promise<Withdrawal[]> {
+  try {
+    const querySnapshot = await admin.firestore()
+                            .collection(`apps/${appId}/withdrawals`)
+                            .get();
+
+    return querySnapshot.docs.map(d => d.data() as Withdrawal);
+  } catch (error) {
+    console.log(error);
+    return [];
+  }
+}
 
 function generateApiKey(): string {
   return crypto.randomBytes(64).toString('hex');
