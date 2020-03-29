@@ -188,6 +188,32 @@ export async function runAppAudits(appCount: number): Promise<void> {
   await Promise.all(auditsJobs);
 }
 
+export async function requestAppAudit(appId: string): Promise<void> {
+  const [app, appErr] = await getApp(appId);
+
+  if (!app) {
+    console.log((appErr as ServiceError).message);
+    return;
+  }
+
+  const timeSinceLastAudit = Date.now() - app.lastAuditAt;
+  const minAuditTimeDelta = 1000 * 60 * 10; // 10 minutes
+
+  if (timeSinceLastAudit < minAuditTimeDelta) {
+    console.log(`not enough time as passed since last audit for app ${app.appId}, skipping audit.`);
+    return;
+  }
+
+  const [serviceWallet, walletErr] = await WalletManager.getServiceWallet(true);
+
+  if (!serviceWallet) {
+    console.log((walletErr as ServiceError).message);
+    return;
+  }
+
+  await auditApp(app, serviceWallet.wallet);
+}
+
 async function processCreateApp(
   owner: string,
   appName: string,
