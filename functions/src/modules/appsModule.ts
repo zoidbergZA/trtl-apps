@@ -76,9 +76,11 @@ exports.onAuditCreated = functions.firestore.document('/appAudits/{auditId}')
     const title = `Alert: app audit failed`;
     let message = `App with id ${audit.appId} audit failed. Audit id: ${audit.id} \n`
 
-    audit.logs?.forEach(log => {
-      message += `${log} \n`;
-    });
+    if (audit.logs) {
+      audit.logs.forEach(log => {
+        message += `${log} \n`;
+      });
+    }
 
     await ServiceModule.sendAdminEmail(title, message);
   }
@@ -197,7 +199,7 @@ export async function requestAppAudit(appId: string): Promise<void> {
   }
 
   const timeSinceLastAudit = Date.now() - app.lastAuditAt;
-  const minAuditTimeDelta = 1000 * 60 * 10; // 10 minutes
+  const minAuditTimeDelta = 1000 * 60 * 10; // TODO: move to service config
 
   if (timeSinceLastAudit < minAuditTimeDelta) {
     console.log(`not enough time as passed since last audit for app ${app.appId}, skipping audit.`);
