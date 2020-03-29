@@ -39,6 +39,8 @@ export interface ServiceConfig {
 export interface ServiceConfigUpdate {
   daemonHost?: string;
   daemonPort?: number;
+  serviceHalted?: boolean;
+  adminEmail?: string;
 }
 
 export interface ServiceNode {

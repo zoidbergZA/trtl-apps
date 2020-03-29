@@ -380,11 +380,11 @@ async function processSetAppWebhook(
   }
 }
 
-// async function getAppAccounts(appId: string): Promise<Account[]> {
-//   const accountDocs = await admin.firestore().collection(`apps/${appId}/accounts`).get();
+async function getAppAccounts(appId: string): Promise<Account[]> {
+  const accountDocs = await admin.firestore().collection(`apps/${appId}/accounts`).get();
 
-//   return accountDocs.docs.map(d => d.data() as Account);
-// }
+  return accountDocs.docs.map(d => d.data() as Account);
+}
 
 async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
   console.log(`starting audit for app: ${app.appId}`);
@@ -420,21 +420,38 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
 
   const confirmedCredited = completedDeposits
                             .map(d => d.amount)
-                            .reduce((prev, next) => prev + next, 0);
+                            .reduce((total, current) => total + current);
 
   const confirmedDebited = successfulWithdrawals
                             .map(w => w.amount + w.fees.txFee + w.fees.nodeFee + w.fees.serviceFee)
-                            .reduce((prev, next) => prev + next, 0);
+                            .reduce((total, current) => total + current);
 
-  // TODO: check that app total account unlocked balances <= wallet locked(tx change) + unlocked balance
+  const appAccounts           = await getAppAccounts(app.appId);
+  const appWalletTotalBalance = unlockedBalance + lockedBalance;
+  const accountsTotalUnlocked = appAccounts
+                                  .map(a => a.balanceUnlocked)
+                                  .reduce((total, current) => total + current);
 
-  const auditRef = admin.firestore().collection('appAudits').doc();
+  const auditRef  = admin.firestore().collection('appAudits').doc();
+  const auditId   = auditRef.id;
+  let auditPassed = true;
+
+  if (appWalletTotalBalance < accountsTotalUnlocked) {
+    auditPassed = false;
+    logs.push(`the sum of app account balances is more than the sub-wallet total balance!`);
+
+    const haltMessage = `App with id ${app.appId} has more total account unlocked balances than the
+      total sub-wallet balance. Service halted! App audit id: ${auditId}`;
+
+    await ServiceModule.haltService(haltMessage);
+  }
+
 
   const auditResult: AppAuditResult = {
-    id:                           auditRef.id,
+    id:                           auditId,
     appId:                        app.appId,
     timestamp:                    Date.now(),
-    passed:                       true,
+    passed:                       auditPassed,
     walletLockedBalance:          lockedBalance,
     walletUnlockedBalance:        unlockedBalance,
     totalCredited:                confirmedCredited,

@@ -499,6 +499,15 @@ async function processServiceCharge(appId: string, chargeId: string): Promise<vo
   }
 }
 
+export async function haltService(reason: string): Promise<void> {
+  const configUpdate: ServiceConfigUpdate = {
+    serviceHalted: true
+  }
+
+  await admin.firestore().doc(`globals/config`).update(configUpdate);
+  await sendAdminEmail('Alert - Service halted!', reason);
+}
+
 export async function sendAdminEmail(subject: string, body: string): Promise<void> {
   const sendGridKey = functions.config().sendgrid.apikey;
 
