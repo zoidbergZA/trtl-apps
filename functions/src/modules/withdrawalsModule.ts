@@ -357,8 +357,11 @@ export async function processWithdrawalUpdate(
     }
 
     const callbackCode: CallbackCode = newState.failed ? 'withdrawal/failed' : 'withdrawal/succeeded';
-
     await createCallback(app, callbackCode, newState);
+
+    if (newState.failed && newState.daemonErrorCode === WalletErrorCode.NOT_ENOUGH_BALANCE) {
+      await AppModule.requestAppAudit(newState.appId);
+    }
   }
 }
 
@@ -432,6 +435,7 @@ async function processFaultyWithdrawal(
 
   if (hasConfirmedFailureErrorCode(withdrawal)) {
     await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
+
     return;
   } else if (withdrawal.retries < 5) {
     // retry with a new prepared withdrawal

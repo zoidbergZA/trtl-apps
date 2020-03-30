@@ -9,6 +9,7 @@ import * as WithdrawalsModule from './modules/withdrawalsModule';
 import * as TransfersModule from './modules/transfersModule';
 import { validateAddress as backendValidateAddress } from 'turtlecoin-wallet-backend';
 import { TurtleApp, AccountUpdate, Recipient, WithdrawalPreview } from '../../shared/types';
+import { validateQrName } from '../../shared/utils';
 import { ServiceError } from './serviceError';
 
 export const api = express();
@@ -260,7 +261,7 @@ async function getAccountQrCode(request: any, response: any): Promise<void> {
     return;
   }
 
-  const name: string | undefined = request.query.name;
+  let name: string | undefined = request.query.name;
   const amount: number |undefined = Number(request.query.amount);
 
   if (amount && !Number.isInteger(amount) || amount <= 0) {
@@ -272,8 +273,16 @@ async function getAccountQrCode(request: any, response: any): Promise<void> {
   const params: any = {};
 
   if (name) {
-    params.name = decodeURIComponent(name);
+    name = decodeURIComponent(name);
+
+    if (!validateQrName(name)) {
+      response.status(400).send(new ServiceError('request/invalid-params', 'Invalid special characters in name parameter.'));
+      return;
+    }
+
+    params.name = name;
   }
+
   if (amount) {
     params.amount = amount;
   }

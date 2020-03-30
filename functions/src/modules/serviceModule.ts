@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 import * as WalletManager from '../walletManager';
 import * as axios from 'axios';
+import * as sgMail from '@sendgrid/mail';
 import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from '../types';
 import { sleep } from '../utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
@@ -496,6 +497,47 @@ async function processServiceCharge(appId: string, chargeId: string): Promise<vo
   } catch (error) {
     console.error(error);
   }
+}
+
+export async function haltService(reason: string): Promise<void> {
+  const configUpdate: ServiceConfigUpdate = {
+    serviceHalted: true
+  }
+
+  await admin.firestore().doc(`globals/config`).update(configUpdate);
+  await sendAdminEmail('Alert - Service halted!', reason);
+}
+
+export async function sendAdminEmail(subject: string, body: string): Promise<void> {
+  const sendGridKey = functions.config().sendgrid.apikey;
+
+  if (!sendGridKey) {
+    console.log(`SendGrid API key not set, skipping send email.`);
+    return;
+  }
+
+  sgMail.setApiKey(sendGridKey);
+
+  const [config, serviceError] = await getServiceConfig();
+
+  if (!config) {
+    console.log((serviceError as ServiceError).message);
+    return;
+  }
+
+  if (!config.adminEmail) {
+    console.log(`Service admin email not set, skipping send email.`);
+    return;
+  }
+
+  const msg = {
+    to: config.adminEmail,
+    from: 'trtlapps@gmail.com',
+    subject: subject,
+    text: body
+  };
+
+  await sgMail.send(msg);
 }
 
 async function getServiceNodeByUrl(url: string): Promise<ServiceNode | undefined> {

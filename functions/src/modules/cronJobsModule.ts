@@ -1,5 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as ServiceModule from './serviceModule';
+import * as AppModule from './appsModule';
 import * as WebhooksModule from './webhookModule';
 import * as WalletManager from '../walletManager';
 import * as DepositsModule from './depositsModule';
@@ -53,6 +54,17 @@ exports.rewindServiceWallet = functions.pubsub.schedule('every 2 hours').onRun(a
   console.log(`app engine wallet restart successful: ${appEngineRestarted}`);
 });
 
+exports.runAppAudits = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
+  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet();
+
+  if (!serviceWallet) {
+    console.error(`failed to get service wallet: ${(serviceError as ServiceError).message}`);
+    return;
+  }
+
+  await AppModule.runAppAudits(10);
+});
+
 exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(async (context) => {
   const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false);
 
@@ -64,7 +76,6 @@ exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(asyn
   const jobs: Promise<any>[] = [];
 
   jobs.push(WalletManager.backupMasterWallet());
-  // jobs.push(AppModule.runAppAudits(10));
   jobs.push(WithdrawalsModule.processLostWithdrawals(serviceWallet));
 
   await Promise.all(jobs);

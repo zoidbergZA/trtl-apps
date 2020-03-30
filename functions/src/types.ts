@@ -33,11 +33,14 @@ export interface ServiceConfig {
   serviceHalted: boolean;
   inviteOnly: boolean;
   serviceCharge: number;
+  adminEmail?: string;
 }
 
 export interface ServiceConfigUpdate {
   daemonHost?: string;
   daemonPort?: number;
+  serviceHalted?: boolean;
+  adminEmail?: string;
 }
 
 export interface ServiceNode {
@@ -93,6 +96,7 @@ export interface AppInviteCode {
 }
 
 export interface AppAuditResult {
+  id: string,
   appId: string,
   timestamp: number,
   passed: boolean,
@@ -103,7 +107,7 @@ export interface AppAuditResult {
   totalCredited: number,
   totalDebited: number,
   appBalance: number;
-  summary?: string;
+  logs?: string[];
 }
 
 export interface PrepareTransactionRequest {

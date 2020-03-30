@@ -68,6 +68,10 @@ Set the following values in the environment variables:
 
 `firebase functions:config:set appengine.wallets_bucket="WALLETS_BUCKET VARIABLE FROM *.yaml FILE"` choose the correct yaml file based on environment.
 
+Set SendGrid API key for admin emails
+
+`firebase functions:config:set sendgrid.apikey="YOUR SENDGRID API KEY"`
+
 ## Configure App Engine Wallet
 
 Set up the App Engine service wallet using the project: [https://github.com/zoidbergZA/turtle-cloud-wallet-js](https://github.com/zoidbergZA/turtle-cloud-wallet-js) and add this firebase project's google service account as member. This will allow the firebase project access to the API. In the App Engine wallet project's GCP console, click `Security -> Identity-Aware Proxy`. In the context menu click `Edit OAuth client`. Copy the `Client ID` field for use in the next step.
