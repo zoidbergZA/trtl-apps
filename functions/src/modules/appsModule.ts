@@ -448,17 +448,17 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
 
   const confirmedCredited = completedDeposits
                             .map(d => d.amount)
-                            .reduce((total, current) => total + current);
+                            .reduce((total, current) => total + current, 0);
 
   const confirmedDebited = successfulWithdrawals
                             .map(w => w.amount + w.fees.txFee + w.fees.nodeFee + w.fees.serviceFee)
-                            .reduce((total, current) => total + current);
+                            .reduce((total, current) => total + current, 0);
 
   const appAccounts           = await getAppAccounts(app.appId);
   const appWalletTotalBalance = unlockedBalance + lockedBalance;
   const accountsTotalUnlocked = appAccounts
                                   .map(a => a.balanceUnlocked)
-                                  .reduce((total, current) => total + current);
+                                  .reduce((total, current) => total + current, 0);
 
   const auditRef  = admin.firestore().collection('appAudits').doc();
   const auditId   = auditRef.id;
