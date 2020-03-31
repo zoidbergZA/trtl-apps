@@ -423,13 +423,13 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
   const logs: string[]    = [];
 
   // check for missing deposits
-  const completedDeposits = allDeposits.filter(d => d.status === 'completed');
+  const successfulDeposits = allDeposits.filter(d => d.status === 'completed' && !d.cancelled);
   const missingDeposits: Deposit[] = [];
 
-  completedDeposits.forEach(deposit => {
+  successfulDeposits.forEach(deposit => {
     if (!appTransactions.find(tx => tx.hash === deposit.txHash)) {
       missingDeposits.push(deposit);
-      logs.push(`completed deposit with hash [${deposit.txHash}] missing from wallet.`);
+      logs.push(`completed deposit id [${deposit.id}] with hash [${deposit.txHash}] missing from wallet.`);
     }
   });
 
@@ -440,13 +440,13 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
   successfulWithdrawals.forEach(withdrawal => {
     if (!appTransactions.find(tx => tx.hash === withdrawal.txHash)) {
       missingWithdrawals.push(withdrawal);
-      logs.push(`successful withdrawal with hash [${withdrawal.txHash}] missing from wallet.`);
+      logs.push(`successful withdrawal id [${withdrawal.id}] with hash [${withdrawal.txHash}] missing from wallet.`);
     }
   });
 
   const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
 
-  const confirmedCredited = completedDeposits
+  const confirmedCredited = successfulDeposits
                             .map(d => d.amount)
                             .reduce((total, current) => total + current, 0);
 
