@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
 import * as Utils from '../../../../shared/utils';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-new-project',
@@ -18,11 +19,14 @@ export class NewProjectComponent implements OnInit {
   form: FormGroup;
   creatingApp = false;
   errorMessage: string | undefined;
+  inviteOnly: boolean;
 
   constructor(
     private consoleService: ConsoleService,
     private router: Router,
     private snackbar: MatSnackBar) {
+
+    this.inviteOnly = environment.inviteOnly;
 
     this.termsForm = new FormGroup({
       term1: new FormControl(false, Validators.required),

@@ -19,18 +19,20 @@
                   autocomplete="off"
                   placeholder="app name">
               </mat-form-field>
-              <!-- <p>
-                This service is currently invitation-only while in alpha testing, contact us on twitter or the
-                TurtleCoin discord if you would like to participate in early testing.
-              </p>
-              <mat-form-field class="invite-input">
-                <input matInput
-                  formControlName="inviteCode"
-                  type="text"
-                  autocomplete="off"
-                  placeholder="invite code">
-              </mat-form-field>
-              <p><span class="warning-text">IMPORTANT:</span> This service is still in early testing stages, only create apps for testing purposes and use small amounts.</p> -->
+              <div *ngIf="inviteOnly">
+                <p>
+                  This service is currently invitation-only while in alpha testing, contact us on twitter or the
+                  TurtleCoin discord if you would like to participate in early testing.
+                </p>
+                <mat-form-field class="invite-input">
+                  <input matInput
+                    formControlName="inviteCode"
+                    type="text"
+                    autocomplete="off"
+                    placeholder="invite code">
+                </mat-form-field>
+                <p><span class="warning-text">IMPORTANT:</span> This service is still in early testing stages, only create apps for testing purposes and use small amounts.</p>
+              </div>
               <div>
                 <button mat-stroked-button
                   type="submit"
