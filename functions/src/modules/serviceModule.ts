@@ -172,14 +172,19 @@ export async function getServiceStatus(): Promise<[ServiceStatus | undefined, un
 }
 
 export async function updateMasterWallet(): Promise<void> {
-  console.log(`master wallet sync job started at: ${Date.now()}`);
-
   const [serviceConfig, serviceConfigError] = await getServiceConfig();
 
   if (!serviceConfig) {
     console.error((serviceConfigError as ServiceError).message);
     return;
   }
+
+  if (serviceConfig.serviceHalted) {
+    console.log(`Service currently halted, skipping update master wallet.`);
+    return;
+  }
+
+  console.log(`master wallet sync job started at: ${Date.now()}`);
 
   const [wallet, walletError] = await WalletManager.getMasterWallet(serviceConfig, true);
 
