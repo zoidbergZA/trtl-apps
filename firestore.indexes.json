@@ -103,6 +103,20 @@
       ]
     },
     {
+      "collectionGroup": "saves",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "checkpoint",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "serviceAccounts",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

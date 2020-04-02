@@ -10,7 +10,7 @@ import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-b
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
 import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate, WalletSyncInfo,
-  StartWalletRequest, PrepareTransactionRequest } from './types';
+  StartWalletRequest, PrepareTransactionRequest, SavedWallet } from './types';
 import { SubWalletInfo, WalletStatus } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { google } from 'googleapis';
@@ -18,7 +18,9 @@ import { Storage } from '@google-cloud/storage';
 
 let masterWallet: WalletBackend | undefined;
 let masterWalletStartedAt: number | undefined;
-let masterWalletLastSaveAt: number | undefined;
+let masterWalletLastSaveAt: number | undefined; // TODO: remove
+
+let loadedFromSave: SavedWallet | undefined;
 
 export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<[string | undefined, undefined | ServiceError]> {
   console.log('creating new master wallet...');
@@ -54,7 +56,7 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
     return [undefined, new ServiceError('service/unknown-error', error)];
   }
 
-  const [saveDate, saveError] = await saveMasterWallet(masterWallet);
+  const [saveDate, saveError] = await saveWallet(masterWallet, true);
 
   if (!saveDate) {
     console.error('error saving master wallet!');
@@ -364,23 +366,28 @@ export async function waitForWalletSync(wallet: WalletBackend, timeout: number):
   return Promise.race([p1, p2]);
 }
 
-export async function saveMasterWallet(wallet: WalletBackend): Promise<[number | undefined, undefined | ServiceError]> {
+export async function saveWallet(wallet: WalletBackend, checkpoint: boolean): Promise<[number | undefined, undefined | ServiceError]> {
   const masterWalletInfo = await getMasterWalletInfo();
 
   if (!masterWalletInfo) {
     return [undefined, new ServiceError('service/master-wallet-info')];
   }
 
+  loadedFromSave = undefined; // TEMP
+
   const encryptedString = wallet.encryptWalletToString(functions.config().serviceadmin.password);
   const timestamp       = Date.now();
+  const saveFolder      = 'saved_wallets/';
 
   const saveResults = await Promise.all([
-    saveWalletFirebase(masterWalletInfo.location, encryptedString),
+    saveWalletFirebase(encryptedString, saveFolder, checkpoint, loadedFromSave),
+    saveWalletFirebaseOld(masterWalletInfo.location, encryptedString),
     saveWalletAppEngine(encryptedString)
   ]);
 
   console.log(`save wallet firebase succeeded? ${saveResults[0]}`);
-  console.log(`save wallet appEngine succeeded? ${saveResults[1]}`);
+  console.log(`save wallet firebase succeeded (old)? ${saveResults[1]}`);
+  console.log(`save wallet appEngine succeeded? ${saveResults[2]}`);
 
   if (saveResults[0]) {
     const updateObject: WalletInfoUpdate = {
@@ -393,7 +400,68 @@ export async function saveMasterWallet(wallet: WalletBackend): Promise<[number |
   return [timestamp, undefined];
 }
 
-async function saveWalletFirebase(filepath: string, encryptedWallet: string): Promise<boolean> {
+async function saveWalletFirebase(
+  encryptedWallet: string,
+  folderPath: string,
+  checkpoint: boolean,
+  loadedFrom?: SavedWallet): Promise<boolean> {
+
+  const latestCheckpoint = await getLatestCheckpoint();
+
+  if (loadedFrom && latestCheckpoint) {
+    // for this save to be allowed, it must have been loaded from a file that has seen the latest checkpoint
+    if (loadedFrom.lastSeenCheckpointId !== latestCheckpoint.id) {
+      return false;
+    }
+  }
+
+  const docRef    = admin.firestore().collection('wallets/master/saves').doc();
+  const saveId    = docRef.id;
+  const timestamp = Date.now();
+  const filename  = `wallet_${saveId}_${timestamp}.bin`;
+  const location  = folderPath + filename;
+
+  const saveData: SavedWallet = {
+    id:         saveId,
+    location:   location,
+    timestamp:  timestamp,
+    checkpoint: checkpoint,
+    deleted:    false
+  }
+
+  if (latestCheckpoint) {
+    saveData.lastSeenCheckpointId = latestCheckpoint.id;
+  }
+
+  try {
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(location);
+
+    await file.save(encryptedWallet);
+    await docRef.set(saveData);
+
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+async function getLatestCheckpoint(): Promise<SavedWallet | undefined> {
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('checkpoint', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
+
+  if (snapshot.size !== 1) {
+    return undefined;
+  }
+
+  return snapshot.docs[0].data() as SavedWallet;
+}
+
+async function saveWalletFirebaseOld(filepath: string, encryptedWallet: string): Promise<boolean> {
   try {
     const bucket = admin.storage().bucket();
     const file = bucket.file(filepath);

@@ -200,11 +200,11 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
-  const [walletHeight, ,] = wallet.getSyncStatus();
-  const rewindDistance    = 2 * 60; // rewind a bit to make sure we didn't miss any txs
-  const scanHeight        = walletHeight - rewindDistance;
+  // const [walletHeight, ,] = wallet.getSyncStatus();
+  // const rewindDistance    = 2 * 60; // rewind a bit to make sure we didn't miss any txs
+  // const scanHeight        = walletHeight - rewindDistance;
 
-  await wallet.rewind(scanHeight);
+  // await wallet.rewind(scanHeight);
 
   const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
   const syncInfoStart   = WalletManager.getWalletSyncInfo(wallet);
@@ -213,7 +213,8 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-  const syncSeconds = syncInfoStart.heightDelta < (rewindDistance + 20) ? 40 : 240;
+  // const syncSeconds = syncInfoStart.heightDelta < (rewindDistance + 20) ? 40 : 240;
+  const syncSeconds = syncInfoStart.heightDelta < 50 ? 40 : 240;
 
   console.log(`run sync job for ${syncSeconds}s ...`);
   await sleep(syncSeconds * 1000);
@@ -259,7 +260,7 @@ export async function updateMasterWallet(): Promise<void> {
     }
   }
 
-  if (syncInfoEnd.heightDelta <= 2) {
+  if (syncInfoEnd.heightDelta <= 0) {
     const optimizeStartAt = Date.now();
     const [numberOfTransactionsSent, ] = await wallet.optimize();
     const optimizeEndAt = Date.now();
@@ -268,7 +269,7 @@ export async function updateMasterWallet(): Promise<void> {
     console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
   }
 
-  const [, saveError] = await WalletManager.saveMasterWallet(wallet);
+  const [, saveError] = await WalletManager.saveWallet(wallet, false);
 
   if (saveError) {
     console.error(saveError.message);

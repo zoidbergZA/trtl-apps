@@ -5,11 +5,21 @@ export interface ServiceWallet {
   serviceConfig: ServiceConfig
 }
 
+// TODO: see if this can be removed
 export interface WalletInfo {
   location: string;
   backupsDirectory: string;
   lastSaveAt: number;
   lastBackupAt: number;
+}
+
+export interface SavedWallet {
+  id: string;
+  location: string;
+  timestamp: number;
+  checkpoint: boolean;
+  lastSeenCheckpointId?: string;
+  deleted: boolean;
 }
 
 export interface WalletInfoUpdate {
