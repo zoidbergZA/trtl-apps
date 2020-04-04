@@ -16,6 +16,10 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
+exports.updateWalletCheckpoints = functions.pubsub.schedule('every 1 hours').onRun(async (context) => {
+  await WalletManager.updateWalletCheckpoints();
+});
+
 // exports.rewindServiceWallet = functions.pubsub.schedule('every 2 hours').onRun(async (context) => {
 //   const fetchResults = await Promise.all([
 //     WalletManager.getServiceWallet(false),

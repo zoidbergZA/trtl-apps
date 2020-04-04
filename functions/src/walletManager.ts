@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as functions from 'firebase-functions';
 import * as ServiceModule from './modules/serviceModule';
+import * as AppsModule from './modules/appsModule';
 import * as Constants from './constants';
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
@@ -10,7 +11,7 @@ import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-b
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
 import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate, WalletSyncInfo,
-  StartWalletRequest, PrepareTransactionRequest, SavedWallet } from './types';
+  StartWalletRequest, PrepareTransactionRequest, SavedWallet, SavedWalletUpdate } from './types';
 import { SubWalletInfo, WalletStatus } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { google } from 'googleapis';
@@ -377,7 +378,7 @@ export async function saveWallet(wallet: WalletBackend, checkpoint: boolean): Pr
 
   const encryptedString = wallet.encryptWalletToString(functions.config().serviceadmin.password);
   const timestamp       = Date.now();
-  const saveFolder      = 'saved_wallets/';
+  const saveFolder      = 'saved_wallets';
 
   const saveResults = await Promise.all([
     saveWalletFirebase(encryptedString, saveFolder, checkpoint, loadedFromSave),
@@ -400,13 +401,132 @@ export async function saveWallet(wallet: WalletBackend, checkpoint: boolean): Pr
   return [timestamp, undefined];
 }
 
+export async function updateWalletCheckpoints(): Promise<void> {
+  const latestCheckpoint    = await getLatestSavedWallet(true);
+  const candidateCheckpoint = await getCandidateCheckpoint(latestCheckpoint);
+
+  if (!candidateCheckpoint) {
+    console.log('no validate candidate checkpoint found.');
+    return;
+  }
+
+  // save new checkpoint
+  const docRef    = admin.firestore().collection('wallets/master/saves').doc();
+  const saveId    = docRef.id;
+  const timestamp = Date.now();
+  const location  = candidateCheckpoint.location;
+
+  const checkpoint: SavedWallet = {
+    id:         saveId,
+    location:   location,
+    timestamp:  timestamp,
+    checkpoint: true,
+    hasFile:    true,
+    isRewind:   false
+  }
+
+  await docRef.create(checkpoint);
+
+  // delete non-checkpoints below this new checkpoint
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('timestamp', '<=', timestamp)
+                    .where('checkpoint', '==', false)
+                    .where('hasFile', '==', true)
+                    .get();
+
+  if (snapshot.size > 0) {
+    const oldSaves = snapshot.docs.map(d => d.data() as SavedWallet);
+    const deleteOperations = oldSaves.map(s => deleteSavedWallet(s));
+
+    await Promise.all(deleteOperations);
+  }
+}
+
+async function deleteSavedWallet(savedWallet: SavedWallet): Promise<void> {
+  const update: SavedWalletUpdate = {
+    hasFile: false
+  }
+
+  await admin.firestore().doc(`wallets/master/saves/${savedWallet.id}`).update(update);
+
+  try {
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(savedWallet.location);
+
+    await file.delete();
+  } catch (error) {
+    console.error(error);
+  }
+
+  console.log(`deleted saved wallet: ${savedWallet.id}`);
+}
+
+async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<SavedWallet | undefined> {
+  const now = Date.now();
+  const saveInterval = 1000 * 60 * 60 * 12; // TODO: refactor constants to config
+  const evaluationPeriod = 1000 * 60 * 60 * 24; // the amount of time before and after the canditate to evaluate
+
+  const latestSave = await getLatestSavedWallet(false);
+
+  if (!latestSave) {
+    return undefined;
+  }
+
+  // at least the specified save interval must have passed since last checkpoint
+  if (latestCheckpoint) {
+    if (latestCheckpoint.timestamp > now - saveInterval) {
+      console.log('not enough time passed since last checkpoint.');
+      return undefined;
+    }
+  }
+
+  // get candidate checkpoint
+  const minCutoff = latestCheckpoint ? latestCheckpoint.timestamp + saveInterval : 0;
+  const maxCutoff = now - evaluationPeriod;
+
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('timestamp', '>=', minCutoff)
+                    .where('timestamp', '<', maxCutoff)
+                    .where('hasFile', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
+
+  if (snapshot.size === 0) {
+    console.log('no valid candidate checkpoint found');
+    return undefined;
+  }
+
+  const candidate = snapshot.docs[0].data() as SavedWallet;
+
+  // the latest save must be older than the candidate + the evaluation period
+  if (latestSave.timestamp < candidate.timestamp + evaluationPeriod) {
+    console.log('not eneugh time has passed since candidate checkpoint and last checkpoint.');
+    return undefined;
+  }
+
+  // TODO: check that no app have last audits marked as failed
+
+  // no failed audits in the evaluation period before and after canditate timestamp
+  const audits = await AppsModule.getAppAuditsInPeriod(
+                  candidate.timestamp - evaluationPeriod,
+                  candidate.timestamp + evaluationPeriod);
+
+  if (audits.some(a => !a.passed)) {
+    console.log('candidate has failed audits in the evaluation period.');
+    return undefined;
+  }
+
+  return candidate;
+}
+
 async function saveWalletFirebase(
   encryptedWallet: string,
   folderPath: string,
   checkpoint: boolean,
   loadedFrom?: SavedWallet): Promise<boolean> {
 
-  const latestCheckpoint = await getLatestCheckpoint();
+  const latestCheckpoint = await getLatestSavedWallet(true);
 
   if (loadedFrom && latestCheckpoint) {
     // for this save to be allowed, it must have been loaded from a file that has seen the latest checkpoint
@@ -419,14 +539,15 @@ async function saveWalletFirebase(
   const saveId    = docRef.id;
   const timestamp = Date.now();
   const filename  = `wallet_${saveId}_${timestamp}.bin`;
-  const location  = folderPath + filename;
+  const location  = `${folderPath}/${filename}`;
 
   const saveData: SavedWallet = {
     id:         saveId,
     location:   location,
     timestamp:  timestamp,
     checkpoint: checkpoint,
-    deleted:    false
+    hasFile:    true,
+    isRewind:   false
   }
 
   if (latestCheckpoint) {
@@ -447,9 +568,10 @@ async function saveWalletFirebase(
   }
 }
 
-async function getLatestCheckpoint(): Promise<SavedWallet | undefined> {
+async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | undefined> {
   const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('checkpoint', '==', true)
+                    .where('checkpoint', '==', checkpoint)
+                    .where('hasFile', '==', true)
                     .orderBy('timestamp', 'desc')
                     .limit(1)
                     .get();

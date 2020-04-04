@@ -167,13 +167,33 @@ export const setAppWebhook = functions.https.onCall(async (data, context) => {
 });
 
 export async function runAppAudits(appCount: number): Promise<void> {
-  const querySnapshot = await admin.firestore()
-                        .collectionGroup('apps')
+  const snapshot1 = await admin.firestore()
+                    .collection('apps')
+                    .where('lastAuditPassed', '==', false)
+                    .orderBy('lastAuditAt', 'asc')
+                    .limit(appCount)
+                    .get();
+
+  const apps = snapshot1.docs.map(d => d.data() as TurtleApp);
+  const remainder = appCount - apps.length;
+
+  if (remainder > 0) {
+    const snapshot2 = await admin.firestore()
+                        .collection('apps')
                         .orderBy('lastAuditAt', 'asc')
-                        .limit(appCount)
+                        .limit(remainder)
                         .get();
 
-  if (querySnapshot.size === 0) {
+    const remainingApps = snapshot2.docs.map(d => d.data() as TurtleApp);
+
+    remainingApps.forEach(app => {
+      if (!apps.some(a => a.appId === app.appId)) {
+        apps.push(app);
+      }
+    });
+  }
+
+  if (apps.length === 0) {
     return;
   }
 
@@ -184,8 +204,7 @@ export async function runAppAudits(appCount: number): Promise<void> {
     return;
   }
 
-  const apps        = querySnapshot.docs.map(d => d.data() as TurtleApp);
-  const auditsJobs  = apps.map(app => auditApp(app, serviceWallet.wallet));
+  const auditsJobs = apps.map(app => auditApp(app, serviceWallet.wallet));
 
   await Promise.all(auditsJobs);
 }
@@ -214,6 +233,20 @@ export async function requestAppAudit(appId: string): Promise<void> {
   }
 
   await auditApp(app, serviceWallet.wallet);
+}
+
+export async function getAppAuditsInPeriod(since: number, to: number): Promise<AppAuditResult[]> {
+  if (since > to) {
+    return [];
+  }
+
+  const snapshot = await admin.firestore().collection('appAudits')
+                    .where('timestamp', '>=', since)
+                    .where('timestamp', '<=', to)
+                    .orderBy('timestamp', 'desc')
+                    .get();
+
+  return snapshot.docs.map(d => d.data() as AppAuditResult);
 }
 
 async function processCreateApp(

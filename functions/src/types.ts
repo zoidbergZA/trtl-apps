@@ -19,7 +19,12 @@ export interface SavedWallet {
   timestamp: number;
   checkpoint: boolean;
   lastSeenCheckpointId?: string;
-  deleted: boolean;
+  hasFile: boolean;
+  isRewind: boolean;
+}
+
+export interface SavedWalletUpdate {
+  hasFile?: boolean;
 }
 
 export interface WalletInfoUpdate {
