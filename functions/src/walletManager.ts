@@ -376,12 +376,13 @@ export async function saveWallet(wallet: WalletBackend, checkpoint: boolean): Pr
 
   loadedFromSave = undefined; // TEMP
 
-  const encryptedString = wallet.encryptWalletToString(functions.config().serviceadmin.password);
-  const timestamp       = Date.now();
-  const saveFolder      = 'saved_wallets';
+  const [wHeight,, nHeight]   = wallet.getSyncStatus();
+  const encryptedString       = wallet.encryptWalletToString(functions.config().serviceadmin.password);
+  const timestamp             = Date.now();
+  const saveFolder            = 'saved_wallets';
 
   const saveResults = await Promise.all([
-    saveWalletFirebase(encryptedString, saveFolder, checkpoint, loadedFromSave),
+    saveWalletFirebase(encryptedString, saveFolder, checkpoint, wHeight, nHeight, loadedFromSave),
     saveWalletFirebaseOld(masterWalletInfo.location, encryptedString),
     saveWalletAppEngine(encryptedString)
   ]);
@@ -414,15 +415,16 @@ export async function updateWalletCheckpoints(): Promise<void> {
   const docRef    = admin.firestore().collection('wallets/master/saves').doc();
   const saveId    = docRef.id;
   const timestamp = Date.now();
-  const location  = candidateCheckpoint.location;
 
   const checkpoint: SavedWallet = {
-    id:         saveId,
-    location:   location,
-    timestamp:  timestamp,
-    checkpoint: true,
-    hasFile:    true,
-    isRewind:   false
+    id:             saveId,
+    timestamp:      timestamp,
+    location:       candidateCheckpoint.location,
+    walletHeight:   candidateCheckpoint.walletHeight,
+    networkHeight:  candidateCheckpoint.networkHeight,
+    checkpoint:     true,
+    hasFile:        true,
+    isRewind:       false
   }
 
   await docRef.create(checkpoint);
@@ -524,6 +526,8 @@ async function saveWalletFirebase(
   encryptedWallet: string,
   folderPath: string,
   checkpoint: boolean,
+  walletHeight: number,
+  networkHeight: number,
   loadedFrom?: SavedWallet): Promise<boolean> {
 
   const latestCheckpoint = await getLatestSavedWallet(true);
@@ -542,12 +546,14 @@ async function saveWalletFirebase(
   const location  = `${folderPath}/${filename}`;
 
   const saveData: SavedWallet = {
-    id:         saveId,
-    location:   location,
-    timestamp:  timestamp,
-    checkpoint: checkpoint,
-    hasFile:    true,
-    isRewind:   false
+    id:             saveId,
+    location:       location,
+    walletHeight:   walletHeight,
+    networkHeight:  networkHeight,
+    timestamp:      timestamp,
+    checkpoint:     checkpoint,
+    hasFile:        true,
+    isRewind:       false
   }
 
   if (latestCheckpoint) {

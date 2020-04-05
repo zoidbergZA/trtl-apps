@@ -21,6 +21,8 @@ export interface SavedWallet {
   lastSeenCheckpointId?: string;
   hasFile: boolean;
   isRewind: boolean;
+  walletHeight: number;
+  networkHeight: number;
 }
 
 export interface SavedWalletUpdate {
