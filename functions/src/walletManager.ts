@@ -382,6 +382,8 @@ export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promis
     return [undefined, new ServiceError('service/master-wallet-file', 'an error ocurred while save wallet to firebase!')];
   }
 
+  console.log(`wallet file saved: ${firebaseSave.location}`);
+
   const updateObject: WalletInfoUpdate = {
     lastSaveAt: Date.now()
   }

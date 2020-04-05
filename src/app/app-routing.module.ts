@@ -20,6 +20,7 @@ import { ServiceChargeManagementComponent } from './admin/service-charge-managem
 import { ConfigManagementComponent } from './admin/config-management/config-management.component';
 import { ReportsComponent } from './admin/reports/reports.component';
 import { AdminGuard } from './guards/admin-guard.service';
+import { WalletHistoryComponent } from './admin/wallet-history/wallet-history.component';
 
 const redirectUnauthorizedToSignIn  = () => redirectUnauthorizedTo(['/signin']);
 const redirectLoggedInToConsole     = () => redirectLoggedInTo(['/console']);
@@ -73,6 +74,11 @@ const routes: Routes = [
   {
     path:         'admin/config-management',
     component:    ConfigManagementComponent,
+    canActivate:  [AdminGuard]
+  },
+  {
+    path:         'admin/wallet-history',
+    component:    WalletHistoryComponent,
     canActivate:  [AdminGuard]
   },
   {
