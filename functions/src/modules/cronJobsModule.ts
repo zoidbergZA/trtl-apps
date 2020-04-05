@@ -12,7 +12,7 @@ const runtimeOpts: functions.RuntimeOptions = {
   memory: "1GB"
 }
 
-exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('every 5 minutes').onRun(async (context) => {
+exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('every 30 minutes').onRun(async (context) => {
   await ServiceModule.updateMasterWallet();
 });
 
