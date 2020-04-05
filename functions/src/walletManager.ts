@@ -57,7 +57,7 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
     return [undefined, new ServiceError('service/unknown-error', error)];
   }
 
-  const [saveDate, saveError] = await saveWallet(masterWallet, true);
+  const [saveDate, saveError] = await saveWallet(true);
 
   if (!saveDate) {
     console.error('error saving master wallet!');
@@ -122,7 +122,7 @@ export async function getServiceWallet(
   return [serviceWallet, undefined];
 }
 
-export async function getMasterWallet(
+async function getMasterWallet(
   serviceConfig: ServiceConfig,
   forceRestart = false,
   rewindDistanceOnStart = 40): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
@@ -367,7 +367,12 @@ export async function waitForWalletSync(wallet: WalletBackend, timeout: number):
   return Promise.race([p1, p2]);
 }
 
-export async function saveWallet(wallet: WalletBackend, checkpoint: boolean): Promise<[number | undefined, undefined | ServiceError]> {
+export async function saveWallet(checkpoint: boolean): Promise<[number | undefined, undefined | ServiceError]> {
+  if (!masterWallet) {
+    console.log(`no master wallet instance, save failed!`);
+    return [undefined, new ServiceError('service/unknown-error', `no master wallet instance, save failed!`)];
+  }
+
   const masterWalletInfo = await getMasterWalletInfo();
 
   if (!masterWalletInfo) {
@@ -376,8 +381,8 @@ export async function saveWallet(wallet: WalletBackend, checkpoint: boolean): Pr
 
   loadedFromSave = undefined; // TEMP
 
-  const [wHeight,, nHeight]   = wallet.getSyncStatus();
-  const encryptedString       = wallet.encryptWalletToString(functions.config().serviceadmin.password);
+  const [wHeight,, nHeight]   = masterWallet.getSyncStatus();
+  const encryptedString       = masterWallet.encryptWalletToString(functions.config().serviceadmin.password);
   const timestamp             = Date.now();
   const saveFolder            = 'saved_wallets';
 

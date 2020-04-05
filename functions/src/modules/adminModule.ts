@@ -63,7 +63,7 @@ export const rewindWallet = functions.https.onCall(async (data, context) => {
   console.log(`rewind wallet to height: ${rewindHeight}`);
   await serviceWallet.wallet.rewind(rewindHeight);
 
-  const [saveTimestamp, saveError] = await WalletManager.saveWallet(serviceWallet.wallet, true);
+  const [saveTimestamp, saveError] = await WalletManager.saveWallet(true);
   const appEngineRestarted = await WalletManager.startAppEngineWallet(token, serviceWallet.serviceConfig);
 
   console.log(`app engine wallet successfully restarted? ${appEngineRestarted}`);

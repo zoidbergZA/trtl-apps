@@ -172,26 +172,19 @@ export async function getServiceStatus(): Promise<[ServiceStatus | undefined, un
 }
 
 export async function updateMasterWallet(): Promise<void> {
-  const [serviceConfig, serviceConfigError] = await getServiceConfig();
+  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false);
 
-  if (!serviceConfig) {
-    console.error((serviceConfigError as ServiceError).message);
+  if (!serviceWallet) {
+    console.error((serviceError as ServiceError).message);
     return;
   }
 
-  if (serviceConfig.serviceHalted) {
+  if (serviceWallet.serviceConfig.serviceHalted) {
     console.log(`Service currently halted, skipping update master wallet.`);
     return;
   }
 
   console.log(`master wallet sync job started at: ${Date.now()}`);
-
-  const [wallet, walletError] = await WalletManager.getMasterWallet(serviceConfig, true);
-
-  if (!wallet) {
-    console.error((walletError as ServiceError).message);
-    return;
-  }
 
   const masterWalletInfoAtStart = await WalletManager.getMasterWalletInfo();
 
@@ -200,15 +193,9 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
-  // const [walletHeight, ,] = wallet.getSyncStatus();
-  // const rewindDistance    = 2 * 60; // rewind a bit to make sure we didn't miss any txs
-  // const scanHeight        = walletHeight - rewindDistance;
-
-  // await wallet.rewind(scanHeight);
-
   const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
-  const syncInfoStart   = WalletManager.getWalletSyncInfo(wallet);
-  const balanceStart    = wallet.getBalance();
+  const syncInfoStart   = WalletManager.getWalletSyncInfo(serviceWallet.wallet);
+  const balanceStart    = serviceWallet.wallet.getBalance();
 
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
@@ -233,9 +220,9 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
-  const syncInfoEnd     = WalletManager.getWalletSyncInfo(wallet);
+  const syncInfoEnd     = WalletManager.getWalletSyncInfo(serviceWallet.wallet);
   const processedCount  = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
-  const balanceEnd      = wallet.getBalance();
+  const balanceEnd      = serviceWallet.wallet.getBalance();
 
   console.log(`blocks processed: ${processedCount}`);
   console.log(`sync info at end: ${JSON.stringify(syncInfoEnd)}`);
@@ -249,7 +236,8 @@ export async function updateMasterWallet(): Promise<void> {
 
   if (unclaimedSubWallets.length < minUnclaimedSubWallets) {
     for (let i = 0; i < minUnclaimedSubWallets; i++) {
-      const [address, error] = wallet.addSubWallet();
+      // TODO: refactor add subwallet function to wallet manager
+      const [address, error] = serviceWallet.wallet.addSubWallet();
 
       if (!address) {
         console.error((error as WalletError));
@@ -262,14 +250,14 @@ export async function updateMasterWallet(): Promise<void> {
 
   if (syncInfoEnd.heightDelta <= 0) {
     const optimizeStartAt = Date.now();
-    const [numberOfTransactionsSent, ] = await wallet.optimize();
+    const [numberOfTransactionsSent, ] = await serviceWallet.wallet.optimize();
     const optimizeEndAt = Date.now();
     const optimizeSeconds = (optimizeEndAt - optimizeStartAt) * 0.001;
 
     console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
   }
 
-  const [, saveError] = await WalletManager.saveWallet(wallet, false);
+  const [, saveError] = await WalletManager.saveWallet(false);
 
   if (saveError) {
     console.error(saveError.message);
@@ -281,7 +269,7 @@ export async function updateMasterWallet(): Promise<void> {
     let newSubWalletCount = 0;
 
     newSubWallets.forEach(address => {
-      const [publicSpendKey, privateSpendKey, err] = wallet.getSpendKeys(address);
+      const [publicSpendKey, privateSpendKey, err] = serviceWallet.wallet.getSpendKeys(address);
 
       if (!publicSpendKey || !privateSpendKey || err) {
         console.error(err);
