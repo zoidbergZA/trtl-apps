@@ -8,7 +8,7 @@ import * as WithdrawalsModule from './withdrawalsModule';
 import { ServiceError } from '../serviceError';
 
 const runtimeOpts: functions.RuntimeOptions = {
-  timeoutSeconds: 300,
+  timeoutSeconds: 540,
   memory: "1GB"
 }
 

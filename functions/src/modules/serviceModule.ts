@@ -201,7 +201,7 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
   // const syncSeconds = syncInfoStart.heightDelta < (rewindDistance + 20) ? 40 : 240;
-  const syncSeconds = syncInfoStart.heightDelta < 50 ? 40 : 240;
+  const syncSeconds = syncInfoStart.heightDelta < 50 ? 40 : 500;
 
   console.log(`run sync job for ${syncSeconds}s ...`);
   await sleep(syncSeconds * 1000);
