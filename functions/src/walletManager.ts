@@ -57,9 +57,9 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
     return [undefined, new ServiceError('service/unknown-error', error)];
   }
 
-  const [saveDate, saveError] = await saveWallet(true);
+  const [saveData, saveError] = await saveWallet(true, false);
 
-  if (!saveDate) {
+  if (!saveData) {
     console.error('error saving master wallet!');
     return [undefined, saveError];
   }
@@ -124,8 +124,7 @@ export async function getServiceWallet(
 
 async function getMasterWallet(
   serviceConfig: ServiceConfig,
-  forceRestart = false,
-  rewindDistanceOnStart = 40): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
+  forceRestart = false): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
 
   const walletInfo = await getMasterWalletInfo();
 
@@ -171,10 +170,6 @@ async function getMasterWallet(
         return [undefined, error];
       }
 
-      if (rewindDistanceOnStart > 0) {
-        await rewindWallet(newWallet, rewindDistanceOnStart);
-      }
-
       const oldWalletInstance = masterWallet;
 
       masterWallet = newWallet;
@@ -201,10 +196,6 @@ async function getMasterWallet(
 
     if (wallet) {
       console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
-
-      if (rewindDistanceOnStart > 0) {
-        await rewindWallet(wallet, rewindDistanceOnStart);
-      }
 
       masterWallet = wallet;
       masterWalletLastSaveAt = walletInfo.lastSaveAt;
@@ -367,7 +358,7 @@ export async function waitForWalletSync(wallet: WalletBackend, timeout: number):
   return Promise.race([p1, p2]);
 }
 
-export async function saveWallet(checkpoint: boolean): Promise<[number | undefined, undefined | ServiceError]> {
+export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promise<[SavedWallet | undefined, undefined | ServiceError]> {
   if (!masterWallet) {
     console.log(`no master wallet instance, save failed!`);
     return [undefined, new ServiceError('service/unknown-error', `no master wallet instance, save failed!`)];
@@ -379,32 +370,33 @@ export async function saveWallet(checkpoint: boolean): Promise<[number | undefin
     return [undefined, new ServiceError('service/master-wallet-info')];
   }
 
-  loadedFromSave = undefined; // TEMP
+  loadedFromSave = undefined; // TODO: get ref to loaded from saved file
 
   const [wHeight,, nHeight]   = masterWallet.getSyncStatus();
   const encryptedString       = masterWallet.encryptWalletToString(functions.config().serviceadmin.password);
-  const timestamp             = Date.now();
   const saveFolder            = 'saved_wallets';
 
-  const saveResults = await Promise.all([
-    saveWalletFirebase(encryptedString, saveFolder, checkpoint, wHeight, nHeight, loadedFromSave),
-    saveWalletFirebaseOld(masterWalletInfo.location, encryptedString),
+  const firebaseSave = await saveWalletFirebase(encryptedString, saveFolder, checkpoint, wHeight, nHeight, isRewind, loadedFromSave);
+
+  if (!firebaseSave) {
+    return [undefined, new ServiceError('service/master-wallet-file', 'an error ocurred while save wallet to firebase!')];
+  }
+
+  const updateObject: WalletInfoUpdate = {
+    lastSaveAt: Date.now()
+  }
+
+  await admin.firestore().doc('wallets/master').update(updateObject);
+
+  const appEngineSaveResult = await Promise.all([
+    saveWalletFirebaseOld(masterWalletInfo.location, encryptedString), // TODO: remove
     saveWalletAppEngine(encryptedString)
   ]);
 
-  console.log(`save wallet firebase succeeded? ${saveResults[0]}`);
-  console.log(`save wallet firebase succeeded (old)? ${saveResults[1]}`);
-  console.log(`save wallet appEngine succeeded? ${saveResults[2]}`);
+  console.log(`save wallet firebase succeeded (old)? ${appEngineSaveResult[0]}`);
+  console.log(`save wallet appEngine succeeded? ${appEngineSaveResult[1]}`);
 
-  if (saveResults[0]) {
-    const updateObject: WalletInfoUpdate = {
-      lastSaveAt: Date.now()
-    }
-
-    await admin.firestore().doc('wallets/master').update(updateObject);
-  }
-
-  return [timestamp, undefined];
+  return [firebaseSave, undefined];
 }
 
 export async function updateWalletCheckpoints(): Promise<void> {
@@ -508,7 +500,7 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
 
   // the latest save must be older than the candidate + the evaluation period
   if (latestSave.timestamp < candidate.timestamp + evaluationPeriod) {
-    console.log('not eneugh time has passed since candidate checkpoint and last checkpoint.');
+    console.log('not enough time has passed since candidate checkpoint and last checkpoint.');
     return undefined;
   }
 
@@ -530,17 +522,19 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
 async function saveWalletFirebase(
   encryptedWallet: string,
   folderPath: string,
-  checkpoint: boolean,
+  isCheckpoint: boolean,
   walletHeight: number,
   networkHeight: number,
-  loadedFrom?: SavedWallet): Promise<boolean> {
+  isRewind: boolean,
+  loadedFrom?: SavedWallet): Promise<SavedWallet | undefined> {
 
   const latestCheckpoint = await getLatestSavedWallet(true);
 
-  if (loadedFrom && latestCheckpoint) {
-    // for this save to be allowed, it must have been loaded from a file that has seen the latest checkpoint
+  // for this save to be allowed, it must have been loaded from a file that has seen
+  // the latest checkpoint unless it is a rewind
+  if (!isRewind && loadedFrom && latestCheckpoint) {
     if (loadedFrom.lastSeenCheckpointId !== latestCheckpoint.id) {
-      return false;
+      return undefined;
     }
   }
 
@@ -556,12 +550,14 @@ async function saveWalletFirebase(
     walletHeight:   walletHeight,
     networkHeight:  networkHeight,
     timestamp:      timestamp,
-    checkpoint:     checkpoint,
+    checkpoint:     isCheckpoint,
     hasFile:        true,
     isRewind:       false
   }
 
-  if (latestCheckpoint) {
+  if (isCheckpoint) {
+    saveData.lastSeenCheckpointId = saveId;
+  } else if (latestCheckpoint) {
     saveData.lastSeenCheckpointId = latestCheckpoint.id;
   }
 
@@ -572,10 +568,10 @@ async function saveWalletFirebase(
     await file.save(encryptedWallet);
     await docRef.set(saveData);
 
-    return true;
+    return saveData;
   } catch (error) {
     console.error(error);
-    return false;
+    return undefined;
   }
 }
 
@@ -855,16 +851,64 @@ export async function getAppEngineToken(): Promise<[string | undefined, undefine
   }
 }
 
+export async function rewindToCheckpoint(previousCheckpoint: SavedWallet): Promise<[SavedWallet | undefined, undefined | ServiceError]> {
+  if (!previousCheckpoint.checkpoint) {
+    return [undefined, new ServiceError('service/unknown-error', 'supplied saved wallet is not a checkpoint!')];
+  }
+
+  if (!previousCheckpoint.hasFile) {
+    return [undefined, new ServiceError('service/unknown-error', 'supplied saved wallet does not have a file!')];
+  }
+
+  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
+
+  if (!serviceConfig) {
+    return [undefined, configError];
+  }
+
+  const fetchResults = await Promise.all([
+    getMasterWallet(serviceConfig),
+    getAppEngineToken()
+  ]);
+
+  const [walletInstance, serviceError] = fetchResults[0];
+  const [token, tokenError] = fetchResults[1];
+
+  if (!walletInstance) {
+    throw new functions.https.HttpsError('internal', (serviceError as ServiceError).message);
+  }
+
+  if (!token) {
+    throw new functions.https.HttpsError('internal', (tokenError as ServiceError).message);
+  }
+
+  const rewindHeight = previousCheckpoint.walletHeight;
+
+  console.log(`rewind wallet to height: ${rewindHeight}`);
+  await walletInstance.rewind(rewindHeight);
+
+  const [savedWallet, saveError] = await saveWallet(true, true);
+
+  if (!savedWallet) {
+    return [undefined, saveError];
+  }
+
+  const appEngineRestarted = await startAppEngineWallet(token, serviceConfig);
+  console.log(`app engine wallet successfully restarted? ${appEngineRestarted}`);
+
+  return [savedWallet, undefined];
+}
+
 function getAppEngineApiBase(): string {
   return functions.config().appengine.api_base;
 }
 
-async function rewindWallet(wallet: WalletBackend, distance :number): Promise<void> {
-  const [wHeight] = wallet.getSyncStatus();
-  const rewindHeight = wHeight - distance;
+// async function rewindWallet(wallet: WalletBackend, distance :number): Promise<void> {
+//   const [wHeight] = wallet.getSyncStatus();
+//   const rewindHeight = wHeight - distance;
 
-  await wallet.rewind(rewindHeight);
-}
+//   await wallet.rewind(rewindHeight);
+// }
 
 async function startWalletFromString(
   encryptedString: string,

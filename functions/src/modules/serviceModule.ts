@@ -257,7 +257,7 @@ export async function updateMasterWallet(): Promise<void> {
     console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
   }
 
-  const [, saveError] = await WalletManager.saveWallet(false);
+  const [, saveError] = await WalletManager.saveWallet(false, false);
 
   if (saveError) {
     console.error(saveError.message);
