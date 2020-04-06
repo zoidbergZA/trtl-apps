@@ -500,11 +500,11 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
 
   const candidate = snapshot.docs[0].data() as SavedWallet;
 
-  // the latest save must be older than the candidate + the evaluation period
-  if (latestSave.timestamp < candidate.timestamp + evaluationPeriod) {
-    console.log('not enough time has passed since candidate checkpoint and last checkpoint.');
-    return undefined;
-  }
+  // // the latest save must be older than the candidate + the evaluation period
+  // if (candidate.timestamp + evaluationPeriod > latestSave.timestamp) {
+  //   console.log('not enough time has passed since candidate checkpoint and last checkpoint.');
+  //   return undefined;
+  // }
 
   // TODO: check that no app have last audits marked as failed
 

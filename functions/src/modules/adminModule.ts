@@ -36,31 +36,20 @@ export const rewindWallet = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
   }
 
-  const distance: number | undefined = data.distance;
+  const checkpointId: string | undefined = data.checkpoint;
 
-  if (!distance) {
+  if (!checkpointId) {
     throw new functions.https.HttpsError('invalid-argument', 'missing distance parameter');
   }
 
-  if (!Number.isInteger(distance) || distance < 0) {
-    throw new functions.https.HttpsError('invalid-argument', 'distance parameter must positive integer');
-  }
-
-  const querySize = distance + 1;
-
   // TODO: rework this function to rewind to an older checkpoint
-  const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('checkpoint', '==', true)
-                    .where('hasFile', '==', true)
-                    .orderBy('timestamp', 'desc')
-                    .limit(querySize)
-                    .get();
+  const snapshot = await admin.firestore().doc(`wallets/master/saves/${checkpointId}`).get();
 
-  if (snapshot.size < querySize) {
-    throw new functions.https.HttpsError('not-found', `unable to find checkpoint ${distance} steps back.`);
+  if (!snapshot.exists) {
+    throw new functions.https.HttpsError('not-found', `unable to find checkpoint: ${checkpointId}.`);
   }
 
-  const previousCheckpoint = snapshot.docs[distance].data() as SavedWallet;
+  const previousCheckpoint = snapshot.data() as SavedWallet;
 
   const [newCheckpoint, rewindError] = await WalletManager.rewindToCheckpoint(previousCheckpoint);
 
