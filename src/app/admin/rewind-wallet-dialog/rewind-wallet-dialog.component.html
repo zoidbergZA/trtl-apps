@@ -3,13 +3,13 @@
   <div *ngIf="!working">
     <p *ngIf="errorMessage" class="error-text center-text">{{ errorMessage }}</p>
     <div *ngIf="!succeeded">
-      <p>Enter the distance in blocks to rewing the wallet by.</p>
+      <p>Enter the checkpoint ID to rewind to.</p>
       <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
         <mat-form-field class="form-field">
           <input matInput
-            type="number"
-            placeholder="distance"
-            formControlName="distance">
+            type="text"
+            placeholder="checkpoint ID"
+            formControlName="checkpoint">
         </mat-form-field>
         <div>
           <button mat-stroked-button

@@ -20,7 +20,7 @@ export class RewindWalletDialogComponent implements OnInit {
     private adminService: AdminService
   ) {
     this.form = new FormGroup({
-      distance: new FormControl('', Validators.compose([
+      checkpoint: new FormControl('', Validators.compose([
         Validators.required
       ]))
     });
@@ -35,7 +35,7 @@ export class RewindWalletDialogComponent implements OnInit {
     this.working = true;
 
     this.adminService
-      .rewindServiceWallet(result.distance)
+      .rewindServiceWallet(result.checkpoint)
       .then(_ => this.succeeded = true)
       .catch(error => this.errorMessage = error.message)
       .finally(() => this.working = false);
