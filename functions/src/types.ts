@@ -6,12 +6,12 @@ export interface ServiceWallet {
 }
 
 // TODO: see if this can be removed
-export interface WalletInfo {
-  location: string;
-  backupsDirectory: string;
-  lastSaveAt: number;
-  lastBackupAt: number;
-}
+// export interface WalletInfo {
+//   location: string;
+//   backupsDirectory: string;
+//   lastSaveAt: number;
+//   lastBackupAt: number;
+// }
 
 export interface SavedWallet {
   id: string;

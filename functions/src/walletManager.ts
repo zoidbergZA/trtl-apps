@@ -10,32 +10,25 @@ import * as os from 'os';
 import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-backend';
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
-import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate, WalletSyncInfo,
+import { ServiceWallet, ServiceConfig, WalletInfoUpdate, WalletSyncInfo,
   StartWalletRequest, PrepareTransactionRequest, SavedWallet, SavedWalletUpdate } from './types';
 import { SubWalletInfo, WalletStatus } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { google } from 'googleapis';
 import { Storage } from '@google-cloud/storage';
 
-let masterWallet: WalletBackend | undefined;
-let masterWalletStartedAt: number | undefined;
-let masterWalletLastSaveAt: number | undefined; // TODO: remove
+let _walletInstance: WalletBackend | undefined;
+let loadedFromSavedFile: SavedWallet | undefined;
+// let masterWalletStartedAt: number | undefined;
+// let masterWalletLastSaveAt: number | undefined; // TODO: remove
 
-let loadedFromSave: SavedWallet | undefined;
 
 export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<[string | undefined, undefined | ServiceError]> {
   console.log('creating new master wallet...');
 
-  const walletDoc: WalletInfo = {
-    location:         Constants.defaultWalletLocation,
-    backupsDirectory: Constants.defaultWalletBackupsDirectory,
-    lastSaveAt:       Date.now(),
-    lastBackupAt:     0
-  }
-
   try {
-    await admin.firestore().doc('wallets/master').create(walletDoc);
-    console.log(`master wallet info doc successfully created...`);
+    // await admin.firestore().doc('wallets/master').create(walletDoc);
+    // console.log(`master wallet info doc successfully created...`);
   } catch (error) {
     console.error(error);
     return [undefined, new ServiceError('service/master-wallet-info', `Error creating WalletInfo: ${error}`)];
@@ -45,8 +38,8 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
 
   try {
 
-    masterWallet = WalletBackend.createWallet(daemon);
-    await masterWallet.start();
+    _walletInstance = WalletBackend.createWallet(daemon);
+    await _walletInstance.start();
 
     // give the new wallet time to sync
     await sleep(20 * 1000);
@@ -64,7 +57,7 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
     return [undefined, saveError];
   }
 
-  const [seed, seedError] = masterWallet.getMnemonicSeed();
+  const [seed, seedError] = _walletInstance.getMnemonicSeed();
 
   if (!seed) {
     return [undefined, new ServiceError('service/master-wallet-info', (seedError as WalletError).toString())];
@@ -109,100 +102,12 @@ export async function getServiceWallet(
   console.log(`sync successful? [${synced}], sync time: ${syncSeconds}(s)`);
 
   if (!synced) {
-    // stoping current wallet instance
-    if (masterWallet) {
-      await masterWallet.stop();
-      masterWallet.removeAllListeners();
-      masterWallet = undefined;
-    }
+    await closeWallet();
 
     return [undefined, new ServiceError('service/master-wallet-sync-failed')];
   }
 
   return [serviceWallet, undefined];
-}
-
-async function getMasterWallet(
-  serviceConfig: ServiceConfig,
-  forceRestart = false): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
-
-  const walletInfo = await getMasterWalletInfo();
-
-  if(!walletInfo) {
-    return [undefined, new ServiceError('service/master-wallet-info')];
-  }
-
-  if (masterWallet) {
-
-    const daemonInfo = masterWallet.getDaemonConnectionInfo();
-    let restartNeeded = false;
-
-    if (daemonInfo.host !== serviceConfig.daemonHost || daemonInfo.port !== serviceConfig.daemonPort) {
-      console.log('daemon info changed, restart needed.');
-      restartNeeded = true;
-    }
-
-    if (masterWalletStartedAt && Date.now() >= (masterWalletStartedAt + (1000 * 60 * 10))) {
-      // 10 minutes is the max lifetime of a master wallet instance
-      console.log('max wallet instance time exceeded, restart needed.');
-      restartNeeded = true;
-    }
-
-    if (masterWalletLastSaveAt !== walletInfo.lastSaveAt)
-    {
-      console.log('wallet saved since last start, restart needed.');
-      restartNeeded = true;
-    }
-
-    if (restartNeeded || forceRestart) {
-      console.log(`starting new wallet instance...`);
-
-      // load and swap to a new instance of the master wallet
-      const encryptedString = await getMasterWalletString();
-
-      if (!encryptedString) {
-        return [undefined, new ServiceError('service/master-wallet-file')];
-      }
-
-      const [newWallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
-
-      if (!newWallet) {
-        return [undefined, error];
-      }
-
-      const oldWalletInstance = masterWallet;
-
-      masterWallet = newWallet;
-      masterWalletLastSaveAt = walletInfo.lastSaveAt;
-      console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
-
-      await oldWalletInstance.stop();
-      oldWalletInstance.removeAllListeners();
-
-      return [masterWallet, undefined];
-    } else {
-      return [masterWallet, undefined];
-    }
-
-  } else {
-    const encryptedString = await getMasterWalletString();
-
-    if (!encryptedString) {
-      console.error('no master wallet file data.');
-      return [undefined, new ServiceError('service/master-wallet-file')];
-    }
-
-    const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
-
-    if (wallet) {
-      console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
-
-      masterWallet = wallet;
-      masterWalletLastSaveAt = walletInfo.lastSaveAt;
-    }
-
-    return [wallet, error];
-  }
 }
 
 export async function prepareAccountTransaction(
@@ -359,24 +264,18 @@ export async function waitForWalletSync(wallet: WalletBackend, timeout: number):
 }
 
 export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promise<[SavedWallet | undefined, undefined | ServiceError]> {
-  if (!masterWallet) {
+  if (!_walletInstance) {
     console.log(`no master wallet instance, save failed!`);
     return [undefined, new ServiceError('service/unknown-error', `no master wallet instance, save failed!`)];
   }
 
-  const masterWalletInfo = await getMasterWalletInfo();
+  loadedFromSavedFile = undefined; // TODO: get ref to loaded from saved file
 
-  if (!masterWalletInfo) {
-    return [undefined, new ServiceError('service/master-wallet-info')];
-  }
-
-  loadedFromSave = undefined; // TODO: get ref to loaded from saved file
-
-  const [wHeight,, nHeight]   = masterWallet.getSyncStatus();
-  const encryptedString       = masterWallet.encryptWalletToString(functions.config().serviceadmin.password);
+  const [wHeight,, nHeight]   = _walletInstance.getSyncStatus();
+  const encryptedString       = _walletInstance.encryptWalletToString(functions.config().serviceadmin.password);
   const saveFolder            = 'saved_wallets';
 
-  const firebaseSave = await saveWalletFirebase(encryptedString, saveFolder, checkpoint, wHeight, nHeight, isRewind, loadedFromSave);
+  const firebaseSave = await saveWalletFirebase(encryptedString, saveFolder, checkpoint, wHeight, nHeight, isRewind, loadedFromSavedFile);
 
   if (!firebaseSave) {
     return [undefined, new ServiceError('service/master-wallet-file', 'an error ocurred while save wallet to firebase!')];
@@ -391,7 +290,6 @@ export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promis
   await admin.firestore().doc('wallets/master').update(updateObject);
 
   const appEngineSaveResult = await Promise.all([
-    saveWalletFirebaseOld(masterWalletInfo.location, encryptedString), // TODO: remove
     saveWalletAppEngine(encryptedString)
   ]);
 
@@ -500,12 +398,6 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
 
   const candidate = snapshot.docs[0].data() as SavedWallet;
 
-  // // the latest save must be older than the candidate + the evaluation period
-  // if (candidate.timestamp + evaluationPeriod > latestSave.timestamp) {
-  //   console.log('not enough time has passed since candidate checkpoint and last checkpoint.');
-  //   return undefined;
-  // }
-
   // TODO: check that no app have last audits marked as failed
 
   // no failed audits in the evaluation period before and after canditate timestamp
@@ -577,6 +469,79 @@ async function saveWalletFirebase(
   }
 }
 
+async function getMasterWallet(
+  serviceConfig: ServiceConfig,
+  forceRestart = false): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
+
+  const latestSave = await getLatestSavedWallet(false);
+
+  if (!latestSave) {
+    return [undefined, new ServiceError('service/master-wallet-file')];
+  }
+
+  if (_walletInstance) {
+    if (forceRestart || await checkWalletInstanceRestartNeeded(_walletInstance, latestSave, serviceConfig)) {
+      console.log(`starting new wallet instance...`);
+
+      await closeWallet();
+    } else {
+      return [_walletInstance, undefined];
+    }
+  }
+
+  const encryptedString = await getMasterWalletString();
+
+  if (!encryptedString) {
+    console.error('no master wallet file data.');
+    return [undefined, new ServiceError('service/master-wallet-file')];
+  }
+
+  const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
+
+  if (wallet) {
+    _walletInstance = wallet;
+    loadedFromSavedFile = latestSave;
+  }
+
+  return [wallet, error];
+}
+
+async function checkWalletInstanceRestartNeeded(instance: WalletBackend, latestSave: SavedWallet, serviceConfig: ServiceConfig): Promise<boolean> {
+  const daemonInfo = instance.getDaemonConnectionInfo();
+
+    // TODO: check this is still the latest wallet save
+
+    if (daemonInfo.host !== serviceConfig.daemonHost || daemonInfo.port !== serviceConfig.daemonPort) {
+      console.log('daemon info changed, restart needed.');
+      return true;
+    }
+
+    // if (masterWalletStartedAt && Date.now() >= (masterWalletStartedAt + (1000 * 60 * 10))) {
+    //   // 10 minutes is the max lifetime of a master wallet instance
+    //   console.log('max wallet instance time exceeded, restart needed.');
+    //   restartNeeded = true;
+    // }
+
+    // if (masterWalletLastSaveAt !== walletInfo.lastSaveAt)
+    // {
+    //   console.log('wallet saved since last start, restart needed.');
+    //   restartNeeded = true;
+    // }
+
+    return false;
+}
+
+async function closeWallet() {
+  if (!_walletInstance) {
+    return;
+  }
+
+   await _walletInstance.stop();
+  _walletInstance.removeAllListeners();
+  _walletInstance = undefined;
+  loadedFromSavedFile = undefined;
+}
+
 async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | undefined> {
   const snapshot = await admin.firestore().collection('wallets/master/saves')
                     .where('checkpoint', '==', checkpoint)
@@ -590,19 +555,6 @@ async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | 
   }
 
   return snapshot.docs[0].data() as SavedWallet;
-}
-
-async function saveWalletFirebaseOld(filepath: string, encryptedWallet: string): Promise<boolean> {
-  try {
-    const bucket = admin.storage().bucket();
-    const file = bucket.file(filepath);
-
-    await file.save(encryptedWallet);
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
 }
 
 async function saveWalletAppEngine(encryptedWallet: string): Promise<boolean> {
@@ -632,59 +584,6 @@ async function saveWalletAppEngine(encryptedWallet: string): Promise<boolean> {
   } catch (error) {
     console.error(error);
     return false;
-  }
-}
-
-export async function backupMasterWallet(): Promise<void> {
-  const [serviceWallet, walletError] = await getServiceWallet(false);
-
-  if (!serviceWallet) {
-    const walletErrorMessage = (walletError as ServiceError).message;
-    console.log(`error getting service wallet while performing wallet backup: ${walletErrorMessage}`);
-    return;
-  }
-
-  const masterWalletInfo = await getMasterWalletInfo();
-
-  if (!masterWalletInfo) {
-    console.log('error getting master wallet error.');
-    return;
-  }
-
-  const timestamp = Date.now();
-  const fileName  = `masterwallet_backup_${timestamp}.bin`;
-
-  try {
-    const encryptedString = serviceWallet.wallet.encryptWalletToString(functions.config().serviceadmin.password);
-    const tempFile        = path.join(os.tmpdir(), fileName);
-
-    fs.writeFileSync(tempFile, encryptedString);
-
-    const bucket  = admin.storage().bucket();
-    const file    = bucket.file(`${masterWalletInfo.backupsDirectory}/${fileName}`);
-
-    await file.save(encryptedString);
-
-    // delete temp files
-    fs.unlinkSync(tempFile);
-
-    const updateObject: WalletInfoUpdate = {
-      lastBackupAt: timestamp
-    }
-
-    await admin.firestore().doc('wallets/master').update(updateObject);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-export async function getMasterWalletInfo(): Promise<WalletInfo | undefined> {
-  const snapshot = await admin.firestore().doc('wallets/master').get();
-
-  if (snapshot.exists) {
-    return snapshot.data() as WalletInfo;
-  } else {
-    return undefined;
   }
 }
 
@@ -935,21 +834,21 @@ async function startWalletFromString(
     wallet.enableAutoOptimization(false);
     await wallet.start();
 
-    masterWalletStartedAt = Date.now();
     return [wallet, undefined];
   }
 }
 
+// TODO: return savedwallet
 async function getMasterWalletString(): Promise<string | null> {
-  const masterWalletInfo = await getMasterWalletInfo();
+  const latestSave = await getLatestSavedWallet(false);
 
-  if (!masterWalletInfo) {
+  if (!latestSave) {
     return null;
   }
 
   try {
     const bucket = admin.storage().bucket();
-    const f = bucket.file(masterWalletInfo.location);
+    const f = bucket.file(latestSave.location);
 
     const buffer = await f.download();
     return buffer.toString();

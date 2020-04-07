@@ -12,11 +12,14 @@ import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId
 import { ServiceError } from '../serviceError';
 
 export async function boostrapService(): Promise<[string | undefined, undefined | ServiceError]> {
-  const masterWalletInfo = await WalletManager.getMasterWalletInfo();
+  // const masterWalletInfo = await WalletManager.getMasterWalletInfo();
 
-  if (masterWalletInfo !== undefined) {
-    return [undefined, new ServiceError('service/master-wallet-info', 'Service already bootstrapped!')];
-  }
+  // if (masterWalletInfo !== undefined) {
+  //   return [undefined, new ServiceError('service/master-wallet-info', 'Service already bootstrapped!')];
+  // }
+
+  // TODO: check if serviceConfig exists or other docs to gaurd against rebootstrap
+  ...
 
   const batch = admin.firestore().batch();
 
@@ -186,14 +189,14 @@ export async function updateMasterWallet(): Promise<void> {
 
   console.log(`master wallet sync job started at: ${Date.now()}`);
 
-  const masterWalletInfoAtStart = await WalletManager.getMasterWalletInfo();
+  // const masterWalletInfoAtStart = await WalletManager.getMasterWalletInfo();
 
-  if (!masterWalletInfoAtStart) {
-    console.log('failed to get master wallet info at sync start!');
-    return;
-  }
+  // if (!masterWalletInfoAtStart) {
+  //   console.log('failed to get master wallet info at sync start!');
+  //   return;
+  // }
 
-  const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
+  // const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
   const syncInfoStart   = WalletManager.getWalletSyncInfo(serviceWallet.wallet);
   const balanceStart    = serviceWallet.wallet.getBalance();
 
@@ -205,19 +208,19 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`run sync job for ${syncSeconds}s ...`);
   await sleep(syncSeconds * 1000);
 
-  const masterWalletInfoAtEnd = await WalletManager.getMasterWalletInfo();
+  // const masterWalletInfoAtEnd = await WalletManager.getMasterWalletInfo();
 
-  if (!masterWalletInfoAtEnd) {
-    console.log('failed to get master wallet info at sync end!');
-    return;
-  }
+  // if (!masterWalletInfoAtEnd) {
+  //   console.log('failed to get master wallet info at sync end!');
+  //   return;
+  // }
 
-  const lastSaveAtEnd = masterWalletInfoAtEnd.lastSaveAt;
+  // const lastSaveAtEnd = masterWalletInfoAtEnd.lastSaveAt;
 
-  if (lastSaveAtEnd !== lastSaveAtStart) {
-    console.log(`wallet has been saved during sync! skipping master wallet update save.`);
-    return;
-  }
+  // if (lastSaveAtEnd !== lastSaveAtStart) {
+  //   console.log(`wallet has been saved during sync! skipping master wallet update save.`);
+  //   return;
+  // }
 
   const syncInfoEnd     = WalletManager.getWalletSyncInfo(serviceWallet.wallet);
   const processedCount  = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
