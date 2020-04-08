@@ -19,6 +19,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "lastAuditPassed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastAuditAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "apps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "owner",
           "order": "ASCENDING"
         },
@@ -108,6 +122,56 @@
       "fields": [
         {
           "fieldPath": "checkpoint",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "hasFile",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "saves",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "checkpoint",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "hasFile",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "saves",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "checkpoint",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "saves",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "hasFile",
           "order": "ASCENDING"
         },
         {
