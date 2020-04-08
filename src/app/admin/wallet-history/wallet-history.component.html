@@ -1,0 +1,32 @@
+<div class="page-content">
+  <h2 class="center-text">Wallet history</h2>
+  <div class="containter">
+    <div class="y-spacer"></div>
+    <mat-card>
+      <mat-card-content>
+        <!-- <mat-card-title>Service configuration management</mat-card-title> -->
+        <div *ngIf="savedWallets$">
+          <table>
+            <tr>
+              <td>date</td>
+              <td>is checkpoint</td>
+              <td>is rewind</td>
+              <td>has file</td>
+              <td>id</td>
+            </tr>
+            <tr *ngFor="let save of savedWallets$ | async">
+              <td>{{ save.timestamp | date:'short' }}</td>
+              <td>{{ save.checkpoint }}</td>
+              <td>{{ save.isRewind }}</td>
+              <td>{{ save.hasFile }}</td>
+              <td>{{ save.id }}</td>
+            </tr>
+          </table>
+          <!-- <div *ngFor="let save of savedWallets$ | async">
+            <generic-object-inspector [object]="save"></generic-object-inspector>
+          </div> -->
+        </div>
+      </mat-card-content>
+    </mat-card>
+</div>
+<div class="y-spacer"></div>

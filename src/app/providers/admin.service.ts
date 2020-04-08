@@ -3,7 +3,7 @@ import { AngularFireFunctions } from '@angular/fire/functions';
 import { ServiceStatus, Withdrawal, Deposit, Account, DaemonErrorEvent } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
-import { ServiceConfig, ServiceNode } from 'functions/src/types';
+import { ServiceConfig, ServiceNode, SavedWallet } from 'functions/src/types';
 
 @Injectable({
   providedIn: 'root'
@@ -67,6 +67,15 @@ export class AdminService {
       console.log(error);
       return undefined;
     }
+  }
+
+  getWalletSavesHistory$(limit: number): Observable<SavedWallet[]> {
+    return this.afs
+      .collection<SavedWallet>('wallets/master/saves', ref => ref
+        .where('hasFile', '==', true)
+        .orderBy('timestamp', 'desc')
+        .limit(limit))
+      .valueChanges();
   }
 
   getServiceConfig$(): Observable<ServiceConfig | undefined> {

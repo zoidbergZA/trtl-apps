@@ -10,5 +10,6 @@ export const environment = {
     appId: '1:833205613451:web:c48cd0f94fd845622df58e'
   },
   apiBase: 'https://trtlapps.io/api',
-  donationAddress: 'TRTLv2fdtVVDjWKueQ1aAETchiGVWkDvi1ATNgqZ3nKc7biCLm7KzLYeCzfS46mWYNRe8JaMPcTGWAR874kkN2zQ7Mt16J1vzcA'
+  donationAddress: 'TRTLv2fdtVVDjWKueQ1aAETchiGVWkDvi1ATNgqZ3nKc7biCLm7KzLYeCzfS46mWYNRe8JaMPcTGWAR874kkN2zQ7Mt16J1vzcA',
+  inviteOnly: true
 };

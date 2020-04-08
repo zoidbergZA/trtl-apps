@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as functions from 'firebase-functions';
 import * as ServiceModule from './modules/serviceModule';
+import * as AppsModule from './modules/appsModule';
 import * as Constants from './constants';
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
@@ -10,7 +11,7 @@ import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-b
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
 import { ServiceWallet, WalletInfo, ServiceConfig, WalletInfoUpdate, WalletSyncInfo,
-  StartWalletRequest, PrepareTransactionRequest } from './types';
+  StartWalletRequest, PrepareTransactionRequest, SavedWallet, SavedWalletUpdate } from './types';
 import { SubWalletInfo, WalletStatus } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { google } from 'googleapis';
@@ -18,7 +19,9 @@ import { Storage } from '@google-cloud/storage';
 
 let masterWallet: WalletBackend | undefined;
 let masterWalletStartedAt: number | undefined;
-let masterWalletLastSaveAt: number | undefined;
+let masterWalletLastSaveAt: number | undefined; // TODO: remove
+
+let loadedFromSave: SavedWallet | undefined;
 
 export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<[string | undefined, undefined | ServiceError]> {
   console.log('creating new master wallet...');
@@ -54,9 +57,9 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
     return [undefined, new ServiceError('service/unknown-error', error)];
   }
 
-  const [saveDate, saveError] = await saveMasterWallet(masterWallet);
+  const [saveData, saveError] = await saveWallet(true, false);
 
-  if (!saveDate) {
+  if (!saveData) {
     console.error('error saving master wallet!');
     return [undefined, saveError];
   }
@@ -119,10 +122,9 @@ export async function getServiceWallet(
   return [serviceWallet, undefined];
 }
 
-export async function getMasterWallet(
+async function getMasterWallet(
   serviceConfig: ServiceConfig,
-  forceRestart = false,
-  rewindDistanceOnStart = 40): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
+  forceRestart = false): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
 
   const walletInfo = await getMasterWalletInfo();
 
@@ -168,10 +170,6 @@ export async function getMasterWallet(
         return [undefined, error];
       }
 
-      if (rewindDistanceOnStart > 0) {
-        await rewindWallet(newWallet, rewindDistanceOnStart);
-      }
-
       const oldWalletInstance = masterWallet;
 
       masterWallet = newWallet;
@@ -198,10 +196,6 @@ export async function getMasterWallet(
 
     if (wallet) {
       console.log(`new master wallet instance started at: ${masterWalletStartedAt}`);
-
-      if (rewindDistanceOnStart > 0) {
-        await rewindWallet(wallet, rewindDistanceOnStart);
-      }
 
       masterWallet = wallet;
       masterWalletLastSaveAt = walletInfo.lastSaveAt;
@@ -364,36 +358,240 @@ export async function waitForWalletSync(wallet: WalletBackend, timeout: number):
   return Promise.race([p1, p2]);
 }
 
-export async function saveMasterWallet(wallet: WalletBackend): Promise<[number | undefined, undefined | ServiceError]> {
+export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promise<[SavedWallet | undefined, undefined | ServiceError]> {
+  if (!masterWallet) {
+    console.log(`no master wallet instance, save failed!`);
+    return [undefined, new ServiceError('service/unknown-error', `no master wallet instance, save failed!`)];
+  }
+
   const masterWalletInfo = await getMasterWalletInfo();
 
   if (!masterWalletInfo) {
     return [undefined, new ServiceError('service/master-wallet-info')];
   }
 
-  const encryptedString = wallet.encryptWalletToString(functions.config().serviceadmin.password);
-  const timestamp       = Date.now();
+  loadedFromSave = undefined; // TODO: get ref to loaded from saved file
 
-  const saveResults = await Promise.all([
-    saveWalletFirebase(masterWalletInfo.location, encryptedString),
+  const [wHeight,, nHeight]   = masterWallet.getSyncStatus();
+  const encryptedString       = masterWallet.encryptWalletToString(functions.config().serviceadmin.password);
+  const saveFolder            = 'saved_wallets';
+
+  const firebaseSave = await saveWalletFirebase(encryptedString, saveFolder, checkpoint, wHeight, nHeight, isRewind, loadedFromSave);
+
+  if (!firebaseSave) {
+    return [undefined, new ServiceError('service/master-wallet-file', 'an error ocurred while save wallet to firebase!')];
+  }
+
+  console.log(`wallet file saved: ${firebaseSave.location}`);
+
+  const updateObject: WalletInfoUpdate = {
+    lastSaveAt: Date.now()
+  }
+
+  await admin.firestore().doc('wallets/master').update(updateObject);
+
+  const appEngineSaveResult = await Promise.all([
+    saveWalletFirebaseOld(masterWalletInfo.location, encryptedString), // TODO: remove
     saveWalletAppEngine(encryptedString)
   ]);
 
-  console.log(`save wallet firebase succeeded? ${saveResults[0]}`);
-  console.log(`save wallet appEngine succeeded? ${saveResults[1]}`);
+  console.log(`save wallet firebase succeeded (old)? ${appEngineSaveResult[0]}`);
+  console.log(`save wallet appEngine succeeded? ${appEngineSaveResult[1]}`);
 
-  if (saveResults[0]) {
-    const updateObject: WalletInfoUpdate = {
-      lastSaveAt: Date.now()
-    }
-
-    await admin.firestore().doc('wallets/master').update(updateObject);
-  }
-
-  return [timestamp, undefined];
+  return [firebaseSave, undefined];
 }
 
-async function saveWalletFirebase(filepath: string, encryptedWallet: string): Promise<boolean> {
+export async function updateWalletCheckpoints(): Promise<void> {
+  const latestCheckpoint    = await getLatestSavedWallet(true);
+  const candidateCheckpoint = await getCandidateCheckpoint(latestCheckpoint);
+
+  if (!candidateCheckpoint) {
+    console.log('no validate candidate checkpoint found.');
+    return;
+  }
+
+  // save new checkpoint
+  const docRef    = admin.firestore().collection('wallets/master/saves').doc();
+  const saveId    = docRef.id;
+  const timestamp = Date.now();
+
+  const checkpoint: SavedWallet = {
+    id:             saveId,
+    timestamp:      timestamp,
+    location:       candidateCheckpoint.location,
+    walletHeight:   candidateCheckpoint.walletHeight,
+    networkHeight:  candidateCheckpoint.networkHeight,
+    checkpoint:     true,
+    hasFile:        true,
+    isRewind:       false
+  }
+
+  await docRef.create(checkpoint);
+
+  // delete non-checkpoints below this new checkpoint
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('timestamp', '<=', timestamp)
+                    .where('checkpoint', '==', false)
+                    .where('hasFile', '==', true)
+                    .get();
+
+  if (snapshot.size > 0) {
+    const oldSaves = snapshot.docs.map(d => d.data() as SavedWallet);
+    const deleteOperations = oldSaves.map(s => deleteSavedWallet(s));
+
+    await Promise.all(deleteOperations);
+  }
+}
+
+async function deleteSavedWallet(savedWallet: SavedWallet): Promise<void> {
+  const update: SavedWalletUpdate = {
+    hasFile: false
+  }
+
+  await admin.firestore().doc(`wallets/master/saves/${savedWallet.id}`).update(update);
+
+  try {
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(savedWallet.location);
+
+    await file.delete();
+  } catch (error) {
+    console.error(error);
+  }
+
+  console.log(`deleted saved wallet: ${savedWallet.id}`);
+}
+
+async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<SavedWallet | undefined> {
+  const now = Date.now();
+  const saveInterval = 1000 * 60 * 60 * 12; // TODO: refactor constants to config
+  const evaluationPeriod = 1000 * 60 * 60 * 24; // the amount of time before and after the canditate to evaluate
+
+  const latestSave = await getLatestSavedWallet(false);
+
+  if (!latestSave) {
+    return undefined;
+  }
+
+  // at least the specified save interval must have passed since last checkpoint
+  if (latestCheckpoint) {
+    console.log(`latest checkpoint: ${latestCheckpoint.id}, timestamp: ${latestCheckpoint.timestamp}`);
+
+    if (latestCheckpoint.timestamp > now - saveInterval) {
+      console.log('not enough time passed since last checkpoint.');
+      return undefined;
+    }
+  }
+
+  // get candidate checkpoint
+  const minCutoff = latestCheckpoint ? latestCheckpoint.timestamp + saveInterval : 0;
+  const maxCutoff = now - evaluationPeriod;
+
+  console.log(`minCutoff: ${minCutoff}`);
+  console.log(`maxCutoff: ${maxCutoff}`);
+
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('timestamp', '<', maxCutoff)
+                    .where('timestamp', '>', minCutoff)
+                    .where('hasFile', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
+
+  console.log('matches: ' + snapshot.size);
+
+  if (snapshot.size === 0) {
+    console.log('no valid candidate checkpoint found');
+    return undefined;
+  }
+
+  const candidate = snapshot.docs[0].data() as SavedWallet;
+
+  // no failed audits in the evaluation period before and after canditate timestamp
+  const audits = await AppsModule.getAppAuditsInPeriod(
+                  candidate.timestamp - evaluationPeriod,
+                  candidate.timestamp + evaluationPeriod);
+
+  if (audits.some(a => !a.passed)) {
+    console.log('candidate has failed audits in the evaluation period.');
+    return undefined;
+  }
+
+  return candidate;
+}
+
+async function saveWalletFirebase(
+  encryptedWallet: string,
+  folderPath: string,
+  isCheckpoint: boolean,
+  walletHeight: number,
+  networkHeight: number,
+  isRewind: boolean,
+  loadedFrom?: SavedWallet): Promise<SavedWallet | undefined> {
+
+  const latestCheckpoint = await getLatestSavedWallet(true);
+
+  // for this save to be allowed, it must have been loaded from a file that has seen
+  // the latest checkpoint unless it is a rewind
+  if (!isRewind && loadedFrom && latestCheckpoint) {
+    if (loadedFrom.lastSeenCheckpointId !== latestCheckpoint.id) {
+      return undefined;
+    }
+  }
+
+  const docRef    = admin.firestore().collection('wallets/master/saves').doc();
+  const saveId    = docRef.id;
+  const timestamp = Date.now();
+  const filename  = `wallet_${saveId}_${timestamp}.bin`;
+  const location  = `${folderPath}/${filename}`;
+
+  const saveData: SavedWallet = {
+    id:             saveId,
+    location:       location,
+    walletHeight:   walletHeight,
+    networkHeight:  networkHeight,
+    timestamp:      timestamp,
+    checkpoint:     isCheckpoint,
+    hasFile:        true,
+    isRewind:       false
+  }
+
+  if (isCheckpoint) {
+    saveData.lastSeenCheckpointId = saveId;
+  } else if (latestCheckpoint) {
+    saveData.lastSeenCheckpointId = latestCheckpoint.id;
+  }
+
+  try {
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(location);
+
+    await file.save(encryptedWallet);
+    await docRef.set(saveData);
+
+    return saveData;
+  } catch (error) {
+    console.error(error);
+    return undefined;
+  }
+}
+
+async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | undefined> {
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('checkpoint', '==', checkpoint)
+                    .where('hasFile', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
+
+  if (snapshot.size !== 1) {
+    return undefined;
+  }
+
+  return snapshot.docs[0].data() as SavedWallet;
+}
+
+async function saveWalletFirebaseOld(filepath: string, encryptedWallet: string): Promise<boolean> {
   try {
     const bucket = admin.storage().bucket();
     const file = bucket.file(filepath);
@@ -654,16 +852,64 @@ export async function getAppEngineToken(): Promise<[string | undefined, undefine
   }
 }
 
+export async function rewindToCheckpoint(previousCheckpoint: SavedWallet): Promise<[SavedWallet | undefined, undefined | ServiceError]> {
+  if (!previousCheckpoint.checkpoint) {
+    return [undefined, new ServiceError('service/unknown-error', 'supplied saved wallet is not a checkpoint!')];
+  }
+
+  if (!previousCheckpoint.hasFile) {
+    return [undefined, new ServiceError('service/unknown-error', 'supplied saved wallet does not have a file!')];
+  }
+
+  const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
+
+  if (!serviceConfig) {
+    return [undefined, configError];
+  }
+
+  const fetchResults = await Promise.all([
+    getMasterWallet(serviceConfig),
+    getAppEngineToken()
+  ]);
+
+  const [walletInstance, serviceError] = fetchResults[0];
+  const [token, tokenError] = fetchResults[1];
+
+  if (!walletInstance) {
+    throw new functions.https.HttpsError('internal', (serviceError as ServiceError).message);
+  }
+
+  if (!token) {
+    throw new functions.https.HttpsError('internal', (tokenError as ServiceError).message);
+  }
+
+  const rewindHeight = previousCheckpoint.walletHeight;
+
+  console.log(`rewind wallet to height: ${rewindHeight}`);
+  await walletInstance.rewind(rewindHeight);
+
+  const [savedWallet, saveError] = await saveWallet(false, true);
+
+  if (!savedWallet) {
+    return [undefined, saveError];
+  }
+
+  const appEngineRestarted = await startAppEngineWallet(token, serviceConfig);
+  console.log(`app engine wallet successfully restarted? ${appEngineRestarted}`);
+
+  return [savedWallet, undefined];
+}
+
 function getAppEngineApiBase(): string {
   return functions.config().appengine.api_base;
 }
 
-async function rewindWallet(wallet: WalletBackend, distance :number): Promise<void> {
-  const [wHeight] = wallet.getSyncStatus();
-  const rewindHeight = wHeight - distance;
+// async function rewindWallet(wallet: WalletBackend, distance :number): Promise<void> {
+//   const [wHeight] = wallet.getSyncStatus();
+//   const rewindHeight = wHeight - distance;
 
-  await wallet.rewind(rewindHeight);
-}
+//   await wallet.rewind(rewindHeight);
+// }
 
 async function startWalletFromString(
   encryptedString: string,

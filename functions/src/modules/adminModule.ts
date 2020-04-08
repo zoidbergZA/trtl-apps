@@ -8,6 +8,7 @@ import * as Analytics from './analyticsModule';
 import * as Constants from '../constants';
 import { ServiceError } from '../serviceError';
 import { ServiceCharge } from '../../../shared/types';
+import { SavedWallet } from '../types';
 
 const cors = require('cors')({ origin: true });
 
@@ -35,44 +36,28 @@ export const rewindWallet = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
   }
 
-  const distance: number | undefined = data.distance;
+  const checkpointId: string | undefined = data.checkpoint;
 
-  if (!distance) {
+  if (!checkpointId) {
     throw new functions.https.HttpsError('invalid-argument', 'missing distance parameter');
   }
 
-  const fetchResults = await Promise.all([
-    WalletManager.getServiceWallet(false),
-    WalletManager.getAppEngineToken()
-  ]);
+  // TODO: rework this function to rewind to an older checkpoint
+  const snapshot = await admin.firestore().doc(`wallets/master/saves/${checkpointId}`).get();
 
-  const [serviceWallet, serviceError] = fetchResults[0];
-  const [token, tokenError] = fetchResults[1];
-
-  if (!serviceWallet) {
-    throw new functions.https.HttpsError('internal', (serviceError as ServiceError).message);
+  if (!snapshot.exists) {
+    throw new functions.https.HttpsError('not-found', `unable to find checkpoint: ${checkpointId}.`);
   }
 
-  if (!token) {
-    throw new functions.https.HttpsError('internal', (tokenError as ServiceError).message);
+  const previousCheckpoint = snapshot.data() as SavedWallet;
+
+  const [newCheckpoint, rewindError] = await WalletManager.rewindToCheckpoint(previousCheckpoint);
+
+  if (!newCheckpoint) {
+    throw new functions.https.HttpsError('internal', (rewindError as ServiceError).message);
   }
 
-  const [wHeight, ,] = serviceWallet.wallet.getSyncStatus();
-  const rewindHeight = wHeight - distance;
-
-  console.log(`rewind wallet to height: ${rewindHeight}`);
-  await serviceWallet.wallet.rewind(rewindHeight);
-
-  const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
-  const appEngineRestarted = await WalletManager.startAppEngineWallet(token, serviceWallet.serviceConfig);
-
-  console.log(`app engine wallet successfully restarted? ${appEngineRestarted}`);
-
-  if (!saveTimestamp) {
-    throw new functions.https.HttpsError('internal', (saveError as ServiceError).message);
-  }
-
-  return { status: 'OK' };
+  return newCheckpoint;
 });
 
 export const getDepositHistory = functions.https.onCall(async (data, context) => {

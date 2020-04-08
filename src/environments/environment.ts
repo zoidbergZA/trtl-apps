@@ -14,7 +14,8 @@ export const environment = {
     appId: '1:238563466809:web:b533caf8d4fd78079637e8'
   },
   apiBase: 'https://trtlapps-development.web.app/api',
-  donationAddress: 'TRTLv2fdtVVDjWKueQ1aAETchiGVWkDvi1ATNgqZ3nKc7biCLm7KzLYeCzfS46mWYNRe8JaMPcTGWAR874kkN2zQ7Mt16J1vzcA'
+  donationAddress: 'TRTLv2fdtVVDjWKueQ1aAETchiGVWkDvi1ATNgqZ3nKc7biCLm7KzLYeCzfS46mWYNRe8JaMPcTGWAR874kkN2zQ7Mt16J1vzcA',
+  inviteOnly: true
 };
 
 /*

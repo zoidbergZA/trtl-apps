@@ -8,51 +8,55 @@ import * as WithdrawalsModule from './withdrawalsModule';
 import { ServiceError } from '../serviceError';
 
 const runtimeOpts: functions.RuntimeOptions = {
-  timeoutSeconds: 300,
+  timeoutSeconds: 540,
   memory: "1GB"
 }
 
-exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('every 5 minutes').onRun(async (context) => {
+exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('every 30 minutes').onRun(async (context) => {
   await ServiceModule.updateMasterWallet();
 });
 
-exports.rewindServiceWallet = functions.pubsub.schedule('every 2 hours').onRun(async (context) => {
-  const fetchResults = await Promise.all([
-    WalletManager.getServiceWallet(false),
-    WalletManager.getAppEngineToken()
-  ]);
-
-  const [serviceWallet, serviceError] = fetchResults[0];
-  const [token, tokenError] = fetchResults[1];
-
-  if (!serviceWallet) {
-    console.error(`failed to get service wallet: ${(serviceError as ServiceError).message}`);
-    return;
-  }
-
-  if (!token) {
-    console.error(`failed to get app engine token: ${(tokenError as ServiceError).message}`);
-    return;
-  }
-
-  const rewindDistance  = 480;
-  const [wHeight, ,]    = serviceWallet.wallet.getSyncStatus();
-  const rewindHeight    = wHeight - rewindDistance;
-
-  console.log(`rewinding wallet to height: ${rewindHeight}`);
-  await serviceWallet.wallet.rewind(rewindHeight);
-
-  const [saveTimestamp, saveError] = await WalletManager.saveMasterWallet(serviceWallet.wallet);
-  const appEngineRestarted = await WalletManager.startAppEngineWallet(token, serviceWallet.serviceConfig);
-
-  if (saveTimestamp) {
-    console.log(`wallet rewind to height ${rewindHeight} successfully saved at: ${saveTimestamp}`);
-  } else {
-    console.error((saveError as ServiceError).message);
-  }
-
-  console.log(`app engine wallet restart successful: ${appEngineRestarted}`);
+exports.updateWalletCheckpoints = functions.pubsub.schedule('every 30 minutes').onRun(async (context) => {
+  await WalletManager.updateWalletCheckpoints();
 });
+
+// exports.rewindServiceWallet = functions.pubsub.schedule('every 2 hours').onRun(async (context) => {
+//   const fetchResults = await Promise.all([
+//     WalletManager.getServiceWallet(false),
+//     WalletManager.getAppEngineToken()
+//   ]);
+
+//   const [serviceWallet, serviceError] = fetchResults[0];
+//   const [token, tokenError] = fetchResults[1];
+
+//   if (!serviceWallet) {
+//     console.error(`failed to get service wallet: ${(serviceError as ServiceError).message}`);
+//     return;
+//   }
+
+//   if (!token) {
+//     console.error(`failed to get app engine token: ${(tokenError as ServiceError).message}`);
+//     return;
+//   }
+
+//   const rewindDistance  = 480;
+//   const [wHeight, ,]    = serviceWallet.wallet.getSyncStatus();
+//   const rewindHeight    = wHeight - rewindDistance;
+
+//   console.log(`rewinding wallet to height: ${rewindHeight}`);
+//   await serviceWallet.wallet.rewind(rewindHeight);
+
+//   const [saveTimestamp, saveError] = await WalletManager.saveWallet(serviceWallet.wallet, true);
+//   const appEngineRestarted = await WalletManager.startAppEngineWallet(token, serviceWallet.serviceConfig);
+
+//   if (saveTimestamp) {
+//     console.log(`wallet rewind to height ${rewindHeight} successfully saved at: ${saveTimestamp}`);
+//   } else {
+//     console.error((saveError as ServiceError).message);
+//   }
+
+//   console.log(`app engine wallet restart successful: ${appEngineRestarted}`);
+// });
 
 exports.runAppAudits = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
   const [serviceWallet, serviceError] = await WalletManager.getServiceWallet();
