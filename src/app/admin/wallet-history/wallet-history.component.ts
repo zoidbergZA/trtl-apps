@@ -15,6 +15,6 @@ export class WalletHistoryComponent implements OnInit {
   constructor(private adminService: AdminService) { }
 
   ngOnInit() {
-    this.savedWallets$ = this.adminService.getWalletSavesHistory$();
+    this.savedWallets$ = this.adminService.getWalletSavesHistory$(200);
   }
 }

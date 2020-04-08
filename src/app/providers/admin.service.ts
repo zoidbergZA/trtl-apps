@@ -69,8 +69,12 @@ export class AdminService {
     }
   }
 
-  getWalletSavesHistory$(): Observable<SavedWallet[]> {
-    return this.afs.collection<SavedWallet>('wallets/master/saves', ref => ref.orderBy('timestamp', 'desc'))
+  getWalletSavesHistory$(limit: number): Observable<SavedWallet[]> {
+    return this.afs
+      .collection<SavedWallet>('wallets/master/saves', ref => ref
+        .where('hasFile', '==', true)
+        .orderBy('timestamp', 'desc')
+        .limit(limit))
       .valueChanges();
   }
 

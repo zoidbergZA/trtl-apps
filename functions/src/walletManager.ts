@@ -475,6 +475,8 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
 
   // at least the specified save interval must have passed since last checkpoint
   if (latestCheckpoint) {
+    console.log(`latest checkpoint: ${latestCheckpoint.id}, timestamp: ${latestCheckpoint.timestamp}`);
+
     if (latestCheckpoint.timestamp > now - saveInterval) {
       console.log('not enough time passed since last checkpoint.');
       return undefined;
@@ -485,13 +487,18 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
   const minCutoff = latestCheckpoint ? latestCheckpoint.timestamp + saveInterval : 0;
   const maxCutoff = now - evaluationPeriod;
 
+  console.log(`minCutoff: ${minCutoff}`);
+  console.log(`maxCutoff: ${maxCutoff}`);
+
   const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('timestamp', '>=', minCutoff)
                     .where('timestamp', '<', maxCutoff)
+                    .where('timestamp', '>', minCutoff)
                     .where('hasFile', '==', true)
                     .orderBy('timestamp', 'desc')
                     .limit(1)
                     .get();
+
+  console.log('matches: ' + snapshot.size);
 
   if (snapshot.size === 0) {
     console.log('no valid candidate checkpoint found');
@@ -499,14 +506,6 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
   }
 
   const candidate = snapshot.docs[0].data() as SavedWallet;
-
-  // // the latest save must be older than the candidate + the evaluation period
-  // if (candidate.timestamp + evaluationPeriod > latestSave.timestamp) {
-  //   console.log('not enough time has passed since candidate checkpoint and last checkpoint.');
-  //   return undefined;
-  // }
-
-  // TODO: check that no app have last audits marked as failed
 
   // no failed audits in the evaluation period before and after canditate timestamp
   const audits = await AppsModule.getAppAuditsInPeriod(
@@ -889,7 +888,7 @@ export async function rewindToCheckpoint(previousCheckpoint: SavedWallet): Promi
   console.log(`rewind wallet to height: ${rewindHeight}`);
   await walletInstance.rewind(rewindHeight);
 
-  const [savedWallet, saveError] = await saveWallet(true, true);
+  const [savedWallet, saveError] = await saveWallet(false, true);
 
   if (!savedWallet) {
     return [undefined, saveError];

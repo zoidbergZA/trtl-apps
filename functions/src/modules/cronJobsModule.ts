@@ -16,7 +16,7 @@ exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('eve
   await ServiceModule.updateMasterWallet();
 });
 
-exports.updateWalletCheckpoints = functions.pubsub.schedule('every 1 hours').onRun(async (context) => {
+exports.updateWalletCheckpoints = functions.pubsub.schedule('every 30 minutes').onRun(async (context) => {
   await WalletManager.updateWalletCheckpoints();
 });
 
