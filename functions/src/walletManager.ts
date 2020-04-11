@@ -7,48 +7,44 @@ import * as admin from 'firebase-admin';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { v4 as uuidv4 } from 'uuid';
 import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-backend';
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
 import { ServiceWallet, ServiceConfig, WalletSyncInfo,
-  StartWalletRequest, PrepareTransactionRequest, SavedWallet, SavedWalletUpdate } from './types';
+  StartWalletRequest, PrepareTransactionRequest, SavedWallet, SavedWalletUpdate, WalletInstance } from './types';
 import { SubWalletInfo, WalletStatus } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { google } from 'googleapis';
 import { Storage } from '@google-cloud/storage';
 
-let _walletInstance: WalletBackend | undefined;
-let loadedFromSavedFile: SavedWallet | undefined;
+let sharedInstance: WalletInstance | undefined;
 
 export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<[string | undefined, undefined | ServiceError]> {
   console.log('creating new master wallet...');
 
   const daemon: IDaemon = new Daemon(serviceConfig.daemonHost, serviceConfig.daemonPort);
 
-  try {
+  const wallet = WalletBackend.createWallet(daemon);
+  await wallet.start();
 
-    _walletInstance = WalletBackend.createWallet(daemon);
-    await _walletInstance.start();
+  // give the new wallet time to sync
+  await sleep(20 * 1000);
 
-    // give the new wallet time to sync
-    await sleep(20 * 1000);
+  // TODO: check that wallet is synced
 
-    // TODO: check that wallet is synced
+  const [wHeight,, nHeight]   = wallet.getSyncStatus();
+  const encryptedString       = wallet.encryptWalletToString(functions.config().serviceadmin.password);
+  const saveFolder            = 'saved_wallets';
 
-    console.log(`successfully created new WalletBackend!`);
-  } catch (error) {
-    console.error(`error creating new WalletBackend: ${error}`);
-    return [undefined, new ServiceError('service/unknown-error', error)];
-  }
-
-  const [saveData, saveError] = await saveWallet(true, false);
+  const saveData = await saveWalletFirebase(encryptedString, saveFolder, wHeight, nHeight, false);
 
   if (!saveData) {
     console.error('error saving master wallet!');
-    return [undefined, saveError];
+    return [undefined, new ServiceError('service/master-wallet-file', 'an error ocurred while saving wallet to firebase!')];
   }
 
-  const [seed, seedError] = _walletInstance.getMnemonicSeed();
+  const [seed, seedError] = wallet.getMnemonicSeed();
 
   if (!seed) {
     return [undefined, new ServiceError('service/master-wallet-info', (seedError as WalletError).toString())];
@@ -70,14 +66,14 @@ export async function getServiceWallet(
     return [undefined, new ServiceError('service/service-halted')];
   }
 
-  const [wallet, openError] = await getMasterWallet(serviceConfig);
+  const [instance, openError] = await getWalletInstance(serviceConfig);
 
-  if (!wallet) {
+  if (!instance) {
     return [undefined, openError];
   }
 
   const serviceWallet: ServiceWallet = {
-    wallet: wallet,
+    instance: instance,
     serviceConfig: serviceConfig
   }
 
@@ -86,14 +82,14 @@ export async function getServiceWallet(
   }
 
   const syncStart     = Date.now();
-  const synced        = await waitForWalletSync(wallet, serviceConfig.waitForSyncTimeout);
+  const synced        = await waitForWalletSync(instance.wallet, serviceConfig.waitForSyncTimeout);
   const syncEnd       = Date.now();
   const syncSeconds   = (syncEnd - syncStart) / 1000;
 
   console.log(`sync successful? [${synced}], sync time: ${syncSeconds}(s)`);
 
   if (!synced) {
-    await closeWallet();
+    await closeSharedInstance();
 
     return [undefined, new ServiceError('service/master-wallet-sync-failed')];
   }
@@ -207,69 +203,22 @@ export async function getSubWalletBalance(subWalletAddress: string): Promise<[bo
     return [false, 0, 0];
   }
 
-  const [unlockedBalance, lockedBalance] = serviceWallet.wallet.getBalance([subWalletAddress]);
+  const [unlockedBalance, lockedBalance] = serviceWallet.instance.wallet.getBalance([subWalletAddress]);
   return [true, unlockedBalance, lockedBalance];
 }
 
-export async function waitForWalletSync(wallet: WalletBackend, timeout: number): Promise<boolean> {
-  const syncInfoStart = getWalletSyncInfo(wallet);
+export async function saveWallet(instance: WalletInstance, isRewind: boolean): Promise<[SavedWallet | undefined, undefined | ServiceError]> {
+  // TODO: for this save to be allowed, it must have been loaded from
+  // the latest saved file, update the if statement below!!! (might need db transaction)
 
-  console.log(`wait for sync => sync info at start: ${JSON.stringify(syncInfoStart)}`);
-
-  if (syncInfoStart.heightDelta <= 2) {
-    return Promise.resolve(true);
-  }
-
-  const p1 = new Promise<boolean>(function(resolve, reject) {
-    let synced = false;
-    wallet.on('sync', (walletHeight, networkHeight) => {
-      if (!synced) {
-        synced = true;
-        console.log(`wallet synced! Wallet height: ${walletHeight}, Network height: ${networkHeight}`);
-        resolve(true);
-      }
-    });
-  });
-
-  const p2 = sleep(timeout).then(async (_) => {
-    const syncInfoAfterWait = getWalletSyncInfo(wallet);
-    const synced            = syncInfoAfterWait.heightDelta <= 2;
-    const blocksProcessed   = syncInfoAfterWait.walletHeight - syncInfoStart.walletHeight;
-
-    console.log(`wait for sync => height delta after max wait time: ${JSON.stringify(syncInfoAfterWait)}`);
-    console.log(`blocks processed while waiting: ${blocksProcessed}`);
-
-    if (!synced) {
-      if (blocksProcessed < 2) {
-        const currentNode = wallet.getDaemonConnectionInfo().host;
-        console.log(`current node ${currentNode} not processing blocks, calling drop node...`);
-
-        await ServiceModule.dropCurrentNode(currentNode);
-      }
-    }
-
-    return Promise.resolve(synced);
-  });
-
-  return Promise.race([p1, p2]);
-}
-
-export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promise<[SavedWallet | undefined, undefined | ServiceError]> {
-  if (!_walletInstance) {
-    console.log(`no master wallet instance, save failed!`);
-    return [undefined, new ServiceError('service/unknown-error', `no master wallet instance, save failed!`)];
-  }
-
-  // TODO: check that this save has seen the latest save
-
-  const [wHeight,, nHeight]   = _walletInstance.getSyncStatus();
-  const encryptedString       = _walletInstance.encryptWalletToString(functions.config().serviceadmin.password);
+  const [wHeight,, nHeight]   = instance.wallet.getSyncStatus();
+  const encryptedString       = instance.wallet.encryptWalletToString(functions.config().serviceadmin.password);
   const saveFolder            = 'saved_wallets';
 
-  const firebaseSave = await saveWalletFirebase(encryptedString, saveFolder, checkpoint, wHeight, nHeight, isRewind, loadedFromSavedFile);
+  const firebaseSave = await saveWalletFirebase(encryptedString, saveFolder, wHeight, nHeight, isRewind);
 
   if (!firebaseSave) {
-    return [undefined, new ServiceError('service/master-wallet-file', 'an error ocurred while save wallet to firebase!')];
+    return [undefined, new ServiceError('service/master-wallet-file', 'an error ocurred while saving wallet to firebase!')];
   }
 
   console.log(`wallet file saved: ${firebaseSave.location}`);
@@ -321,6 +270,7 @@ export async function updateWalletCheckpoints(): Promise<void> {
                     .where('timestamp', '<=', candidateCheckpoint.timestamp)
                     .where('checkpoint', '==', false)
                     .where('hasFile', '==', true)
+                    .limit(100)
                     .get();
 
   if (snapshot.size > 0) {
@@ -328,227 +278,6 @@ export async function updateWalletCheckpoints(): Promise<void> {
     const deleteOperations = oldSaves.map(s => deleteSavedWallet(s));
 
     await Promise.all(deleteOperations);
-  }
-}
-
-async function deleteSavedWallet(savedWallet: SavedWallet): Promise<void> {
-  const update: SavedWalletUpdate = {
-    hasFile: false
-  }
-
-  await admin.firestore().doc(`wallets/master/saves/${savedWallet.id}`).update(update);
-
-  try {
-    const bucket = admin.storage().bucket();
-    const file = bucket.file(savedWallet.location);
-
-    await file.delete();
-  } catch (error) {
-    console.error(error);
-  }
-
-  console.log(`deleted saved wallet: ${savedWallet.id}`);
-}
-
-async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<SavedWallet | undefined> {
-  const now = Date.now();
-  const saveInterval = 1000 * 60 * 60 * 12; // TODO: refactor constants to config
-  const evaluationPeriod = 1000 * 60 * 60 * 24; // the amount of time before and after the canditate to evaluate
-
-  // at least the specified save interval must have passed since last checkpoint
-  if (latestCheckpoint) {
-    console.log(`latest checkpoint: ${latestCheckpoint.id}, timestamp: ${latestCheckpoint.timestamp}`);
-
-    if (latestCheckpoint.timestamp > now - saveInterval) {
-      console.log('not enough time passed since last checkpoint.');
-      return undefined;
-    }
-  }
-
-  // get candidate checkpoint
-  const minCutoff = latestCheckpoint ? latestCheckpoint.timestamp + saveInterval : 0;
-  const maxCutoff = now - evaluationPeriod;
-
-  console.log(`minCutoff: ${minCutoff}`);
-  console.log(`maxCutoff: ${maxCutoff}`);
-
-  const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('timestamp', '<', maxCutoff)
-                    .where('timestamp', '>', minCutoff)
-                    .where('hasFile', '==', true)
-                    .orderBy('timestamp', 'desc')
-                    .limit(1)
-                    .get();
-
-  console.log('matches: ' + snapshot.size);
-
-  if (snapshot.size === 0) {
-    console.log('no valid candidate checkpoint found');
-    return undefined;
-  }
-
-  const candidate = snapshot.docs[0].data() as SavedWallet;
-
-  // no failed audits in the evaluation period before and after canditate timestamp
-  const audits = await AppsModule.getAppAuditsInPeriod(
-                  candidate.timestamp - evaluationPeriod,
-                  candidate.timestamp + evaluationPeriod);
-
-  if (audits.some(a => !a.passed)) {
-    console.log('candidate has failed audits in the evaluation period.');
-    return undefined;
-  }
-
-  return candidate;
-}
-
-async function saveWalletFirebase(
-  encryptedWallet: string,
-  folderPath: string,
-  isCheckpoint: boolean,
-  walletHeight: number,
-  networkHeight: number,
-  isRewind: boolean,
-  loadedFrom?: SavedWallet): Promise<SavedWallet | undefined> {
-
-  const latestCheckpoint = await getLatestSavedWallet(true);
-
-  // for this save to be allowed, it must have been loaded from a file that has seen
-  // the latest checkpoint unless it is a rewind
-  if (!isRewind && loadedFrom && latestCheckpoint) {
-    if (loadedFrom.lastSeenCheckpointId !== latestCheckpoint.id) {
-      return undefined;
-    }
-  }
-
-  const docRef    = admin.firestore().collection('wallets/master/saves').doc();
-  const saveId    = docRef.id;
-  const timestamp = Date.now();
-  const filename  = `wallet_${saveId}_${timestamp}.bin`;
-  const location  = `${folderPath}/${filename}`;
-
-  const saveData: SavedWallet = {
-    id:             saveId,
-    location:       location,
-    walletHeight:   walletHeight,
-    networkHeight:  networkHeight,
-    timestamp:      timestamp,
-    checkpoint:     isCheckpoint,
-    hasFile:        true,
-    isRewind:       false
-  }
-
-  if (isCheckpoint) {
-    saveData.lastSeenCheckpointId = saveId;
-  } else if (latestCheckpoint) {
-    saveData.lastSeenCheckpointId = latestCheckpoint.id;
-  }
-
-  try {
-    const bucket = admin.storage().bucket();
-    const file = bucket.file(location);
-
-    await file.save(encryptedWallet);
-    await docRef.set(saveData);
-
-    return saveData;
-  } catch (error) {
-    console.error(error);
-    return undefined;
-  }
-}
-
-async function getMasterWallet(
-  serviceConfig: ServiceConfig,
-  forceRestart = false): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
-
-  const latestSave = await getLatestSavedWallet(false);
-
-  if (!latestSave) {
-    return [undefined, new ServiceError('service/master-wallet-file')];
-  }
-
-  if (_walletInstance) {
-    if (forceRestart || await checkWalletInstanceRestartNeeded(_walletInstance, latestSave, serviceConfig)) {
-      console.log(`starting new wallet instance...`);
-
-      await closeWallet();
-    } else {
-      return [_walletInstance, undefined];
-    }
-  }
-
-  const encryptedString = await getMasterWalletString();
-
-  if (!encryptedString) {
-    console.error('no master wallet file data.');
-    return [undefined, new ServiceError('service/master-wallet-file')];
-  }
-
-  const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
-
-  if (wallet) {
-    _walletInstance = wallet;
-    loadedFromSavedFile = latestSave;
-  }
-
-  return [wallet, error];
-}
-
-async function checkWalletInstanceRestartNeeded(instance: WalletBackend, latestSave: SavedWallet, serviceConfig: ServiceConfig): Promise<boolean> {
-  const daemonInfo = instance.getDaemonConnectionInfo();
-
-  if (loadedFromSavedFile && loadedFromSavedFile.id !== latestSave.id) {
-    console.log(`newer saved file [${latestSave.location}] detected, restart needed.`);
-    return true;
-  }
-
-  if (daemonInfo.host !== serviceConfig.daemonHost || daemonInfo.port !== serviceConfig.daemonPort) {
-    console.log('daemon info changed, restart needed.');
-    return true;
-  }
-
-  return false;
-}
-
-async function closeWallet() {
-  if (!_walletInstance) {
-    return;
-  }
-
-   await _walletInstance.stop();
-  _walletInstance.removeAllListeners();
-  _walletInstance = undefined;
-  loadedFromSavedFile = undefined;
-}
-
-async function saveWalletAppEngine(encryptedWallet: string): Promise<boolean> {
-  try {
-    const bucket      = admin.storage().bucket();
-    const keyFile     = bucket.file(Constants.gcpServiceAccountFilename);
-    const buffer      = await keyFile.download();
-    const keyJson     = buffer.toString();
-    const keyFilePath = path.join(os.tmpdir(), 'keyfile.json');
-
-    fs.writeFileSync(keyFilePath, keyJson);
-
-    const gcp_storage = new Storage({
-      keyFilename: keyFilePath,
-      projectId: functions.config().appengine.project_id
-    });
-
-    const gcpBucket = gcp_storage.bucket(functions.config().appengine.wallets_bucket);
-    const file      = gcpBucket.file(Constants.gcpWalletFilename);
-
-    await file.save(encryptedWallet);
-
-    // delete temp files
-    fs.unlinkSync(keyFilePath);
-
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
   }
 }
 
@@ -733,7 +462,7 @@ export async function rewindToCheckpoint(previousCheckpoint: SavedWallet): Promi
   }
 
   const fetchResults = await Promise.all([
-    getMasterWallet(serviceConfig),
+    getWalletInstance(serviceConfig),
     getAppEngineToken()
   ]);
 
@@ -751,9 +480,9 @@ export async function rewindToCheckpoint(previousCheckpoint: SavedWallet): Promi
   const rewindHeight = previousCheckpoint.walletHeight;
 
   console.log(`rewind wallet to height: ${rewindHeight}`);
-  await walletInstance.rewind(rewindHeight);
+  await walletInstance.wallet.rewind(rewindHeight);
 
-  const [savedWallet, saveError] = await saveWallet(false, true);
+  const [savedWallet, saveError] = await saveWallet(walletInstance, true);
 
   if (!savedWallet) {
     return [undefined, saveError];
@@ -765,16 +494,266 @@ export async function rewindToCheckpoint(previousCheckpoint: SavedWallet): Promi
   return [savedWallet, undefined];
 }
 
+async function deleteSavedWallet(savedWallet: SavedWallet): Promise<void> {
+  const update: SavedWalletUpdate = {
+    hasFile: false
+  }
+
+  await admin.firestore().doc(`wallets/master/saves/${savedWallet.id}`).update(update);
+
+  try {
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(savedWallet.location);
+
+    await file.delete();
+  } catch (error) {
+    console.error(error);
+  }
+
+  console.log(`deleted saved wallet: ${savedWallet.id}`);
+}
+
+async function waitForWalletSync(wallet: WalletBackend, timeout: number): Promise<boolean> {
+  const syncInfoStart = getWalletSyncInfo(wallet);
+
+  console.log(`wait for sync => sync info at start: ${JSON.stringify(syncInfoStart)}`);
+
+  if (syncInfoStart.heightDelta <= 2) {
+    return Promise.resolve(true);
+  }
+
+  const p1 = new Promise<boolean>(function(resolve, reject) {
+    let synced = false;
+    wallet.on('sync', (walletHeight, networkHeight) => {
+      if (!synced) {
+        synced = true;
+        console.log(`wallet synced! Wallet height: ${walletHeight}, Network height: ${networkHeight}`);
+        resolve(true);
+      }
+    });
+  });
+
+  const p2 = sleep(timeout).then(async (_) => {
+    const syncInfoAfterWait = getWalletSyncInfo(wallet);
+    const synced            = syncInfoAfterWait.heightDelta <= 2;
+    const blocksProcessed   = syncInfoAfterWait.walletHeight - syncInfoStart.walletHeight;
+
+    console.log(`wait for sync => height delta after max wait time: ${JSON.stringify(syncInfoAfterWait)}`);
+    console.log(`blocks processed while waiting: ${blocksProcessed}`);
+
+    if (!synced) {
+      if (blocksProcessed < 2) {
+        const currentNode = wallet.getDaemonConnectionInfo().host;
+        console.log(`current node ${currentNode} not processing blocks, calling drop node...`);
+
+        await ServiceModule.dropCurrentNode(currentNode);
+      }
+    }
+
+    return Promise.resolve(synced);
+  });
+
+  return Promise.race([p1, p2]);
+}
+
+async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<SavedWallet | undefined> {
+  const now = Date.now();
+  const saveInterval = 1000 * 60 * 60 * 12; // TODO: refactor constants to config
+  const evaluationPeriod = 1000 * 60 * 60 * 24; // the amount of time before and after the canditate to evaluate
+
+  // at least the specified save interval must have passed since last checkpoint
+  if (latestCheckpoint) {
+    console.log(`latest checkpoint: ${latestCheckpoint.id}, timestamp: ${latestCheckpoint.timestamp}`);
+
+    if (latestCheckpoint.timestamp > now - saveInterval) {
+      console.log('not enough time passed since last checkpoint.');
+      return undefined;
+    }
+  }
+
+  // get candidate checkpoint
+  const minCutoff = latestCheckpoint ? latestCheckpoint.timestamp + saveInterval : 0;
+  const maxCutoff = now - evaluationPeriod;
+
+  console.log(`minCutoff: ${minCutoff}`);
+  console.log(`maxCutoff: ${maxCutoff}`);
+
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('timestamp', '<', maxCutoff)
+                    .where('timestamp', '>', minCutoff)
+                    .where('hasFile', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
+
+  console.log('matches: ' + snapshot.size);
+
+  if (snapshot.size === 0) {
+    console.log('no valid candidate checkpoint found');
+    return undefined;
+  }
+
+  const candidate = snapshot.docs[0].data() as SavedWallet;
+
+  // no failed audits in the evaluation period before and after canditate timestamp
+  const audits = await AppsModule.getAppAuditsInPeriod(
+                  candidate.timestamp - evaluationPeriod,
+                  candidate.timestamp + evaluationPeriod);
+
+  if (audits.some(a => !a.passed)) {
+    console.log('candidate has failed audits in the evaluation period.');
+    return undefined;
+  }
+
+  return candidate;
+}
+
+async function saveWalletFirebase(
+  encryptedWallet: string,
+  folderPath: string,
+  walletHeight: number,
+  networkHeight: number,
+  isRewind: boolean): Promise<SavedWallet | undefined> {
+
+  const latestCheckpoint = await getLatestSavedWallet(true);
+
+  const docRef    = admin.firestore().collection('wallets/master/saves').doc();
+  const saveId    = docRef.id;
+  const timestamp = Date.now();
+  const filename  = `wallet_${saveId}_${timestamp}.bin`;
+  const location  = `${folderPath}/${filename}`;
+
+  const saveData: SavedWallet = {
+    id:             saveId,
+    location:       location,
+    walletHeight:   walletHeight,
+    networkHeight:  networkHeight,
+    timestamp:      timestamp,
+    checkpoint:     false,
+    hasFile:        true,
+    isRewind:       isRewind
+  }
+
+  if (latestCheckpoint) {
+    saveData.lastSeenCheckpointId = latestCheckpoint.id;
+  }
+
+  try {
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(location);
+
+    await file.save(encryptedWallet);
+    await docRef.set(saveData);
+
+    return saveData;
+  } catch (error) {
+    console.error(error);
+    return undefined;
+  }
+}
+
+async function getWalletInstance(
+  serviceConfig: ServiceConfig,
+  forceRestart = false): Promise<[WalletInstance | undefined, undefined | ServiceError]> {
+
+  const latestSave = await getLatestSavedWallet(false);
+
+  if (!latestSave) {
+    return [undefined, new ServiceError('service/master-wallet-file')];
+  }
+
+  if (sharedInstance) {
+    if (forceRestart || await checkWalletInstanceRestartNeeded(sharedInstance, latestSave, serviceConfig)) {
+      console.log(`starting new wallet instance...`);
+
+      await closeSharedInstance();
+    } else {
+      return [sharedInstance, undefined];
+    }
+  }
+
+  const encryptedString = await getMasterWalletString();
+
+  if (!encryptedString) {
+    console.error('no master wallet file data.');
+    return [undefined, new ServiceError('service/master-wallet-file')];
+  }
+
+  const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
+
+  if (wallet) {
+    sharedInstance = new WalletInstance(wallet, latestSave, uuidv4());
+
+    return [sharedInstance, undefined];
+  } else {
+    return [undefined, error];
+  }
+}
+
+async function checkWalletInstanceRestartNeeded(
+  instance: WalletInstance,
+  latestSave: SavedWallet,
+  serviceConfig: ServiceConfig): Promise<boolean> {
+
+  const daemonInfo = instance.wallet.getDaemonConnectionInfo();
+
+  if (instance.loadedFrom.id !== latestSave.id) {
+    console.log(`newer saved file [${latestSave.location}] detected, restart needed.`);
+    return true;
+  }
+
+  if (daemonInfo.host !== serviceConfig.daemonHost || daemonInfo.port !== serviceConfig.daemonPort) {
+    console.log('daemon info changed, restart needed.');
+    return true;
+  }
+
+  return false;
+}
+
+async function closeSharedInstance() {
+  if (!sharedInstance) {
+    return;
+  }
+
+  await sharedInstance.wallet.stop();
+
+  sharedInstance.wallet.removeAllListeners();
+  sharedInstance = undefined;
+}
+
+async function saveWalletAppEngine(encryptedWallet: string): Promise<boolean> {
+  try {
+    const bucket      = admin.storage().bucket();
+    const keyFile     = bucket.file(Constants.gcpServiceAccountFilename);
+    const buffer      = await keyFile.download();
+    const keyJson     = buffer.toString();
+    const keyFilePath = path.join(os.tmpdir(), 'keyfile.json');
+
+    fs.writeFileSync(keyFilePath, keyJson);
+
+    const gcp_storage = new Storage({
+      keyFilename: keyFilePath,
+      projectId: functions.config().appengine.project_id
+    });
+
+    const gcpBucket = gcp_storage.bucket(functions.config().appengine.wallets_bucket);
+    const file      = gcpBucket.file(Constants.gcpWalletFilename);
+
+    await file.save(encryptedWallet);
+
+    // delete temp files
+    fs.unlinkSync(keyFilePath);
+
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
 function getAppEngineApiBase(): string {
   return functions.config().appengine.api_base;
 }
-
-// async function rewindWallet(wallet: WalletBackend, distance :number): Promise<void> {
-//   const [wHeight] = wallet.getSyncStatus();
-//   const rewindHeight = wHeight - distance;
-
-//   await wallet.rewind(rewindHeight);
-// }
 
 async function startWalletFromString(
   encryptedString: string,
@@ -803,7 +782,6 @@ async function startWalletFromString(
   }
 }
 
-// TODO: return savedwallet
 async function getMasterWalletString(): Promise<string | null> {
   const latestSave = await getLatestSavedWallet(false);
 

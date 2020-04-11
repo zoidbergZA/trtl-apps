@@ -1,7 +1,19 @@
 import { WalletBackend } from "turtlecoin-wallet-backend";
 
+export class WalletInstance {
+  wallet: WalletBackend;
+  loadedFrom: SavedWallet;
+  instanceId: string;
+
+  constructor(instance: WalletBackend, loadedFrom: SavedWallet, id: string) {
+    this.wallet     = instance;
+    this.loadedFrom = loadedFrom;
+    this.instanceId = id;
+  }
+}
+
 export interface ServiceWallet {
-  wallet: WalletBackend,
+  instance: WalletInstance,
   serviceConfig: ServiceConfig
 }
 

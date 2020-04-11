@@ -204,7 +204,7 @@ export async function runAppAudits(appCount: number): Promise<void> {
     return;
   }
 
-  const auditsJobs = apps.map(app => auditApp(app, serviceWallet.wallet));
+  const auditsJobs = apps.map(app => auditApp(app, serviceWallet.instance.wallet));
 
   await Promise.all(auditsJobs);
 }
@@ -232,7 +232,7 @@ export async function requestAppAudit(appId: string): Promise<void> {
     return;
   }
 
-  await auditApp(app, serviceWallet.wallet);
+  await auditApp(app, serviceWallet.instance.wallet);
 }
 
 export async function getAppAuditsInPeriod(since: number, to: number): Promise<AppAuditResult[]> {
