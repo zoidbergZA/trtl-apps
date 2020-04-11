@@ -61,6 +61,13 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
     return;
   }
 
+  const walletSyncDelta = latestSave.networkHeight - latestSave.walletHeight;
+
+  if (walletSyncDelta > 120) {
+    console.log(`latest saved wallet sync delta too large [${walletSyncDelta}], skipping heartbeat.`);
+    return;
+  }
+
   await ServiceModule.updateServiceNodes();
   await ServiceModule.checkNodeSwap();
 

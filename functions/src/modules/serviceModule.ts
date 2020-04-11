@@ -186,14 +186,6 @@ export async function updateMasterWallet(): Promise<void> {
 
   console.log(`master wallet sync job started at: ${Date.now()}`);
 
-  // const masterWalletInfoAtStart = await WalletManager.getMasterWalletInfo();
-
-  // if (!masterWalletInfoAtStart) {
-  //   console.log('failed to get master wallet info at sync start!');
-  //   return;
-  // }
-
-  // const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
   const syncInfoStart   = WalletManager.getWalletSyncInfo(serviceWallet.wallet);
   const balanceStart    = serviceWallet.wallet.getBalance();
 
