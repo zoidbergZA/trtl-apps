@@ -269,7 +269,7 @@ export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promis
     return [undefined, new ServiceError('service/unknown-error', `no master wallet instance, save failed!`)];
   }
 
-  loadedFromSavedFile = undefined; // TODO: get ref to loaded from saved file
+  // loadedFromSavedFile = undefined; // TODO: get ref to loaded from saved file
 
   const [wHeight,, nHeight]   = _walletInstance.getSyncStatus();
   const encryptedString       = _walletInstance.encryptWalletToString(functions.config().serviceadmin.password);
@@ -365,11 +365,11 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
   const saveInterval = 1000 * 60 * 60 * 12; // TODO: refactor constants to config
   const evaluationPeriod = 1000 * 60 * 60 * 24; // the amount of time before and after the canditate to evaluate
 
-  const latestSave = await getLatestSavedWallet(false);
+  // const latestSave = await getLatestSavedWallet(false);
 
-  if (!latestSave) {
-    return undefined;
-  }
+  // if (!latestSave) {
+  //   return undefined;
+  // }
 
   // at least the specified save interval must have passed since last checkpoint
   if (latestCheckpoint) {
@@ -514,26 +514,17 @@ async function getMasterWallet(
 async function checkWalletInstanceRestartNeeded(instance: WalletBackend, latestSave: SavedWallet, serviceConfig: ServiceConfig): Promise<boolean> {
   const daemonInfo = instance.getDaemonConnectionInfo();
 
-    // TODO: check this is still the latest wallet save
+  if (loadedFromSavedFile && loadedFromSavedFile.id !== latestSave.id) {
+    console.log(`newer saved file [${latestSave.location}] detected, restart needed.`);
+    return true;
+  }
 
-    if (daemonInfo.host !== serviceConfig.daemonHost || daemonInfo.port !== serviceConfig.daemonPort) {
-      console.log('daemon info changed, restart needed.');
-      return true;
-    }
+  if (daemonInfo.host !== serviceConfig.daemonHost || daemonInfo.port !== serviceConfig.daemonPort) {
+    console.log('daemon info changed, restart needed.');
+    return true;
+  }
 
-    // if (masterWalletStartedAt && Date.now() >= (masterWalletStartedAt + (1000 * 60 * 10))) {
-    //   // 10 minutes is the max lifetime of a master wallet instance
-    //   console.log('max wallet instance time exceeded, restart needed.');
-    //   restartNeeded = true;
-    // }
-
-    // if (masterWalletLastSaveAt !== walletInfo.lastSaveAt)
-    // {
-    //   console.log('wallet saved since last start, restart needed.');
-    //   restartNeeded = true;
-    // }
-
-    return false;
+  return false;
 }
 
 async function closeWallet() {

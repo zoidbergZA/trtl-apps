@@ -12,14 +12,11 @@ import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId
 import { ServiceError } from '../serviceError';
 
 export async function boostrapService(): Promise<[string | undefined, undefined | ServiceError]> {
-  // const masterWalletInfo = await WalletManager.getMasterWalletInfo();
+  const [config] = await getServiceConfig();
 
-  // if (masterWalletInfo !== undefined) {
-  //   return [undefined, new ServiceError('service/master-wallet-info', 'Service already bootstrapped!')];
-  // }
-
-  // TODO: check if serviceConfig exists or other docs to gaurd against rebootstrap
-  ...
+  if (config !== undefined) {
+    return [undefined, new ServiceError('service/master-wallet-info', 'Service already bootstrapped!')];
+  }
 
   const batch = admin.firestore().batch();
 
