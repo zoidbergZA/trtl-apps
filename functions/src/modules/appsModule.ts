@@ -260,7 +260,10 @@ async function processCreateApp(
     return [undefined, new ServiceError('app/invalid-app-name')];
   }
 
-  const querySnapshot = await admin.firestore().collection(`apps`).where('name', '==', appName).get();
+  const querySnapshot = await admin.firestore().collection(`apps`)
+                          .where('owner', '==', owner)
+                          .where('name', '==', appName)
+                          .get();
 
   if (querySnapshot.docs.length > 0) {
     return [undefined, new ServiceError('app/invalid-app-name', 'An app with the same name already exists.')];
