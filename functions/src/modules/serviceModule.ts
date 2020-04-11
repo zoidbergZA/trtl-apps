@@ -214,6 +214,7 @@ export async function updateMasterWallet(): Promise<void> {
   if (unclaimedSubWallets.length < minUnclaimedSubWallets) {
     for (let i = 0; i < minUnclaimedSubWallets; i++) {
       // TODO: refactor add subwallet function to wallet manager
+
       const [address, error] = serviceWallet.wallet.addSubWallet();
 
       if (!address) {

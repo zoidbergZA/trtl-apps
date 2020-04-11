@@ -276,6 +276,9 @@ async function processCreateApp(
   }
 
   const selectedSubWallet = unclaimedSubWallets[Math.floor(Math.random() * unclaimedSubWallets.length)];
+
+  // TODO: confirm that service wallet has this sub-wallet
+
   let app: TurtleApp | undefined = undefined;
 
   try {

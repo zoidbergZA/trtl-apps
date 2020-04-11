@@ -10,7 +10,7 @@ import * as os from 'os';
 import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-backend';
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
-import { ServiceWallet, ServiceConfig, WalletInfoUpdate, WalletSyncInfo,
+import { ServiceWallet, ServiceConfig, WalletSyncInfo,
   StartWalletRequest, PrepareTransactionRequest, SavedWallet, SavedWalletUpdate } from './types';
 import { SubWalletInfo, WalletStatus } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
@@ -19,20 +19,9 @@ import { Storage } from '@google-cloud/storage';
 
 let _walletInstance: WalletBackend | undefined;
 let loadedFromSavedFile: SavedWallet | undefined;
-// let masterWalletStartedAt: number | undefined;
-// let masterWalletLastSaveAt: number | undefined; // TODO: remove
-
 
 export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<[string | undefined, undefined | ServiceError]> {
   console.log('creating new master wallet...');
-
-  try {
-    // await admin.firestore().doc('wallets/master').create(walletDoc);
-    // console.log(`master wallet info doc successfully created...`);
-  } catch (error) {
-    console.error(error);
-    return [undefined, new ServiceError('service/master-wallet-info', `Error creating WalletInfo: ${error}`)];
-  }
 
   const daemon: IDaemon = new Daemon(serviceConfig.daemonHost, serviceConfig.daemonPort);
 
@@ -43,6 +32,8 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
 
     // give the new wallet time to sync
     await sleep(20 * 1000);
+
+    // TODO: check that wallet is synced
 
     console.log(`successfully created new WalletBackend!`);
   } catch (error) {
@@ -269,7 +260,7 @@ export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promis
     return [undefined, new ServiceError('service/unknown-error', `no master wallet instance, save failed!`)];
   }
 
-  // loadedFromSavedFile = undefined; // TODO: get ref to loaded from saved file
+  // TODO: check that this save has seen the latest save
 
   const [wHeight,, nHeight]   = _walletInstance.getSyncStatus();
   const encryptedString       = _walletInstance.encryptWalletToString(functions.config().serviceadmin.password);
@@ -282,12 +273,6 @@ export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promis
   }
 
   console.log(`wallet file saved: ${firebaseSave.location}`);
-
-  const updateObject: WalletInfoUpdate = {
-    lastSaveAt: Date.now()
-  }
-
-  await admin.firestore().doc('wallets/master').update(updateObject);
 
   const appEngineSaveResult = await Promise.all([
     saveWalletAppEngine(encryptedString)
@@ -323,27 +308,17 @@ export async function updateWalletCheckpoints(): Promise<void> {
     return;
   }
 
-  // save new checkpoint
-  const docRef    = admin.firestore().collection('wallets/master/saves').doc();
-  const saveId    = docRef.id;
-  const timestamp = Date.now();
+  const docRef = admin.firestore().doc(`wallets/master/saves/${candidateCheckpoint.id}`);
 
-  const checkpoint: SavedWallet = {
-    id:             saveId,
-    timestamp:      timestamp,
-    location:       candidateCheckpoint.location,
-    walletHeight:   candidateCheckpoint.walletHeight,
-    networkHeight:  candidateCheckpoint.networkHeight,
-    checkpoint:     true,
-    hasFile:        true,
-    isRewind:       false
+  const update: SavedWalletUpdate = {
+    checkpoint: true
   }
 
-  await docRef.create(checkpoint);
+  await docRef.update(update);
 
   // delete non-checkpoints below this new checkpoint
   const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('timestamp', '<=', timestamp)
+                    .where('timestamp', '<=', candidateCheckpoint.timestamp)
                     .where('checkpoint', '==', false)
                     .where('hasFile', '==', true)
                     .get();
@@ -379,12 +354,6 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
   const now = Date.now();
   const saveInterval = 1000 * 60 * 60 * 12; // TODO: refactor constants to config
   const evaluationPeriod = 1000 * 60 * 60 * 24; // the amount of time before and after the canditate to evaluate
-
-  // const latestSave = await getLatestSavedWallet(false);
-
-  // if (!latestSave) {
-  //   return undefined;
-  // }
 
   // at least the specified save interval must have passed since last checkpoint
   if (latestCheckpoint) {

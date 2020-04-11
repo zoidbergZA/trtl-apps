@@ -5,14 +5,6 @@ export interface ServiceWallet {
   serviceConfig: ServiceConfig
 }
 
-// TODO: see if this can be removed
-// export interface WalletInfo {
-//   location: string;
-//   backupsDirectory: string;
-//   lastSaveAt: number;
-//   lastBackupAt: number;
-// }
-
 export interface SavedWallet {
   id: string;
   location: string;
@@ -27,11 +19,7 @@ export interface SavedWallet {
 
 export interface SavedWalletUpdate {
   hasFile?: boolean;
-}
-
-export interface WalletInfoUpdate {
-  lastSaveAt?: number;
-  lastBackupAt?: number;
+  checkpoint?: boolean;
 }
 
 export interface WalletSyncInfo {
