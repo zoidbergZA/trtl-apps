@@ -299,6 +299,21 @@ export async function saveWallet(checkpoint: boolean, isRewind: boolean): Promis
   return [firebaseSave, undefined];
 }
 
+export async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | undefined> {
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('checkpoint', '==', checkpoint)
+                    .where('hasFile', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
+
+  if (snapshot.size !== 1) {
+    return undefined;
+  }
+
+  return snapshot.docs[0].data() as SavedWallet;
+}
+
 export async function updateWalletCheckpoints(): Promise<void> {
   const latestCheckpoint    = await getLatestSavedWallet(true);
   const candidateCheckpoint = await getCandidateCheckpoint(latestCheckpoint);
@@ -536,21 +551,6 @@ async function closeWallet() {
   _walletInstance.removeAllListeners();
   _walletInstance = undefined;
   loadedFromSavedFile = undefined;
-}
-
-async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | undefined> {
-  const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('checkpoint', '==', checkpoint)
-                    .where('hasFile', '==', true)
-                    .orderBy('timestamp', 'desc')
-                    .limit(1)
-                    .get();
-
-  if (snapshot.size !== 1) {
-    return undefined;
-  }
-
-  return snapshot.docs[0].data() as SavedWallet;
 }
 
 async function saveWalletAppEngine(encryptedWallet: string): Promise<boolean> {

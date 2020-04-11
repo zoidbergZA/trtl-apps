@@ -205,20 +205,6 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`run sync job for ${syncSeconds}s ...`);
   await sleep(syncSeconds * 1000);
 
-  // const masterWalletInfoAtEnd = await WalletManager.getMasterWalletInfo();
-
-  // if (!masterWalletInfoAtEnd) {
-  //   console.log('failed to get master wallet info at sync end!');
-  //   return;
-  // }
-
-  // const lastSaveAtEnd = masterWalletInfoAtEnd.lastSaveAt;
-
-  // if (lastSaveAtEnd !== lastSaveAtStart) {
-  //   console.log(`wallet has been saved during sync! skipping master wallet update save.`);
-  //   return;
-  // }
-
   const syncInfoEnd     = WalletManager.getWalletSyncInfo(serviceWallet.wallet);
   const processedCount  = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
   const balanceEnd      = serviceWallet.wallet.getBalance();

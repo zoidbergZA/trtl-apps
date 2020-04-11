@@ -20,44 +20,6 @@ exports.updateWalletCheckpoints = functions.pubsub.schedule('every 30 minutes').
   await WalletManager.updateWalletCheckpoints();
 });
 
-// exports.rewindServiceWallet = functions.pubsub.schedule('every 2 hours').onRun(async (context) => {
-//   const fetchResults = await Promise.all([
-//     WalletManager.getServiceWallet(false),
-//     WalletManager.getAppEngineToken()
-//   ]);
-
-//   const [serviceWallet, serviceError] = fetchResults[0];
-//   const [token, tokenError] = fetchResults[1];
-
-//   if (!serviceWallet) {
-//     console.error(`failed to get service wallet: ${(serviceError as ServiceError).message}`);
-//     return;
-//   }
-
-//   if (!token) {
-//     console.error(`failed to get app engine token: ${(tokenError as ServiceError).message}`);
-//     return;
-//   }
-
-//   const rewindDistance  = 480;
-//   const [wHeight, ,]    = serviceWallet.wallet.getSyncStatus();
-//   const rewindHeight    = wHeight - rewindDistance;
-
-//   console.log(`rewinding wallet to height: ${rewindHeight}`);
-//   await serviceWallet.wallet.rewind(rewindHeight);
-
-//   const [saveTimestamp, saveError] = await WalletManager.saveWallet(serviceWallet.wallet, true);
-//   const appEngineRestarted = await WalletManager.startAppEngineWallet(token, serviceWallet.serviceConfig);
-
-//   if (saveTimestamp) {
-//     console.log(`wallet rewind to height ${rewindHeight} successfully saved at: ${saveTimestamp}`);
-//   } else {
-//     console.error((saveError as ServiceError).message);
-//   }
-
-//   console.log(`app engine wallet restart successful: ${appEngineRestarted}`);
-// });
-
 exports.runAppAudits = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
   const [serviceWallet, serviceError] = await WalletManager.getServiceWallet();
 
@@ -85,6 +47,20 @@ exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(asyn
 });
 
 exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (context) => {
+  const latestSave = await WalletManager.getLatestSavedWallet(false);
+
+  if (!latestSave) {
+    console.log('no latest save wallet available, skipping heartbeat.');
+    return;
+  }
+
+  const latestSaveCutoff = latestSave.timestamp + (1000 * 60 * 60);
+
+  if (Date.now() > latestSaveCutoff) {
+    console.log('no recent saved wallet available, skipping heartbeat.');
+    return;
+  }
+
   await ServiceModule.updateServiceNodes();
   await ServiceModule.checkNodeSwap();
 
