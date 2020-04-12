@@ -172,7 +172,7 @@ export async function getServiceStatus(): Promise<[ServiceStatus | undefined, un
 }
 
 export async function updateMasterWallet(): Promise<void> {
-  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false);
+  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false, false);
 
   if (!serviceWallet) {
     console.error((serviceError as ServiceError).message);
@@ -192,7 +192,10 @@ export async function updateMasterWallet(): Promise<void> {
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-  const syncSeconds = syncInfoStart.heightDelta < 240 ? 40 : 500;
+  // rewind about 2 hours
+  await serviceWallet.instance.wallet.rewind(syncInfoStart.walletHeight - 240);
+
+  const syncSeconds = syncInfoStart.heightDelta < 400 ? 60 : 500;
 
   console.log(`run sync job for ${syncSeconds}s ...`);
   await sleep(syncSeconds * 1000);

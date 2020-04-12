@@ -54,7 +54,8 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
 }
 
 export async function getServiceWallet(
-  waitForSync: boolean = true): Promise<[ServiceWallet | undefined, undefined | ServiceError]> {
+  waitForSync: boolean = true,
+  shared: boolean = true): Promise<[ServiceWallet | undefined, undefined | ServiceError]> {
 
   const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
 
@@ -66,7 +67,7 @@ export async function getServiceWallet(
     return [undefined, new ServiceError('service/service-halted')];
   }
 
-  const [instance, openError] = await getWalletInstance(serviceConfig);
+  const [instance, openError] = await getWalletInstance(serviceConfig, shared);
 
   if (!instance) {
     return [undefined, openError];
@@ -208,9 +209,6 @@ export async function getSubWalletBalance(subWalletAddress: string): Promise<[bo
 }
 
 export async function saveWallet(instance: WalletInstance, isRewind: boolean): Promise<[SavedWallet | undefined, undefined | ServiceError]> {
-  // TODO: for this save to be allowed, it must have been loaded from
-  // the latest saved file, update the if statement below!!! (might need db transaction)
-
   const [wHeight,, nHeight]   = instance.wallet.getSyncStatus();
   const encryptedString       = instance.wallet.encryptWalletToString(functions.config().serviceadmin.password);
   const saveFolder            = 'saved_wallets';
@@ -462,7 +460,7 @@ export async function rewindToCheckpoint(previousCheckpoint: SavedWallet): Promi
   }
 
   const fetchResults = await Promise.all([
-    getWalletInstance(serviceConfig),
+    getWalletInstance(serviceConfig, false),
     getAppEngineToken()
   ]);
 
@@ -654,7 +652,7 @@ async function saveWalletFirebase(
 
 async function getWalletInstance(
   serviceConfig: ServiceConfig,
-  forceRestart = false): Promise<[WalletInstance | undefined, undefined | ServiceError]> {
+  shared = true): Promise<[WalletInstance | undefined, undefined | ServiceError]> {
 
   const latestSave = await getLatestSavedWallet(false);
 
@@ -662,8 +660,8 @@ async function getWalletInstance(
     return [undefined, new ServiceError('service/master-wallet-file')];
   }
 
-  if (sharedInstance) {
-    if (forceRestart || await checkWalletInstanceRestartNeeded(sharedInstance, latestSave, serviceConfig)) {
+  if (shared && sharedInstance) {
+    if (await checkWalletInstanceRestartNeeded(sharedInstance, latestSave, serviceConfig)) {
       console.log(`starting new wallet instance...`);
 
       await closeSharedInstance();
@@ -682,9 +680,13 @@ async function getWalletInstance(
   const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
 
   if (wallet) {
-    sharedInstance = new WalletInstance(wallet, latestSave, uuidv4());
+    const instance = new WalletInstance(wallet, latestSave, uuidv4());
 
-    return [sharedInstance, undefined];
+    if (shared) {
+      sharedInstance = instance;
+    }
+
+    return [instance, undefined];
   } else {
     return [undefined, error];
   }

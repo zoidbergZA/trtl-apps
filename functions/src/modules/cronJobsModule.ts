@@ -32,7 +32,7 @@ exports.runAppAudits = functions.pubsub.schedule('every 6 hours').onRun(async (c
 });
 
 exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(async (context) => {
-  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false);
+  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet();
 
   if (!serviceWallet) {
     console.error(`failed to get service wallet: ${(serviceError as ServiceError).message}`);
