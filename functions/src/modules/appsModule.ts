@@ -225,7 +225,7 @@ export async function requestAppAudit(appId: string): Promise<void> {
     return;
   }
 
-  const [serviceWallet, walletErr] = await WalletManager.getServiceWallet(true);
+  const [serviceWallet, walletErr] = await WalletManager.getServiceWallet();
 
   if (!serviceWallet) {
     console.log((walletErr as ServiceError).message);
@@ -276,8 +276,17 @@ async function processCreateApp(
   }
 
   const selectedSubWallet = unclaimedSubWallets[Math.floor(Math.random() * unclaimedSubWallets.length)];
+  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false, true);
 
-  // TODO: confirm that service wallet has this sub-wallet
+  if (!serviceWallet) {
+    return [undefined, serviceError];
+  }
+
+  const walletAddresses = serviceWallet.instance.wallet.getAddresses();
+
+  if (!walletAddresses.find(a => a === selectedSubWallet.address)) {
+    return [undefined, new ServiceError('service/unknown-error', 'invalid sub-wallet address.')];
+  }
 
   let app: TurtleApp | undefined = undefined;
 

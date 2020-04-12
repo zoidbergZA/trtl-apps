@@ -41,6 +41,8 @@ exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(asyn
 
   const jobs: Promise<any>[] = [];
 
+  // TODO: re-add missing subwallets
+
   jobs.push(WithdrawalsModule.processLostWithdrawals(serviceWallet));
 
   await Promise.all(jobs);
