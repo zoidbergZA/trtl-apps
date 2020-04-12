@@ -70,6 +70,7 @@ export async function getServiceWallet(
   const [instance, openError] = await getWalletInstance(serviceConfig, shared);
 
   if (!instance) {
+    console.log((openError as ServiceError).message);
     return [undefined, openError];
   }
 
@@ -221,25 +222,36 @@ export async function saveWallet(instance: WalletInstance, isRewind: boolean): P
 
   console.log(`wallet file saved: ${firebaseSave.location}`);
 
-  const appEngineSaveResult = await Promise.all([
-    saveWalletAppEngine(encryptedString)
-  ]);
+  const appEngineSaveResult = await saveWalletAppEngine(encryptedString);
 
-  console.log(`save wallet firebase succeeded (old)? ${appEngineSaveResult[0]}`);
-  console.log(`save wallet appEngine succeeded? ${appEngineSaveResult[1]}`);
+  console.log(`save wallet appEngine succeeded? ${appEngineSaveResult}`);
 
   return [firebaseSave, undefined];
 }
 
 export async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | undefined> {
-  const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('checkpoint', '==', checkpoint)
-                    .where('hasFile', '==', true)
-                    .orderBy('timestamp', 'desc')
-                    .limit(1)
-                    .get();
+  let snapshot = await admin.firestore().collection('wallets/master/saves')
+                  .where('checkpoint', '==', checkpoint)
+                  .where('hasFile', '==', true)
+                  .orderBy('timestamp', 'desc')
+                  .limit(1)
+                  .get();
 
-  if (snapshot.size !== 1) {
+  if (snapshot.size < 1 && !checkpoint) {
+    console.log('fallback query...');
+    snapshot = await admin.firestore().collection('wallets/master/saves')
+                .where('hasFile', '==', true)
+                .orderBy('timestamp', 'desc')
+                .limit(1)
+                .get();
+  }
+
+  console.log('snapshot size: ' + snapshot.size);
+
+  const save = snapshot.docs[0].data() as SavedWallet;
+  console.log(`save id: ${save.id}, hasFile: ${save.hasFile}`);
+
+  if (snapshot.size === 0) {
     return undefined;
   }
 
@@ -613,7 +625,7 @@ async function saveWalletFirebase(
   networkHeight: number,
   isRewind: boolean): Promise<SavedWallet | undefined> {
 
-  const latestCheckpoint = await getLatestSavedWallet(true);
+  // const latestCheckpoint = await getLatestSavedWallet(true);
 
   const docRef    = admin.firestore().collection('wallets/master/saves').doc();
   const saveId    = docRef.id;
@@ -632,9 +644,9 @@ async function saveWalletFirebase(
     isRewind:       isRewind
   }
 
-  if (latestCheckpoint) {
-    saveData.lastSeenCheckpointId = latestCheckpoint.id;
-  }
+  // if (latestCheckpoint) {
+  //   saveData.lastSeenCheckpointId = latestCheckpoint.id;
+  // }
 
   try {
     const bucket = admin.storage().bucket();
@@ -657,6 +669,7 @@ async function getWalletInstance(
   const latestSave = await getLatestSavedWallet(false);
 
   if (!latestSave) {
+    console.log('failed to get latest save!');
     return [undefined, new ServiceError('service/master-wallet-file')];
   }
 
@@ -670,12 +683,14 @@ async function getWalletInstance(
     }
   }
 
-  const encryptedString = await getMasterWalletString();
+  const encryptedString = await getMasterWalletString(latestSave);
 
   if (!encryptedString) {
     console.error('no master wallet file data.');
     return [undefined, new ServiceError('service/master-wallet-file')];
   }
+
+  console.log(`starting wallet instance from saved file: ${latestSave.id}, location: ${latestSave.location}`);
 
   const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
 
@@ -784,16 +799,16 @@ async function startWalletFromString(
   }
 }
 
-async function getMasterWalletString(): Promise<string | null> {
-  const latestSave = await getLatestSavedWallet(false);
+async function getMasterWalletString(savedWallet: SavedWallet): Promise<string | null> {
+  // const latestSave = await getLatestSavedWallet(false);
 
-  if (!latestSave) {
-    return null;
-  }
+  // if (!latestSave) {
+  //   return null;
+  // }
 
   try {
     const bucket = admin.storage().bucket();
-    const f = bucket.file(latestSave.location);
+    const f = bucket.file(savedWallet.location);
 
     const buffer = await f.download();
     return buffer.toString();
