@@ -50,6 +50,7 @@ export interface ServiceConfig {
   serviceHalted: boolean;
   inviteOnly: boolean;
   serviceCharge: number;
+  userAppLimit: number;
   adminEmail?: string;
 }
 
