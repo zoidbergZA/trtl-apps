@@ -24,9 +24,9 @@ export class AdminService {
     }
   }
 
-  async rewindServiceWallet(distance: number): Promise<number> {
+  async rewindServiceWallet(checkpoint: string): Promise<number> {
     const response = await this.afFunctions.httpsCallable('serviceAdmin-rewindWallet')({
-      distance
+      checkpoint
     }).toPromise();
 
     return response.walletHeight;
