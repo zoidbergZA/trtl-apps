@@ -10,7 +10,15 @@
           </tr>
           <tr>
             <td class="table-key">Email</td>
-            <td class="table-value">{{ auth.user?.email }}</td>
+            <td class="table-value">
+              <span>{{ auth.user?.email }}</span>
+              <span *ngIf="auth.user?.emailVerified" class="spacer-left"><mat-icon color="primary">check_circle</mat-icon></span>
+              <span *ngIf="!auth.user?.emailVerified">
+                <span class="not-verified spacer-left">(not verified)</span>
+                <button *ngIf="!sendingEmail" mat-button color="primary" (click)="verifyEmailClick()">Send verification e-mail</button>
+                <span *ngIf="sendingEmail" class="spacer-left">sending...</span>
+              </span>
+            </td>
           </tr>
           <tr>
             <td class="table-key">Created at</td>

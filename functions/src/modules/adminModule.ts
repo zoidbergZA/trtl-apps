@@ -42,7 +42,6 @@ export const rewindWallet = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', 'missing distance parameter');
   }
 
-  // TODO: rework this function to rewind to an older checkpoint
   const snapshot = await admin.firestore().doc(`wallets/master/saves/${checkpointId}`).get();
 
   if (!snapshot.exists) {

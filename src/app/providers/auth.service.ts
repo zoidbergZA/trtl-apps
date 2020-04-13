@@ -50,6 +50,21 @@ export class AuthService {
     return this.firebaseAuth.auth.signInWithEmailAndPassword(email, password);
   }
 
+  async sendVerificationEmail(): Promise<boolean> {
+    const currentUser = this.firebaseAuth.auth.currentUser;
+
+    if (!currentUser) {
+      return false;
+    }
+
+    try {
+      await currentUser.sendEmailVerification();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   sendPasswordResetEmail(email: string): Promise<void> {
     return this.firebaseAuth.auth.sendPasswordResetEmail(email);
   }

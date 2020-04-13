@@ -21,7 +21,13 @@ export const createApp = functions.https.onCall(async (data, context) => {
   const inviteCode: string | undefined = data.inviteCode;
 
   if (!owner || !appName) {
-    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid parameters provided.');
+  }
+
+  const userRecord = await admin.auth().getUser(owner);
+
+  if (!userRecord.emailVerified) {
+    throw new functions.https.HttpsError('failed-precondition', 'Verified email address required.');
   }
 
   const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
@@ -52,6 +58,8 @@ export const createApp = functions.https.onCall(async (data, context) => {
       }
     }
   }
+
+  // TODO: check max apps limit
 
   const [app, appError] = await processCreateApp(owner, appName, inviteCode);
   const result: any = {};
