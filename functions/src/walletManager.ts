@@ -492,6 +492,12 @@ export async function rewindToCheckpoint(previousCheckpoint: SavedWallet): Promi
   console.log(`rewind wallet to height: ${rewindHeight}`);
   await walletInstance.wallet.rewind(rewindHeight);
 
+  const saveDelay = 1000 * 10;
+
+  console.log(`delay ${saveDelay}ms before wallet save...`);
+  await sleep(saveDelay);
+
+  console.log(`sync info at save: ${walletInstance.wallet.getSyncStatus()}`);
   const [savedWallet, saveError] = await saveWallet(walletInstance, true);
 
   if (!savedWallet) {
