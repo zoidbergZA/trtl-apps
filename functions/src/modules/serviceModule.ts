@@ -12,9 +12,9 @@ import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId
 import { ServiceError } from '../serviceError';
 
 export async function boostrapService(): Promise<[string | undefined, undefined | ServiceError]> {
-  const masterWalletInfo = await WalletManager.getMasterWalletInfo();
+  const [config] = await getServiceConfig();
 
-  if (masterWalletInfo !== undefined) {
+  if (config !== undefined) {
     return [undefined, new ServiceError('service/master-wallet-info', 'Service already bootstrapped!')];
   }
 
@@ -139,7 +139,7 @@ export async function getServiceStatus(): Promise<[ServiceStatus | undefined, un
     status.daemonPort     = config.daemonPort;
     status.serviceCharge  = config.serviceCharge;
 
-    status.firebaseWalletSyncInfo = serviceWallet.wallet.getSyncStatus();
+    status.firebaseWalletSyncInfo = serviceWallet.instance.wallet.getSyncStatus();
     const heightDelta = status.firebaseWalletSyncInfo[2] - status.firebaseWalletSyncInfo[0];
 
     if (heightDelta < 60) {
@@ -172,7 +172,7 @@ export async function getServiceStatus(): Promise<[ServiceStatus | undefined, un
 }
 
 export async function updateMasterWallet(): Promise<void> {
-  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false);
+  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false, false);
 
   if (!serviceWallet) {
     console.error((serviceError as ServiceError).message);
@@ -186,42 +186,23 @@ export async function updateMasterWallet(): Promise<void> {
 
   console.log(`master wallet sync job started at: ${Date.now()}`);
 
-  const masterWalletInfoAtStart = await WalletManager.getMasterWalletInfo();
-
-  if (!masterWalletInfoAtStart) {
-    console.log('failed to get master wallet info at sync start!');
-    return;
-  }
-
-  const lastSaveAtStart = masterWalletInfoAtStart.lastSaveAt;
-  const syncInfoStart   = WalletManager.getWalletSyncInfo(serviceWallet.wallet);
-  const balanceStart    = serviceWallet.wallet.getBalance();
+  const syncInfoStart   = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
+  const balanceStart    = serviceWallet.instance.wallet.getBalance();
 
   console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
   console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-  const syncSeconds = syncInfoStart.heightDelta < 240 ? 40 : 500;
+  // rewind about 2 hours
+  await serviceWallet.instance.wallet.rewind(syncInfoStart.walletHeight - 240);
+
+  const syncSeconds = syncInfoStart.heightDelta < 400 ? 60 : 500;
 
   console.log(`run sync job for ${syncSeconds}s ...`);
   await sleep(syncSeconds * 1000);
 
-  const masterWalletInfoAtEnd = await WalletManager.getMasterWalletInfo();
-
-  if (!masterWalletInfoAtEnd) {
-    console.log('failed to get master wallet info at sync end!');
-    return;
-  }
-
-  const lastSaveAtEnd = masterWalletInfoAtEnd.lastSaveAt;
-
-  if (lastSaveAtEnd !== lastSaveAtStart) {
-    console.log(`wallet has been saved during sync! skipping master wallet update save.`);
-    return;
-  }
-
-  const syncInfoEnd     = WalletManager.getWalletSyncInfo(serviceWallet.wallet);
+  const syncInfoEnd     = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
   const processedCount  = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
-  const balanceEnd      = serviceWallet.wallet.getBalance();
+  const balanceEnd      = serviceWallet.instance.wallet.getBalance();
 
   console.log(`blocks processed: ${processedCount}`);
   console.log(`sync info at end: ${JSON.stringify(syncInfoEnd)}`);
@@ -236,7 +217,8 @@ export async function updateMasterWallet(): Promise<void> {
   if (unclaimedSubWallets.length < minUnclaimedSubWallets) {
     for (let i = 0; i < minUnclaimedSubWallets; i++) {
       // TODO: refactor add subwallet function to wallet manager
-      const [address, error] = serviceWallet.wallet.addSubWallet();
+
+      const [address, error] = serviceWallet.instance.wallet.addSubWallet();
 
       if (!address) {
         console.error((error as WalletError));
@@ -249,14 +231,14 @@ export async function updateMasterWallet(): Promise<void> {
 
   if (syncInfoEnd.heightDelta <= 0) {
     const optimizeStartAt = Date.now();
-    const [numberOfTransactionsSent, ] = await serviceWallet.wallet.optimize();
+    const [numberOfTransactionsSent, ] = await serviceWallet.instance.wallet.optimize();
     const optimizeEndAt = Date.now();
     const optimizeSeconds = (optimizeEndAt - optimizeStartAt) * 0.001;
 
     console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
   }
 
-  const [, saveError] = await WalletManager.saveWallet(false, false);
+  const [, saveError] = await WalletManager.saveWallet(serviceWallet.instance, false);
 
   if (saveError) {
     console.error(saveError.message);
@@ -268,7 +250,7 @@ export async function updateMasterWallet(): Promise<void> {
     let newSubWalletCount = 0;
 
     newSubWallets.forEach(address => {
-      const [publicSpendKey, privateSpendKey, err] = serviceWallet.wallet.getSpendKeys(address);
+      const [publicSpendKey, privateSpendKey, err] = serviceWallet.instance.wallet.getSpendKeys(address);
 
       if (!publicSpendKey || !privateSpendKey || err) {
         console.error(err);

@@ -19,7 +19,8 @@ export const defaultServiceConfig: ServiceConfig = {
   waitForSyncTimeout:     20000,                    // Max time is miliseconds for the master wallet to sync
   serviceHalted:          false,                    // If true, the service is disables and doesn't process transactions
   inviteOnly:             true,                     // An invitation code is required to create an app
-  serviceCharge:          0                         // default service charge
+  serviceCharge:          0,                        // Default service charge
+  userAppLimit:           4                         // Maximum apps per user account
 }
 
 export const defaultNodes: ServiceNode[] = [

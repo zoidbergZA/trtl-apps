@@ -1,16 +1,20 @@
 import { WalletBackend } from "turtlecoin-wallet-backend";
 
-export interface ServiceWallet {
-  wallet: WalletBackend,
-  serviceConfig: ServiceConfig
+export class WalletInstance {
+  wallet: WalletBackend;
+  loadedFrom: SavedWallet;
+  instanceId: string;
+
+  constructor(instance: WalletBackend, loadedFrom: SavedWallet, id: string) {
+    this.wallet     = instance;
+    this.loadedFrom = loadedFrom;
+    this.instanceId = id;
+  }
 }
 
-// TODO: see if this can be removed
-export interface WalletInfo {
-  location: string;
-  backupsDirectory: string;
-  lastSaveAt: number;
-  lastBackupAt: number;
+export interface ServiceWallet {
+  instance: WalletInstance,
+  serviceConfig: ServiceConfig
 }
 
 export interface SavedWallet {
@@ -27,11 +31,7 @@ export interface SavedWallet {
 
 export interface SavedWalletUpdate {
   hasFile?: boolean;
-}
-
-export interface WalletInfoUpdate {
-  lastSaveAt?: number;
-  lastBackupAt?: number;
+  checkpoint?: boolean;
 }
 
 export interface WalletSyncInfo {
@@ -50,6 +50,7 @@ export interface ServiceConfig {
   serviceHalted: boolean;
   inviteOnly: boolean;
   serviceCharge: number;
+  userAppLimit: number;
   adminEmail?: string;
 }
 

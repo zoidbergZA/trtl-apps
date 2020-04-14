@@ -240,10 +240,10 @@ export async function getWithdrawal(
 }
 
 export async function updateWithdrawals(serviceWallet: ServiceWallet): Promise<void> {
-  const [walletHeight,,]  = serviceWallet.wallet.getSyncStatus();
+  const [walletHeight,,]  = serviceWallet.instance.wallet.getSyncStatus();
   const scanHeight        = Math.max(0, serviceWallet.serviceConfig.txScanDepth);
 
-  const transactions = serviceWallet.wallet
+  const transactions = serviceWallet.instance.wallet
                         .getTransactions(undefined, undefined, false)
                         .filter(tx => {
                           const transfers = Array.from(tx.transfers.values());
@@ -382,14 +382,14 @@ export async function getWithdrawalHistory(withdrawalId: string): Promise<[Withd
 }
 
 async function processLostWithdrawal(withdrawal: Withdrawal, serviceWallet: ServiceWallet): Promise<any> {
-  const [walletHeight, ,] = serviceWallet.wallet.getSyncStatus();
+  const [walletHeight, ,] = serviceWallet.instance.wallet.getSyncStatus();
 
   // a lost withdrawal can be safely cancelled based on some node error codes.
   if (hasConfirmedFailureErrorCode(withdrawal)) {
     return cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
   }
 
-  const transactions = serviceWallet.wallet
+  const transactions = serviceWallet.instance.wallet
                         .getTransactions(undefined, undefined, false)
                         .filter(tx => {
                           const transfers = Array.from(tx.transfers.values());
@@ -479,7 +479,9 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
 
   const txFee = FeeType.FixedFee(preparedWithdrawal.fees.txFee);
 
-  const sendResult = await serviceWallet.wallet.sendTransactionAdvanced(
+  // TODO: send using app engine
+
+  const sendResult = await serviceWallet.instance.wallet.sendTransactionAdvanced(
                       destinations,
                       undefined,
                       txFee,
@@ -876,7 +878,7 @@ async function sendPendingWithdrawal(
         return Promise.reject(msg);
       }
 
-      const [walletBlockCount, ,] = serviceWallet.wallet.getSyncStatus();
+      const [walletBlockCount, ,] = serviceWallet.instance.wallet.getSyncStatus();
 
       const confirmingUpdate: WithdrawalUpdate = {
         lastUpdate: Date.now(),

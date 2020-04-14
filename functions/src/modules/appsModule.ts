@@ -9,7 +9,7 @@ import { createIntegratedAddress, WalletBackend } from 'turtlecoin-wallet-backen
 import { ServiceError } from '../serviceError';
 import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Account, Deposit, Withdrawal } from '../../../shared/types';
 import { generateRandomPaymentId, generateRandomSignatureSegement } from '../utils';
-import { AppAuditResult } from '../types';
+import { AppAuditResult, ServiceConfig } from '../types';
 
 export const createApp = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -21,7 +21,13 @@ export const createApp = functions.https.onCall(async (data, context) => {
   const inviteCode: string | undefined = data.inviteCode;
 
   if (!owner || !appName) {
-    throw new functions.https.HttpsError('invalid-argument', 'invalid parameters provided.');
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid parameters provided.');
+  }
+
+  const userRecord = await admin.auth().getUser(owner);
+
+  if (!userRecord.emailVerified) {
+    throw new functions.https.HttpsError('failed-precondition', 'Verified email address required.');
   }
 
   const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
@@ -53,7 +59,7 @@ export const createApp = functions.https.onCall(async (data, context) => {
     }
   }
 
-  const [app, appError] = await processCreateApp(owner, appName, inviteCode);
+  const [app, appError] = await processCreateApp(owner, appName, serviceConfig, inviteCode);
   const result: any = {};
 
   if (appError) {
@@ -204,7 +210,7 @@ export async function runAppAudits(appCount: number): Promise<void> {
     return;
   }
 
-  const auditsJobs = apps.map(app => auditApp(app, serviceWallet.wallet));
+  const auditsJobs = apps.map(app => auditApp(app, serviceWallet.instance.wallet));
 
   await Promise.all(auditsJobs);
 }
@@ -225,14 +231,14 @@ export async function requestAppAudit(appId: string): Promise<void> {
     return;
   }
 
-  const [serviceWallet, walletErr] = await WalletManager.getServiceWallet(true);
+  const [serviceWallet, walletErr] = await WalletManager.getServiceWallet();
 
   if (!serviceWallet) {
     console.log((walletErr as ServiceError).message);
     return;
   }
 
-  await auditApp(app, serviceWallet.wallet);
+  await auditApp(app, serviceWallet.instance.wallet);
 }
 
 export async function getAppAuditsInPeriod(since: number, to: number): Promise<AppAuditResult[]> {
@@ -252,6 +258,7 @@ export async function getAppAuditsInPeriod(since: number, to: number): Promise<A
 async function processCreateApp(
   owner: string,
   appName: string,
+  serviceConfig: ServiceConfig,
   inviteCode?: string) : Promise<[TurtleApp | undefined, undefined | ServiceError]> {
 
   const validName = Utils.validateAppName(appName);
@@ -260,19 +267,39 @@ async function processCreateApp(
     return [undefined, new ServiceError('app/invalid-app-name')];
   }
 
-  const querySnapshot = await admin.firestore().collection(`apps`).where('name', '==', appName).get();
+  const querySnapshot = await admin.firestore().collection(`apps`)
+                          .where('owner', '==', owner)
+                          .get();
 
-  if (querySnapshot.docs.length > 0) {
+  const ownerApps = querySnapshot.docs.map(d => d.data() as TurtleApp);
+
+  if (ownerApps.length >= serviceConfig.userAppLimit) {
+    return [undefined, new ServiceError('service/create-app-failed', 'Maximum apps limit reached.')];
+  }
+
+  if (ownerApps.some(a => a.name === appName)) {
     return [undefined, new ServiceError('app/invalid-app-name', 'An app with the same name already exists.')];
   }
 
   const unclaimedSubWallets = await WalletManager.getSubWalletInfos(true);
 
   if (unclaimedSubWallets.length === 0) {
-    return [undefined, new ServiceError('service/no-unclaimed-subwallets')];
+    return [undefined, new ServiceError('service/no-unclaimed-subwallets', 'An error occured, please try again later.')];
   }
 
   const selectedSubWallet = unclaimedSubWallets[Math.floor(Math.random() * unclaimedSubWallets.length)];
+  const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false, true);
+
+  if (!serviceWallet) {
+    return [undefined, serviceError];
+  }
+
+  const walletAddresses = serviceWallet.instance.wallet.getAddresses();
+
+  if (!walletAddresses.find(a => a === selectedSubWallet.address)) {
+    return [undefined, new ServiceError('service/unknown-error', 'An error occured, please try again later.')];
+  }
+
   let app: TurtleApp | undefined = undefined;
 
   try {
@@ -345,7 +372,7 @@ async function processCreateApp(
     });
   } catch (error) {
     console.error(error);
-    return [undefined, new ServiceError('service/create-app-failed', error)];
+    return [undefined, new ServiceError('service/create-app-failed', 'An error occured, please try again later.')];
   }
 
   if (app === undefined) {

@@ -61,10 +61,10 @@ export async function getAccountDeposits(
 }
 
 export async function updateDeposits(serviceWallet: ServiceWallet): Promise<void> {
-  const [walletHeight, ,] = serviceWallet.wallet.getSyncStatus();
+  const [walletHeight, ,] = serviceWallet.instance.wallet.getSyncStatus();
   const scanHeight        = Math.max(0, walletHeight - serviceWallet.serviceConfig.txScanDepth);
 
-  const transactions = serviceWallet.wallet
+  const transactions = serviceWallet.instance.wallet
     .getTransactions(undefined, undefined, false)
     .filter(tx => tx.blockHeight >= scanHeight);
 
@@ -300,7 +300,7 @@ async function findAccountForDepositTx(transaction: Transaction, app: TurtleApp)
 }
 
 async function updateConfirmingDeposits(serviceWallet: ServiceWallet): Promise<void> {
-  const wallet              = serviceWallet.wallet;
+  const wallet              = serviceWallet.instance.wallet;
   const serviceConfig       = serviceWallet.serviceConfig;
   const [walletHeight,,]    = wallet.getSyncStatus();
   const confirmingDeposits  = await getAllDepositsWithStatus('confirming');
@@ -312,7 +312,7 @@ async function updateConfirmingDeposits(serviceWallet: ServiceWallet): Promise<v
     let depositTx: Transaction | undefined = undefined;
 
     if (deposit.txHash) {
-      depositTx = serviceWallet.wallet.getTransaction(deposit.txHash);
+      depositTx = serviceWallet.instance.wallet.getTransaction(deposit.txHash);
     }
 
     if (!depositTx) {

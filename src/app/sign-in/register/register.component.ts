@@ -47,20 +47,20 @@ export class RegisterComponent implements OnInit, OnDestroy {
     return this.form.controls.password.value === this.form.controls.confirmPassword.value;
   }
 
-  onSubmit(result: any) {
-    const self = this;
+  async onSubmit(result: any) {
     this.working = true;
     const statusStream = this.status$;
     statusStream.next('');
 
-    this.auth.createUserWithEmailAndPassword(result.email, result.password)
-    .then(_ => {
-      self.working = false;
+    try {
+      await this.auth.createUserWithEmailAndPassword(result.email, result.password);
+      await this.auth.sendVerificationEmail();
+
       this.router.navigate(['/console']);
-    })
-    .catch(err => {
-      self.working = false;
-      statusStream.next(`error creating account: ${err.message}`);
-    });
+    } catch (error) {
+      statusStream.next(`error creating account: ${error.message}`);
+    } finally {
+      this.working = false;
+    }
   }
 }
