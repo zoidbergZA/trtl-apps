@@ -281,13 +281,12 @@ async function processCreateApp(
     return [undefined, new ServiceError('app/invalid-app-name', 'An app with the same name already exists.')];
   }
 
-  const unclaimedSubWallets = await WalletManager.getSubWalletInfos(true);
+  const [subWallet, walletError] = await getUnclaimedSubWallet();
 
-  if (unclaimedSubWallets.length === 0) {
-    return [undefined, new ServiceError('service/no-unclaimed-subwallets', 'An error occured, please try again later.')];
+  if (!subWallet) {
+    return [undefined, walletError];
   }
 
-  const selectedSubWallet = unclaimedSubWallets[Math.floor(Math.random() * unclaimedSubWallets.length)];
   const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false, true);
 
   if (!serviceWallet) {
@@ -296,7 +295,7 @@ async function processCreateApp(
 
   const walletAddresses = serviceWallet.instance.wallet.getAddresses();
 
-  if (!walletAddresses.find(a => a === selectedSubWallet.address)) {
+  if (!walletAddresses.find(a => a === subWallet.address)) {
     return [undefined, new ServiceError('service/unknown-error', 'An error occured, please try again later.')];
   }
 
@@ -304,7 +303,7 @@ async function processCreateApp(
 
   try {
     await admin.firestore().runTransaction(async (txn) => {
-      const subWalletDocRef   = admin.firestore().doc(`wallets/master/subWallets/${selectedSubWallet.id}`);
+      const subWalletDocRef   = admin.firestore().doc(`wallets/master/subWallets/${subWallet.id}`);
       const appDocRef         = admin.firestore().collection('apps').doc();
       const appId             = appDocRef.id;
       const appSecret         = generateApiKey();
@@ -319,8 +318,8 @@ async function processCreateApp(
 
       const subWalletInfo = subWalletDoc.data() as SubWalletInfo;
 
-      if (subWalletInfo.claimed) {
-        throw new Error(`subWallet with address ${subWalletInfo.address} is already claimed`);
+      if (subWalletInfo.claimed || subWalletInfo.deleted) {
+        throw new Error(`subWallet with address ${subWalletInfo.address} is invalid.`);
       }
 
       app = {
@@ -381,6 +380,22 @@ async function processCreateApp(
   } else {
     return [app, undefined];
   }
+}
+
+async function getUnclaimedSubWallet(): Promise<[SubWalletInfo | undefined, undefined | ServiceError]> {
+  const unclaimedSubWallets = await WalletManager.getSubWalletInfos(true);
+
+  const dateCutoff = Date.now() - (1000 * 60 * 60 * 24);
+  const candidates = unclaimedSubWallets.filter(w => w.createdAt >= dateCutoff && !w.deleted);
+
+
+  if (candidates.length === 0) {
+    return [undefined, new ServiceError('service/no-unclaimed-subwallets', 'An error occured, please try again later.')];
+  }
+
+  const selectedSubWallet = candidates[Math.floor(Math.random() * candidates.length)];
+
+  return [selectedSubWallet, undefined];
 }
 
 async function processSetAppState(owner: string, appId: string, active: boolean): Promise<boolean> {
