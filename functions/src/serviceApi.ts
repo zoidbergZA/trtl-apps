@@ -1,7 +1,7 @@
 import * as cors from 'cors';
 import * as express from 'express';
 import * as admin from 'firebase-admin';
-import * as functions from 'firebase-functions';
+// import * as functions from 'firebase-functions';
 import * as AccountsModule from './modules/accountsModule';
 import * as ServiceModule from './modules/serviceModule';
 import * as DepositsModule from './modules/depositsModule';
@@ -668,7 +668,7 @@ async function validateAddress(request: any, response: any): Promise<void> {
 }
 
 async function authorizeAppRequest(
-  request: functions.https.Request): Promise<[TurtleApp | undefined, undefined | ServiceError]> {
+  request: any): Promise<[TurtleApp | undefined, undefined | ServiceError]> {
 
   const appId = request.params.appId;
 
@@ -681,6 +681,10 @@ async function authorizeAppRequest(
   if (typeof request.headers.authorization === "string") {
     authHeader = request.headers.authorization;
   } else {
+    return [undefined, new ServiceError('request/unauthorized')];
+  }
+
+  if (!authHeader) {
     return [undefined, new ServiceError('request/unauthorized')];
   }
 

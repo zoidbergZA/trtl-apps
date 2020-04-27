@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 import * as WalletManager from '../walletManager';
 import * as AppModule from './appsModule';
+import * as AuditsModule from './auditsModule';
 import * as ServiceModule from './serviceModule';
 import * as Analytics from './analyticsModule';
 import { serviceChargesAccountId } from '../constants';
@@ -360,7 +361,7 @@ export async function processWithdrawalUpdate(
     await createCallback(app, callbackCode, newState);
 
     if (newState.failed && newState.daemonErrorCode === WalletErrorCode.NOT_ENOUGH_BALANCE) {
-      await AppModule.requestAppAudit(newState.appId);
+      await AuditsModule.requestAppAudit(newState.appId);
     }
   }
 }

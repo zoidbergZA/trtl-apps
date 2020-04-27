@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as functions from 'firebase-functions';
 import * as ServiceModule from './modules/serviceModule';
-import * as AppsModule from './modules/appsModule';
+import * as AuditsModule from './modules/auditsModule';
 import * as Constants from './constants';
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
@@ -649,7 +649,7 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
   const candidate = snapshot.docs[0].data() as SavedWallet;
 
   // no failed audits in the evaluation period before and after canditate timestamp
-  const audits = await AppsModule.getAppAuditsInPeriod(
+  const audits = await AuditsModule.getAppAuditsInPeriod(
                   candidate.timestamp - evaluationPeriod,
                   candidate.timestamp + evaluationPeriod);
 
