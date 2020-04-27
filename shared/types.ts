@@ -31,6 +31,8 @@ export interface SubWalletInfo {
   id: string;
   address: string;
   claimed: boolean;
+  deleted: boolean;
+  createdAt: number;
   appId?: string;
   publicSpendKey: string;
   privateSpendKey: string;
@@ -39,6 +41,7 @@ export interface SubWalletInfo {
 export interface SubWalletInfoUpdate {
   claimed?: boolean;
   appId?: string;
+  deleted?: boolean;
 }
 
 export interface TurtleApp {

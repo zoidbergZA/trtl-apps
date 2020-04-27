@@ -28,7 +28,7 @@ exports.runAppAudits = functions.pubsub.schedule('every 6 hours').onRun(async (c
     return;
   }
 
-  await AppModule.runAppAudits(10);
+  await AppModule.runAppAudits(10, serviceWallet);
 });
 
 exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(async (context) => {
@@ -41,8 +41,7 @@ exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(asyn
 
   const jobs: Promise<any>[] = [];
 
-  // TODO: re-add missing subwallets
-
+  jobs.push(WalletManager.validateUnclaimedSubWallets());
   jobs.push(WithdrawalsModule.processLostWithdrawals(serviceWallet));
 
   await Promise.all(jobs);

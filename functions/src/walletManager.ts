@@ -13,7 +13,7 @@ import { sleep } from './utils';
 import { ServiceError } from './serviceError';
 import { ServiceWallet, ServiceConfig, WalletSyncInfo,
   StartWalletRequest, PrepareTransactionRequest, SavedWallet, SavedWalletUpdate, WalletInstance } from './types';
-import { SubWalletInfo, WalletStatus } from '../../shared/types';
+import { SubWalletInfo, WalletStatus, SubWalletInfoUpdate } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { google } from 'googleapis';
 import { Storage } from '@google-cloud/storage';
@@ -291,19 +291,42 @@ export async function updateWalletCheckpoints(): Promise<void> {
   }
 }
 
-export async function getSubWalletInfos(onlyUnclaimed = false): Promise<SubWalletInfo[]> {
+export async function getSubWalletInfos(onlyUnclaimed: boolean): Promise<SubWalletInfo[]> {
   let subWalletDocs: FirebaseFirestore.QuerySnapshot;
 
   if (onlyUnclaimed) {
     subWalletDocs = await admin.firestore()
-                          .collection('wallets/master/subWallets')
-                          .where('claimed', '==', false)
-                          .get();
+                      .collection('wallets/master/subWallets')
+                      .where('claimed', '==', false)
+                      .where('deleted', '==', false)
+                      .get();
   } else {
     subWalletDocs = await admin.firestore().collection('wallets/master/subWallets').get();
   }
 
   return subWalletDocs.docs.map(d => d.data() as SubWalletInfo);
+}
+
+export async function validateUnclaimedSubWallets(): Promise<void> {
+  const [serviceWallet, serviceError] = await getServiceWallet(false, true);
+
+  if (!serviceWallet) {
+    console.log((serviceError as ServiceError).message);
+    return;
+  }
+
+  const unclaimedSubWallets = await getSubWalletInfos(true);
+  const walletAddreses      = serviceWallet.instance.wallet.getAddresses();
+
+  const invalidSubWallets = unclaimedSubWallets.filter(w => !w.deleted && !walletAddreses.some(a => a === w.address));
+
+  if (invalidSubWallets.length === 0) {
+    return;
+  }
+
+  const deletePromises = invalidSubWallets.map(w => deleteSubWallet(w));
+
+  await Promise.all(deletePromises);
 }
 
 export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
@@ -508,6 +531,20 @@ export async function rewindToCheckpoint(previousCheckpoint: SavedWallet): Promi
   console.log(`app engine wallet successfully restarted? ${appEngineRestarted}`);
 
   return [savedWallet, undefined];
+}
+
+async function deleteSubWallet(subWallet: SubWalletInfo): Promise<boolean> {
+  const update: SubWalletInfoUpdate = {
+    deleted: true
+  }
+
+  try {
+    await admin.firestore().doc(`wallets/master/subWallets/${subWallet.id}`).update(update);
+    return true;
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
 }
 
 async function deleteSavedWallet(savedWallet: SavedWallet): Promise<void> {

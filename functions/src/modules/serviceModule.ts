@@ -258,11 +258,13 @@ export async function updateMasterWallet(): Promise<void> {
         const doc = admin.firestore().collection('wallets/master/subWallets').doc();
 
         const subWalletInfo: SubWalletInfo = {
-          id: doc.id,
-          address: address,
-          claimed: false,
-          publicSpendKey: publicSpendKey,
-          privateSpendKey: privateSpendKey
+          id:               doc.id,
+          createdAt:        Date.now(),
+          address:          address,
+          claimed:          false,
+          deleted:          false,
+          publicSpendKey:   publicSpendKey,
+          privateSpendKey:  privateSpendKey
         }
 
         batch.create(doc, subWalletInfo);
