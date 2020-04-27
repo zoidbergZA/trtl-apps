@@ -9,7 +9,7 @@ import { createIntegratedAddress, WalletBackend } from 'turtlecoin-wallet-backen
 import { ServiceError } from '../serviceError';
 import { SubWalletInfo, SubWalletInfoUpdate, TurtleApp, TurtleAppUpdate, Account, Deposit, Withdrawal } from '../../../shared/types';
 import { generateRandomPaymentId, generateRandomSignatureSegement } from '../utils';
-import { AppAuditResult, ServiceConfig } from '../types';
+import { AppAuditResult, ServiceConfig, ServiceWallet } from '../types';
 
 export const createApp = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -172,7 +172,7 @@ export const setAppWebhook = functions.https.onCall(async (data, context) => {
   return result;
 });
 
-export async function runAppAudits(appCount: number): Promise<void> {
+export async function runAppAudits(appCount: number, serviceWallet: ServiceWallet): Promise<void> {
   const snapshot1 = await admin.firestore()
                     .collection('apps')
                     .where('lastAuditPassed', '==', false)
@@ -200,13 +200,6 @@ export async function runAppAudits(appCount: number): Promise<void> {
   }
 
   if (apps.length === 0) {
-    return;
-  }
-
-  const [serviceWallet, walletError] = await WalletManager.getServiceWallet();
-
-  if (!serviceWallet) {
-    console.log((walletError as ServiceError).message);
     return;
   }
 
