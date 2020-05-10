@@ -2,9 +2,7 @@
 
 This repository contains the source code for hosting the TRTL apps service. Visit [trtlapps.io](https://trtlapps.io) for more information.
 
-## Service Setup
-
-### Setup firebase prejects
+## Create firebase prejects
 
 #### Production project
 
@@ -28,55 +26,78 @@ This repository contains the source code for hosting the TRTL apps service. Visi
 
 Repeat the steps above to create a firebase project for a development environment.
 
-### Initialize firebase project
-
-Clone the repo [https://github.com/turtlecoin/trtl-apps](https://github.com/turtlecoin/trtl-apps)
+### Install dependencies
 
 Open a terminal and navigate to the root directory of your project.
 
 Run `npm install` in the *root* directory.
 Run `npm install` in the */functions* directory.
+Run `npm install` in the */app_engine* directory.
+
+## Configure App Engine
+
+### Set storage bucket name
+
+In the `app_engine/app-{environment}.yaml` files, set environment variable `WALLETS_BUCKET` to the firebase project's default storage bucket name.
+
+### Deploying to App Engine
+
+Run the commands below in the `app_engine` directory.
+
+Perform the build step:
+
+  `npm run build`
+
+gcloud configurations:
+
+  run the following command to create a configuration
+
+  `gcloud init`
+
+  or select an existing configuration using
+
+  `gcloud config configurations activate my-config`
+
+  list existing configurations using
+
+  `gcloud config configurations list`
+
+  visit [for more information on configurations](https://cloud.google.com/sdk/gcloud/reference/config/configurations).
+
+Deploy your app for a specific environment:
+
+  `gcloud app deploy app-development.yaml`
+  `gcloud app deploy app-production.yaml`
+
+### Secure the endpoints
+
+In the GCP menu, navigate to `Security -> Identity-Aware Proxy`. Turn on the `IAP` toggle for the App Engine resource.
+Select the app engine resource and click `ADD MEMBER` on the right-hand menu and add the firebase default service account email address. Give the new member the `IAP-secured Web App User` role. Members added here will have access to call the API enpoints.
+
+## Setup the firebase environment
 
 Sign in to firebase `firebase login`
 
-### Set firebase environment variables (production/development)
-
-Read more about firebase environment variables:
-
-[https://firebase.google.com/docs/functions/config-env](https://firebase.google.com/docs/functions/config-env)
-
-[https://firebase.googleblog.com/2016/07/deploy-to-multiple-environments-with.html](https://firebase.googleblog.com/2016/07/deploy-to-multiple-environments-with.html)
-
-### Set the functions environment variables
-
-In the firebase console, download this project's service account private key JSON file by navigating to `Settings -> Service accounts`.
+Download the project service account key file in the firebase console: `Settings -> Project settings -> Service Accounts` and select `Generate new private key`. Rename the file to `gcp_account_key.json`. Upload this json file to the project's storage bucket in the root directory.
 
 Set your service master password in the environment variables: `firebase functions:config:set serviceadmin.password="YOUR ADMIN PASSWORD"`
 Pick a strong password and keep it safely backed up.
 
+In the project's GCP console, click `Security -> Identity-Aware Proxy`. In the context menu select `Edit OAuth client`. Copy the `Client ID` field for use in the next step.
+
 Set the following values in the environment variables:
 
-`firebase functions:config:set appengine.project_id="YOUR APP ENGINE WALLET PROJECT ID"`
-
-`firebase functions:config:set appengine.target_audience="YOUR Client ID"`
+`firebase functions:config:set appengine.target_audience="YOUR CLIENT ID"`
 
 `firebase functions:config:set appengine.client_email="FROM THE ABOVE JSON FILE"`
 
 `firebase functions:config:set appengine.private_key="FROM THE ABOVE JSON FILE"`
 
-`firebase functions:config:set appengine.api_base="YOUR CLOUD WALLET ENDPOINTS BASE URL"` example: `https://app-engine-wallet.appspot.com`
-
-`firebase functions:config:set appengine.wallets_bucket="WALLETS_BUCKET VARIABLE FROM *.yaml FILE"` choose the correct yaml file based on environment.
+`firebase functions:config:set appengine.api_base="YOUR APP ENGINE BASE URL"`
 
 Set SendGrid API key for admin emails
 
 `firebase functions:config:set sendgrid.apikey="YOUR SENDGRID API KEY"`
-
-## Configure App Engine Wallet
-
-Set up the App Engine service wallet using the project: [https://github.com/zoidbergZA/turtle-cloud-wallet-js](https://github.com/zoidbergZA/turtle-cloud-wallet-js) and add this firebase project's google service account as member. This will allow the firebase project access to the API. In the App Engine wallet project's GCP console, click `Security -> Identity-Aware Proxy`. In the context menu click `Edit OAuth client`. Copy the `Client ID` field for use in the next step.
-
-Download the App Engine wallet project service account key file `IAM & admin -> Service Accounts`. Rename the file to `gcp_account_key.json`. Upload this json file to the firebase project's storage bucket in the root directory.
 
 ## Configure Angular Environment variables
 
