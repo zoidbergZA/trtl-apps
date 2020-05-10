@@ -1,6 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
 import * as express from "express";
 import WB = require("turtlecoin-wallet-backend");
 const  { Storage } = require("@google-cloud/storage");
@@ -76,29 +73,6 @@ app.get("/status", (req, res) => {
   }
 
   res.send(status);
-});
-
-app.post("/rewind", async (req, res) => {
-  if (!wallet) {
-    res.status(500).send("no wallet instance, call /start first.");
-    return;
-  }
-
-  const distance: number | undefined = req.body.distance;
-
-  if (!distance) {
-    res.status(400).send("missing distance parameter.");
-    return;
-  }
-
-  const [currentHeight] = wallet.getSyncStatus();
-  const rewindHeight = currentHeight - distance;
-
-  await wallet.rewind(rewindHeight);
-
-  const [newHeight] = wallet.getSyncStatus();
-
-  res.status(200).send({ walletHeight: newHeight });
 });
 
 app.post("/prepare_transaction", async (req, res) => {
@@ -202,6 +176,8 @@ async function startWallet(startReq: StartWalletRequest)
     return [undefined, new WB.WalletError(WB.WalletErrorCode.UNKNOWN_ERROR)];
   }
 
+  console.log('starting wallet instance...');
+
   isStartingWallet = true;
 
   if (wallet) {
@@ -218,33 +194,48 @@ async function startWallet(startReq: StartWalletRequest)
     return [undefined, new WB.WalletError(WB.WalletErrorCode.UNKNOWN_ERROR)];
   }
 
-  const bucket          = storage.bucket(process.env.WALLETS_BUCKET);
-  const file            = bucket.file(process.env.WALLET_FILENAME);
-  const buffer          = await file.download();
-  const walletString    = buffer.toString();
-  const daemon          = new WB.Daemon(startReq.daemonHost, startReq.daemonPort);
+  const bucketName = process.env.WALLETS_BUCKET;
+  const fileLocation = `saved_wallets/${process.env.WALLET_FILENAME}`;
 
-  const [newInstance, error] = WB.WalletBackend.openWalletFromEncryptedString(
-                                daemon,
-                                walletString,
-                                walletPassword);
+  console.log(`loading wallet from storage bucket [${bucketName}], file location [${fileLocation}]...`);
 
-  if (newInstance) {
-    wallet = newInstance;
-    wallet.enableAutoOptimization(false);
+  try {
+    const bucket          = storage.bucket(bucketName);
+    const file            = bucket.file(fileLocation);
+    const buffer          = await file.download();
+    const walletString    = buffer.toString();
+    const daemon          = new WB.Daemon(startReq.daemonHost, startReq.daemonPort);
 
-    await wallet.start();
+    const [newInstance, error] = WB.WalletBackend.openWalletFromEncryptedString(
+      daemon,
+      walletString,
+      walletPassword);
 
-    isStartingWallet  = false;
-    walletStartedAt   = Date.now();
+    if (newInstance) {
+      wallet = newInstance;
+      wallet.enableAutoOptimization(false);
 
-    logWalletSyncStatus(wallet);
+      await wallet.start();
 
-    return [wallet, undefined];
+      isStartingWallet  = false;
+      walletStartedAt   = Date.now();
+
+      logWalletSyncStatus(wallet);
+
+      return [wallet, undefined];
+    } else {
+      isStartingWallet = false;
+      console.log(`error starting wallet: ${error}`);
+
+      return [undefined, error];
+    }
+
+  } catch (error) {
+    isStartingWallet = false;
+    console.log(`error opening wallet file: ${error}`);
+
+    return [undefined, new WB.WalletError(WB.WalletErrorCode.UNKNOWN_ERROR, `error opening wallet file: ${error}`)];
   }
-
-  isStartingWallet = false;
-  return [undefined, error];
 }
 
 async function stopWallet(): Promise<any> {
@@ -261,53 +252,6 @@ async function stopWallet(): Promise<any> {
   walletStartedAt = 0;
 }
 
-// async function saveWallet(walletInstance: WB.WalletBackend): Promise<any> {
-//   if (isSavingWallet) {
-//     return;
-//   }
-
-//   if (!process.env.WALLETS_BUCKET || !process.env.WALLET_FILENAME) {
-//     console.log("required environment variables not set.");
-//     return;
-//   }
-
-//   const walletPassword = await getWalletPassword();
-
-//   if (!walletPassword) {
-//     return;
-//   }
-
-//   isSavingWallet = true;
-
-//   console.log("saving wallet file to storage...");
-//   logWalletSyncStatus(walletInstance);
-
-//   try {
-//     const encryptedString = walletInstance.encryptWalletToString(walletPassword);
-//     const tempFile        = path.join(os.tmpdir(), process.env.WALLET_FILENAME);
-//     const timestamp       = Date.now();
-
-//     fs.writeFileSync(tempFile, encryptedString);
-
-//     const bucket  = storage.bucket(process.env.WALLETS_BUCKET);
-//     const file    = bucket.file(process.env.WALLET_FILENAME);
-
-//     await file.save(encryptedString);
-
-//     lastWalletSaveAt = timestamp;
-
-//     console.log("successfully saved wallet file to storage.");
-
-//     // delete temp files
-//     fs.unlinkSync(tempFile);
-//   } catch (error) {
-//     console.log("failed to save wallet file to storage.");
-//     console.log(error);
-//   }
-
-//   isSavingWallet = false;
-// }
-
 async function getWalletPassword(): Promise<string | null> {
   const adminDocRef = firestore.doc(process.env.ADMIN_DOC_LOCATION);
   const adminDoc    = await adminDocRef.get();
@@ -317,7 +261,7 @@ async function getWalletPassword(): Promise<string | null> {
     return null;
   }
 
-  return adminDoc.data().walletPassword;
+  return adminDoc.data().wallet_password;
 }
 
 function logWalletSyncStatus(walletInstance: WB.WalletBackend) {
