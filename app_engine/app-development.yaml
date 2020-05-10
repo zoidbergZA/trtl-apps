@@ -6,4 +6,3 @@ env_variables:
   WALLETS_BUCKET: "trtlapps-development.appspot.com"
   WALLET_FILENAME: "wallet_latest.bin"
   ADMIN_DOC_LOCATION: "admin/config"
-  AUTOSAVE: "false"

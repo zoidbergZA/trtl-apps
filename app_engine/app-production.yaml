@@ -6,4 +6,3 @@ env_variables:
   WALLETS_BUCKET: "trtl-wallet-files-production"
   WALLET_FILENAME: "masterWallet.bin"
   ADMIN_DOC_LOCATION: "globals/admin"
-  AUTOSAVE: "false"
