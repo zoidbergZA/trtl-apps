@@ -117,7 +117,7 @@ If you have updated the firestore rules it is important to also add the changes 
 
 Copy the `swagger.json` openAPI spec into the `src/docs/openapi` folder. Deploy to firebase hosting.
 
-## Deploying
+## Deploying to firebase
 
 ### Development environment
 
