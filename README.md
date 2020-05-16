@@ -83,17 +83,19 @@ Download the project service account key file in the firebase console: `Settings
 Set your service master password in the environment variables: `firebase functions:config:set serviceadmin.password="YOUR ADMIN PASSWORD"`
 Pick a strong password and keep it safely backed up.
 
+In the firestore database, create a new document located at `admin/config` and add a field named `wallet_password` with the admin password value.
+
 In the project's GCP console, click `Security -> Identity-Aware Proxy`. In the context menu select `Edit OAuth client`. Copy the `Client ID` field for use in the next step.
 
 Set the following values in the environment variables:
 
 `firebase functions:config:set appengine.target_audience="YOUR CLIENT ID"`
 
-`firebase functions:config:set appengine.client_email="FROM THE ABOVE JSON FILE"`
+`firebase functions:config:set appengine.client_email="FROM gcp_account_key.json"`
 
-`firebase functions:config:set appengine.private_key="FROM THE ABOVE JSON FILE"`
+`firebase functions:config:set appengine.private_key="FROM gcp_account_key.json"`
 
-`firebase functions:config:set appengine.api_base="YOUR APP ENGINE BASE URL"`
+`firebase functions:config:set appengine.api_base="FROM gcp_account_key.json"`
 
 Set SendGrid API key for admin emails
 
