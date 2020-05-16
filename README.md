@@ -83,8 +83,6 @@ Download the project service account key file in the firebase console: `Settings
 Set your service master password in the environment variables: `firebase functions:config:set serviceadmin.password="YOUR ADMIN PASSWORD"`
 Pick a strong password and keep it safely backed up.
 
-In the firestore database, create a new document located at `admin/config` and add a field named `wallet_password` with the admin password value.
-
 In the project's GCP console, click `Security -> Identity-Aware Proxy`. In the context menu select `Edit OAuth client`. Copy the `Client ID` field for use in the next step.
 
 Set the following values in the environment variables:
@@ -127,9 +125,16 @@ For a single command, you can also use the -P flag: `firebase deploy -P producti
 
 ## Bootstrap the service
 
-In the firebase console *functions* tab, copy the URL of the bootstrap function.
+In the firebase console, open the *authentication* tab and enable the email/password sign-in method.
+Create a new user account with your email address, we will give this user service admin rights in a later step.
 
-Use a HTTP client to make a GET request to the bootstrap endpoint using the service admin password you created earlier. The password must be set in the 'x-trtl-apps-admin' request header. If the service bootstrapped succesfully, it will send a response containing the service's master wallet mnemonic seed. Save this in a safe place along with your service admin password, it is the only way to recover the service wallet!
+Open *functions* tab, copy the URL of the bootstrap function.
+
+Send a GET request to the bootstrap URL passing in the email address of the user you created earlier as an 'admin' query paramerter. Example cURL requst:
+
+`curl --location --request GET 'BOOTSTRAP_URL?admin=ADMIN_EMAIL_ADDRESS'`
+
+If the service bootstrapped succesfully, it will send an OK response.
 
 # Development
 

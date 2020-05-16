@@ -170,19 +170,20 @@ export const createInvitationsBatch = functions.https.onRequest(async (request, 
 
 export const bootstrap = functions.https.onRequest(async (request, response) => {
   cors(request, response, () => {
-    if (!validateAdminHeader(request)) {
-      response.status(403).send('unauthorized request.');
+    const adminEmail: string | undefined = request.query.admin;
+
+    if (!adminEmail) {
+      response.status(400).send({ error: 'invalid admin email parameter.' });
       return;
     }
 
-    return ServiceModule.boostrapService().then(result => {
+    return ServiceModule.boostrapService(adminEmail).then(result => {
       const mnemonicSeed = result[0];
       const serviceError = result[1];
 
       if (mnemonicSeed) {
         response.status(200).send({
-          error: false,
-          mnemonicSeed: mnemonicSeed
+          status: 'OK'
         });
       } else {
         response.status(405).send((serviceError as ServiceError).message);

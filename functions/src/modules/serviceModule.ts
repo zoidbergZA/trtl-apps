@@ -11,11 +11,27 @@ import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId
   defaultServiceConfig, defaultNodes } from '../constants';
 import { ServiceError } from '../serviceError';
 
-export async function boostrapService(): Promise<[string | undefined, undefined | ServiceError]> {
+export async function boostrapService(adminEmail: string): Promise<[string | undefined, undefined | ServiceError]> {
   const [config] = await getServiceConfig();
 
   if (config !== undefined) {
     return [undefined, new ServiceError('service/master-wallet-info', 'Service already bootstrapped!')];
+  }
+
+  let userID: string | undefined;
+
+  try {
+    const userRecord = await admin.auth().getUserByEmail(adminEmail);
+    userID = userRecord.uid;
+  } catch (error) {
+    console.log(error);
+    return [undefined, new ServiceError('service/unknown-error', error)];
+  }
+
+  const adminGranted = await giveUserAdminRights(userID);
+
+  if (!adminGranted) {
+    return [undefined, new ServiceError('service/unknown-error', 'Failed to give user admin rights.')];
   }
 
   const batch = admin.firestore().batch();
@@ -61,8 +77,14 @@ exports.onServiceUserCreated = functions.auth.user().onCreate(async (userRecord)
 });
 
 export async function giveUserAdminRights(uid: string): Promise<boolean> {
-  await admin.auth().setCustomUserClaims(uid, { admin: true });
-  return true;
+  try {
+    await admin.auth().setCustomUserClaims(uid, { admin: true });
+    return true;
+
+  } catch (error) {
+    console.log(error);
+    return false;
+  }
 }
 
 export async function createInvitationsBatch(amount: number): Promise<[number | undefined, undefined | ServiceError]> {
