@@ -10,7 +10,7 @@ import { sleep } from './utils';
 import { ServiceError } from './serviceError';
 import { ServiceWallet, ServiceConfig, WalletSyncInfo,
   StartWalletRequest, PrepareTransactionRequest, SavedWallet, SavedWalletUpdate, WalletInstance } from './types';
-import { SubWalletInfo, WalletStatus, SubWalletInfoUpdate } from '../../shared/types';
+import { SubWalletInfo, WalletStatus, SubWalletInfoUpdate, GoogleServiceAccountKey } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { google } from 'googleapis';
 
@@ -445,16 +445,18 @@ export async function startAppEngineWallet(jwtToken: string, serviceConfig: Serv
 }
 
 export async function getAppEngineToken(): Promise<[string | undefined, undefined | ServiceError]> {
-  const client_email    = functions.config().appengine.client_email;
   const target_audience = functions.config().appengine.target_audience;
-  const private_key_raw = functions.config().appengine.private_key;
-  const private_key     = private_key_raw.replace(new RegExp("\\\\n", "\g"), "\n");
+  const key = await getGoogleServiceAccountKey();
+
+  if (!key) {
+    return [undefined, new ServiceError('service/unknown-error', 'An error occured while fetching google service account key.')];
+  }
 
   // configure a JWT auth client
   const jwtClient = new google.auth.JWT(
-    client_email,
+    key.client_email,
     undefined,
-    private_key);
+    key.private_key);
 
   jwtClient.additionalClaims = {
     target_audience: target_audience
@@ -808,12 +810,6 @@ async function startWalletFromString(
 }
 
 async function getMasterWalletString(savedWallet: SavedWallet): Promise<string | null> {
-  // const latestSave = await getLatestSavedWallet(false);
-
-  // if (!latestSave) {
-  //   return null;
-  // }
-
   try {
     const bucket = admin.storage().bucket();
     const f = bucket.file(savedWallet.location);
@@ -822,6 +818,21 @@ async function getMasterWalletString(savedWallet: SavedWallet): Promise<string |
     return buffer.toString();
   } catch (error) {
     console.error(`failed to read wallet file: ${error.message}`);
+    return null;
+  }
+}
+
+async function getGoogleServiceAccountKey(): Promise<GoogleServiceAccountKey | null> {
+  try {
+    const bucket  = admin.storage().bucket();
+    const file    = bucket.file('gcp_account_key.json');
+    const buffer  = await file.download();
+    const json    = buffer.toString();
+
+    const key: GoogleServiceAccountKey = JSON.parse(json);
+    return key;
+  } catch (error) {
+    console.error(`failed to read google service account key file: ${error.message}`);
     return null;
   }
 }

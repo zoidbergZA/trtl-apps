@@ -5,7 +5,6 @@ import * as WalletManager from '../walletManager';
 import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
 import * as Analytics from './analyticsModule';
-import * as Constants from '../constants';
 import { ServiceError } from '../serviceError';
 import { ServiceCharge } from '../../../shared/types';
 import { SavedWallet } from '../types';
@@ -122,67 +121,65 @@ export const getServiceChargeAccounts = functions.https.onCall(async (data, cont
   return accounts;
 });
 
-export const giveUserAdminRights = functions.https.onRequest(async (request, response) => {
-  cors(request, response, () => {
-    if (!validateAdminHeader(request)) {
-      response.status(403).send('unauthorized request.');
-      return;
-    }
+export const giveUserAdminRights = functions.https.onCall(async (data, context) => {
+  const isAdmin = await isAdminUserCheck(context);
 
-    const userId: string | undefined = request.query.uid;
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
+  }
 
-    if (!userId) {
-      response.status(400).send('bad request');
-      return;
-    }
+  const userId: string | undefined = data.uid;
 
-    return ServiceModule.giveUserAdminRights(userId).then(succeeded => {
-      response.status(200).send({ succeeded: succeeded });
-    }).catch(error => {
-      console.log(error);
-      response.status(500).send({ error: error });
-    });
+  if (!userId) {
+    throw new functions.https.HttpsError('failed-precondition', 'Invalid userID provided.');
+  }
+
+  return ServiceModule.giveUserAdminRights(userId).then(succeeded => {
+    return { succeeded: succeeded };
+  }).catch(error => {
+    console.log(error);
+    throw new functions.https.HttpsError('internal', error);
   });
 });
 
-export const createInvitationsBatch = functions.https.onRequest(async (request, response) => {
-  cors(request, response, () => {
-    if (!validateAdminHeader(request)) {
-      response.status(403).send('unauthorized request.');
-      return;
+export const createInvitationsBatch = functions.https.onCall(async (data, context) => {
+  const isAdmin = await isAdminUserCheck(context);
+
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
+  }
+
+  return ServiceModule.createInvitationsBatch(10).then(result => {
+    const invitesCount = result[0];
+    const serviceError = result[1];
+
+    if (invitesCount) {
+      return {result: `created ${invitesCount} new invitations.`};
+    } else {
+      throw new functions.https.HttpsError('internal', (serviceError as ServiceError).message);
     }
-
-    return ServiceModule.createInvitationsBatch(10).then(result => {
-      const invitesCount = result[0];
-      const serviceError = result[1];
-
-      if (invitesCount) {
-        response.status(200).send(`created ${invitesCount} new invitations.`);
-      } else {
-        response.status(500).send(serviceError as ServiceError);
-      }
-    }).catch(error => {
-      console.log(error);
-      response.status(500).send(new ServiceError('service/unknown-error'));
-    });
+  }).catch(error => {
+    console.log(error);
+    throw new functions.https.HttpsError('internal', error);
   });
 });
 
 export const bootstrap = functions.https.onRequest(async (request, response) => {
   cors(request, response, () => {
-    if (!validateAdminHeader(request)) {
-      response.status(403).send('unauthorized request.');
+    const adminEmail: string | undefined = request.query.admin;
+
+    if (!adminEmail) {
+      response.status(400).send({ error: 'invalid admin email parameter.' });
       return;
     }
 
-    return ServiceModule.boostrapService().then(result => {
+    return ServiceModule.boostrapService(adminEmail).then(result => {
       const mnemonicSeed = result[0];
       const serviceError = result[1];
 
       if (mnemonicSeed) {
         response.status(200).send({
-          error: false,
-          mnemonicSeed: mnemonicSeed
+          status: 'OK'
         });
       } else {
         response.status(405).send((serviceError as ServiceError).message);
@@ -219,10 +216,4 @@ async function isAdminUserCheck(context: functions.https.CallableContext): Promi
   }
 
   return false;
-}
-
-function validateAdminHeader(request: functions.https.Request): boolean {
-  const adminSignature = request.get(Constants.serviceAdminRequestHeader);
-
-  return adminSignature === functions.config().serviceadmin.password;
 }

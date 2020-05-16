@@ -83,41 +83,21 @@ Download the project service account key file in the firebase console: `Settings
 Set your service master password in the environment variables: `firebase functions:config:set serviceadmin.password="YOUR ADMIN PASSWORD"`
 Pick a strong password and keep it safely backed up.
 
-In the firestore database, create a new document located at `admin/config` and add a field named `wallet_password` with the admin password value.
-
 In the project's GCP console, click `Security -> Identity-Aware Proxy`. In the context menu select `Edit OAuth client`. Copy the `Client ID` field for use in the next step.
 
 Set the following values in the environment variables:
 
 `firebase functions:config:set appengine.target_audience="YOUR CLIENT ID"`
 
-`firebase functions:config:set appengine.client_email="FROM gcp_account_key.json"`
+`firebase functions:config:set appengine.api_base="YOUR APP ENGINE PROJECT URL"`
 
-`firebase functions:config:set appengine.private_key="FROM gcp_account_key.json"`
-
-`firebase functions:config:set appengine.api_base="FROM gcp_account_key.json"`
-
-Set SendGrid API key for admin emails
+Set SendGrid API key for admin emails (optional)
 
 `firebase functions:config:set sendgrid.apikey="YOUR SENDGRID API KEY"`
 
 ## Configure Angular Environment variables
 
 Set the `environment.ts` and `environment.prod.ts` variables for your project's development and production environments. The Firebase config information can be found in the firebase `console -> project settings -> firebase SDK snippet -> config`.
-
-## Development
-
-### Updating firestore indexes
-
-If you have updated the firestore index it is important to also add the changes to source control. In the firebase CLI, run `firebase firestore:indexes` to get the JSON, then overwrite the content of the `firestore.indexes.json` file in the root of the project folder.
-
-### Updating firestore security rules
-
-If you have updated the firestore rules it is important to also add the changes to source control. In the firebase console, copy the rules text and overwrite the content of the `firestore.rules` file in the root folder of the project.
-
-### Updating OpenAPI documentation
-
-Copy the `swagger.json` openAPI spec into the `src/docs/openapi` folder. Deploy to firebase hosting.
 
 ## Deploying to firebase
 
@@ -145,6 +125,27 @@ For a single command, you can also use the -P flag: `firebase deploy -P producti
 
 ## Bootstrap the service
 
-In the firebase console *functions* tab, copy the URL of the bootstrap function.
+In the firebase console, open the *authentication* tab and enable the email/password sign-in method.
+Create a new user account with your email address, we will give this user service admin rights in a later step.
 
-Use a HTTP client to make a GET request to the bootstrap endpoint using the service admin password you created earlier. The password must be set in the 'x-trtl-apps-admin' request header. If the service bootstrapped succesfully, it will send a response containing the service's master wallet mnemonic seed. Save this in a safe place along with your service admin password, it is the only way to recover the service wallet!
+Open *functions* tab, copy the URL of the bootstrap function.
+
+Send a GET request to the bootstrap URL passing in the email address of the user you created earlier as an 'admin' query paramerter. Example cURL requst:
+
+`curl --location --request GET 'BOOTSTRAP_URL?admin=ADMIN_EMAIL_ADDRESS'`
+
+If the service bootstrapped succesfully, it will send an OK response.
+
+# Development
+
+### Updating firestore indexes
+
+If you have updated the firestore index it is important to also add the changes to source control. In the firebase CLI, run `firebase firestore:indexes` to get the JSON, then overwrite the content of the `firestore.indexes.json` file in the root of the project folder.
+
+### Updating firestore security rules
+
+If you have updated the firestore rules it is important to also add the changes to source control. In the firebase console, copy the rules text and overwrite the content of the `firestore.rules` file in the root folder of the project.
+
+### Updating OpenAPI documentation
+
+Copy the `swagger.json` openAPI spec into the `src/docs/openapi` folder. Deploy to firebase hosting.
