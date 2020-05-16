@@ -130,7 +130,7 @@ Create a new user account with your email address, we will give this user servic
 
 Open *functions* tab, copy the URL of the bootstrap function.
 
-Send a GET request to the bootstrap URL passing in the email address of the user you created earlier as an 'admin' query paramerter. Example cURL requst:
+Send a GET request to the bootstrap URL passing in the email address of the user you created earlier as an 'admin' query paramerter. Example cURL request:
 
 `curl --location --request GET 'BOOTSTRAP_URL?admin=ADMIN_EMAIL_ADDRESS'`
 

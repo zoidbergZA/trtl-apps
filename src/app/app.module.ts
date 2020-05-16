@@ -77,6 +77,7 @@ import { RewindWalletDialogComponent } from './admin/rewind-wallet-dialog/rewind
 import { ReportsComponent } from './admin/reports/reports.component';
 import { DaemonErrorsComponent } from './admin/daemon-errors/daemon-errors.component';
 import { WalletHistoryComponent } from './admin/wallet-history/wallet-history.component';
+import { AdminSideNavComponent } from './admin/admin-side-nav/admin-side-nav.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -147,7 +148,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     RewindWalletDialogComponent,
     ReportsComponent,
     DaemonErrorsComponent,
-    WalletHistoryComponent
+    WalletHistoryComponent,
+    AdminSideNavComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,

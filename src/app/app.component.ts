@@ -9,7 +9,8 @@ import { filter } from 'rxjs/operators';
 })
 export class AppComponent  {
   title = 'turtle-apps';
-  showSideNav = false;
+  showProjectNav = false;
+  showAdminNav = false;
   appId: string | undefined;
 
   constructor(private router: Router) {
@@ -18,12 +19,17 @@ export class AppComponent  {
       const navEnd = event as NavigationEnd;
 
       if (navEnd.url.startsWith('/app')) {
-        this.showSideNav = true;
+        this.showProjectNav = true;
         this.appId = navEnd.url.split('/')[2];
-
       } else {
-        this.showSideNav = false;
+        this.showProjectNav = false;
         this.appId = undefined;
+      }
+
+      if (navEnd.url.startsWith('/admin')) {
+        this.showAdminNav = true;
+      } else {
+        this.showAdminNav = false;
       }
     });
   }

@@ -5,22 +5,12 @@
   <button mat-button (click)="onSupportClick()">Support</button>
   <span class="fill-toolbar-space"></span>
   <button mat-button (click)='onConsoleClick()'>Go to console</button>
-  <button *ngIf="authService.adminUser" mat-button [matMenuTriggerFor]="adminMenu">ADMIN</button>
+  <button *ngIf="authService.adminUser" mat-button (click)="onAdminClick()">ADMIN</button>
   <button *ngIf="!user" mat-button (click)='onSignInClick()'>Sign in</button>
   <button *ngIf="user" mat-icon-button aria-label="user" [matMenuTriggerFor]="userMenu">
     <mat-icon>account_circle</mat-icon>
   </button>
 </mat-toolbar>
-
-<mat-menu #adminMenu="matMenu">
-  <button mat-menu-item (click)="onServiceStatusClick()">Service status</button>
-  <button mat-menu-item (click)="onWalletHistoryClick()">Wallet history</button>
-  <button mat-menu-item (click)="onServiceConfigClick()">Service configuration</button>
-  <button mat-menu-item (click)="onReportsClick()">Reports</button>
-  <button mat-menu-item (click)="onServiceChargeManagementClick()">Service charge management</button>
-  <button mat-menu-item (click)="onInspectDepositClick()">Deposit inspector</button>
-  <button mat-menu-item (click)="onInspectWithdrawalClick()">Withdrawal inspector</button>
-</mat-menu>
 
 <mat-menu #userMenu="matMenu">
   <button mat-menu-item (click)="onUserProfileClick()">profile</button>

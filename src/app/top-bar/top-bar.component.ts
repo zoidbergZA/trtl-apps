@@ -43,52 +43,18 @@ export class TopBarComponent implements OnInit, OnDestroy {
 
   onGetStartedNodeClick() {
     window.open(Constants.trtlAppsNpmLink, '_blank');
-    // this.router.navigate(['getstarted/node']);
   }
-
-  // onGetStartedUnityClick() {
-  //   this.router.navigate(['getstarted/unity']);
-  // }
 
   onGetStartedHttpClick() {
     window.open('/docs/openapi/', '_blank');
-    // this.router.navigate(['getstarted/http']);
   }
 
-  // onGithubClick() {
-  //   this.snackBar.open('coming soon', undefined, { duration: 6000 });
-  // }
-
-  onSupportClick() {
-    this.router.navigate(['/support']);
-  }
-
-  onServiceStatusClick() {
+  onAdminClick() {
     this.router.navigate(['/admin']);
   }
 
-  onWalletHistoryClick() {
-    this.router.navigate(['/admin/wallet-history']);
-  }
-
-  onServiceConfigClick() {
-    this.router.navigate(['/admin/config-management']);
-  }
-
-  onReportsClick() {
-    this.router.navigate(['/admin/reports']);
-  }
-
-  onServiceChargeManagementClick() {
-    this.router.navigate(['/admin/charges-management']);
-  }
-
-  onInspectDepositClick() {
-    this.router.navigate(['/admin/deposit-inspector']);
-  }
-
-  onInspectWithdrawalClick() {
-    this.router.navigate(['/admin/withdrawal-inspector']);
+  onSupportClick() {
+    this.router.navigate(['/support']);
   }
 
   onUserProfileClick() {
