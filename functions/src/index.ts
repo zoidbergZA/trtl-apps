@@ -21,7 +21,9 @@ export const apps         = AppModule;
 export const accounts     = AccountsModule;
 export const deposits     = DepositsModule;
 export const withdrawals  = WithdrawalsModule;
-export const endpoints    = functions.https.onRequest(expressApp);
+
+// TODO: remove temporary <any> cast below after github issue is resolved: https://github.com/firebase/firebase-functions/issues/587
+export const endpoints    = functions.https.onRequest(<any>expressApp);
 
 try {
   const appInsightsApiKey = functions.config().azure.appinsights;

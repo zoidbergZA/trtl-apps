@@ -1,7 +1,7 @@
 import * as functions from 'firebase-functions';
 import * as ServiceModule from './serviceModule';
-import * as AppModule from './appsModule';
 import * as WebhooksModule from './webhookModule';
+import * as AuditsModule from './auditsModule';
 import * as WalletManager from '../walletManager';
 import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
@@ -28,7 +28,7 @@ exports.runAppAudits = functions.pubsub.schedule('every 6 hours').onRun(async (c
     return;
   }
 
-  await AppModule.runAppAudits(10, serviceWallet);
+  await AuditsModule.runAppAudits(10, serviceWallet);
 });
 
 exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(async (context) => {

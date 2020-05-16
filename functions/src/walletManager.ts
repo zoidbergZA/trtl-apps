@@ -1,12 +1,9 @@
 import axios from 'axios';
 import * as functions from 'firebase-functions';
 import * as ServiceModule from './modules/serviceModule';
-import * as AppsModule from './modules/appsModule';
+import * as AuditsModule from './modules/auditsModule';
 import * as Constants from './constants';
 import * as admin from 'firebase-admin';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-backend';
 import { sleep } from './utils';
@@ -16,7 +13,6 @@ import { ServiceWallet, ServiceConfig, WalletSyncInfo,
 import { SubWalletInfo, WalletStatus, SubWalletInfoUpdate } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { google } from 'googleapis';
-import { Storage } from '@google-cloud/storage';
 
 let sharedInstance: WalletInstance | undefined;
 
@@ -141,7 +137,6 @@ export async function prepareAccountTransaction(
     const response = await axios.post(endpoint, txRequest, reqConfig);
     const sendResult = response.data as SendTransactionResult;
 
-    console.log(sendResult);
     return [sendResult, undefined];
   } catch (error) {
     return [undefined, error.response.data];
@@ -221,10 +216,6 @@ export async function saveWallet(instance: WalletInstance, isRewind: boolean): P
   }
 
   console.log(`wallet file saved: ${firebaseSave.location}`);
-
-  const appEngineSaveResult = await saveWalletAppEngine(encryptedString);
-
-  console.log(`save wallet appEngine succeeded? ${appEngineSaveResult}`);
 
   return [firebaseSave, undefined];
 }
@@ -444,6 +435,9 @@ export async function startAppEngineWallet(jwtToken: string, serviceConfig: Serv
     const startResponse = await axios.post(startEndpoint, startBody, reqConfig);
     const walletStatus: WalletStatus = startResponse.data;
 
+    console.log('app engine wallet status:');
+    console.log(JSON.stringify(walletStatus));
+
     return walletStatus.started;
   } catch (error) {
     return false;
@@ -649,7 +643,7 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
   const candidate = snapshot.docs[0].data() as SavedWallet;
 
   // no failed audits in the evaluation period before and after canditate timestamp
-  const audits = await AppsModule.getAppAuditsInPeriod(
+  const audits = await AuditsModule.getAppAuditsInPeriod(
                   candidate.timestamp - evaluationPeriod,
                   candidate.timestamp + evaluationPeriod);
 
@@ -687,16 +681,17 @@ async function saveWalletFirebase(
     isRewind:       isRewind
   }
 
-  // if (latestCheckpoint) {
-  //   saveData.lastSeenCheckpointId = latestCheckpoint.id;
-  // }
-
   try {
     const bucket = admin.storage().bucket();
     const file = bucket.file(location);
 
     await file.save(encryptedWallet);
     await docRef.set(saveData);
+
+    // save latest file
+    const latestFilePath = `${folderPath}/wallet_latest.bin`;
+    const latestFile = bucket.file(latestFilePath);
+    await latestFile.save(encryptedWallet);
 
     return saveData;
   } catch (error) {
@@ -779,36 +774,6 @@ async function closeSharedInstance() {
 
   sharedInstance.wallet.removeAllListeners();
   sharedInstance = undefined;
-}
-
-async function saveWalletAppEngine(encryptedWallet: string): Promise<boolean> {
-  try {
-    const bucket      = admin.storage().bucket();
-    const keyFile     = bucket.file(Constants.gcpServiceAccountFilename);
-    const buffer      = await keyFile.download();
-    const keyJson     = buffer.toString();
-    const keyFilePath = path.join(os.tmpdir(), 'keyfile.json');
-
-    fs.writeFileSync(keyFilePath, keyJson);
-
-    const gcp_storage = new Storage({
-      keyFilename: keyFilePath,
-      projectId: functions.config().appengine.project_id
-    });
-
-    const gcpBucket = gcp_storage.bucket(functions.config().appengine.wallets_bucket);
-    const file      = gcpBucket.file(Constants.gcpWalletFilename);
-
-    await file.save(encryptedWallet);
-
-    // delete temp files
-    fs.unlinkSync(keyFilePath);
-
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
 }
 
 function getAppEngineApiBase(): string {
