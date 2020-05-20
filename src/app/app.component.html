@@ -1,11 +1,12 @@
 <app-top-bar></app-top-bar>
 <mat-sidenav-container class="app-container">
   <mat-sidenav  mode="side"
-                [opened]="showSideNav"
+                [opened]="showProjectNav || showAdminNav"
                 class="app-sidenav"
                 fixedTopGap=0
                 fixedBottomGap=0>
-    <project-sidenav [appId]="appId"></project-sidenav>
+    <project-sidenav *ngIf="showProjectNav" [appId]="appId"></project-sidenav>
+    <admin-side-nav *ngIf="showAdminNav"></admin-side-nav>
   </mat-sidenav>
   <mat-sidenav-content fixedInViewport>
     <router-outlet></router-outlet>

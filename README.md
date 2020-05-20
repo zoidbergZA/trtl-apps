@@ -2,25 +2,19 @@
 
 This repository contains the source code for hosting the TRTL apps service. Visit [trtlapps.io](https://trtlapps.io) for more information.
 
-## Create firebase prejects
+## Create firebase preject
 
-#### Production project
+Go to the [Firebase console](https://console.firebase.google.com) and create a new project.
 
-1. Go to the [Firebase console](https://console.firebase.google.com) and create a new project.
+Upgrade your firebase to the `blaze` plan, needed for making outbound function calls.
 
-2. Upgrade your firebase to the `blaze` plan, needed for making outbound function calls.
+Enable the following firebase modules:
 
-3. Enable the firebase authentication methods of your choice and add your authorized domains.
-
-4. Enable Storage in the firebase console.
-
-5. Create a firestore database in the console and select a region.
-
-6. Enable Functions in the firebase console.
-
-7. Enable Hosting in the firebase console.
-
-8. Connect your custom domain to Hosting (optional).
+- Authentication with email/password sign-in method
+- Create a firestore database and select a region
+- Enable Storage
+- Enable Functions
+- Enable Hosting
 
 #### development project (optional)
 
@@ -31,16 +25,12 @@ Repeat the steps above to create a firebase project for a development environmen
 Open a terminal and navigate to the root directory of your project.
 
 Run `npm install` in the *root* directory.
+
 Run `npm install` in the */functions* directory.
+
 Run `npm install` in the */app_engine* directory.
 
-## Configure App Engine
-
-### Set storage bucket name
-
-In the `app_engine/app-{environment}.yaml` files, set environment variable `WALLETS_BUCKET` to the firebase project's default storage bucket name.
-
-### Deploying to App Engine
+## Deploying to App Engine
 
 Run the commands below in the `app_engine` directory.
 
@@ -66,13 +56,14 @@ gcloud configurations:
 
 Deploy your app for a specific environment:
 
-  `gcloud app deploy app-development.yaml`
   `gcloud app deploy app-production.yaml`
+
+  `gcloud app deploy app-development.yaml` (optional)
 
 ### Secure the endpoints
 
 In the GCP menu, navigate to `Security -> Identity-Aware Proxy`. Turn on the `IAP` toggle for the App Engine resource.
-Select the app engine resource and click `ADD MEMBER` on the right-hand menu and add the firebase default service account email address. Give the new member the `IAP-secured Web App User` role. Members added here will have access to call the API enpoints.
+Select the app engine resource and click `ADD MEMBER` on the right-hand menu and add the firebase default service account email address. Give the new member the `IAP-secured Web App User` role. Members added here will have access to call the app engine API enpoints.
 
 ## Setup the firebase environment
 
@@ -81,15 +72,13 @@ Sign in to firebase `firebase login`
 Download the project service account key file in the firebase console: `Settings -> Project settings -> Service Accounts` and select `Generate new private key`. Rename the file to `gcp_account_key.json`. Upload this json file to the project's storage bucket in the root directory.
 
 Set your service master password in the environment variables: `firebase functions:config:set serviceadmin.password="YOUR ADMIN PASSWORD"`
-Pick a strong password and keep it safely backed up.
+Pick a strong password and keep it safely backed up, this is the password used to encrypt the service wallet file.
 
 In the project's GCP console, click `Security -> Identity-Aware Proxy`. In the context menu select `Edit OAuth client`. Copy the `Client ID` field for use in the next step.
 
 Set the following values in the environment variables:
 
 `firebase functions:config:set appengine.target_audience="YOUR CLIENT ID"`
-
-`firebase functions:config:set appengine.api_base="YOUR APP ENGINE PROJECT URL"`
 
 Set SendGrid API key for admin emails (optional)
 
@@ -101,7 +90,17 @@ Set the `environment.ts` and `environment.prod.ts` variables for your project's 
 
 ## Deploying to firebase
 
-### Development environment
+### Production environment
+
+Build the angular project using `ng build --prod`
+
+Run `firebase use production` to switch to the production firebase project.
+
+Run `firebase deploy` to deploy the project.
+
+For a single command, you can also use the -P flag: `firebase deploy -P production`.
+
+### Development environment (optional)
 
 Build the angular project using `ng build`
 
@@ -113,24 +112,13 @@ Run `firebase deploy` to deploy the project.
 
 For a single command, you can also use the -P flag: `firebase deploy -P development`.
 
-### Production environment
-
-Build the angular project using `ng build --prod`
-
-Run `firebase use production` to switch to the production firebase project.
-
-Run `firebase deploy` to deploy the project.
-
-For a single command, you can also use the -P flag: `firebase deploy -P production`.
-
 ## Bootstrap the service
 
-In the firebase console, open the *authentication* tab and enable the email/password sign-in method.
 Create a new user account with your email address, we will give this user service admin rights in a later step.
 
 Open *functions* tab, copy the URL of the bootstrap function.
 
-Send a GET request to the bootstrap URL passing in the email address of the user you created earlier as an 'admin' query paramerter. Example cURL requst:
+Send a GET request to the bootstrap URL passing in the email address of the user you created earlier as an 'admin' query parameter. Example cURL request:
 
 `curl --location --request GET 'BOOTSTRAP_URL?admin=ADMIN_EMAIL_ADDRESS'`
 
