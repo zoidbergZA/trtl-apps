@@ -2,9 +2,7 @@
 
 This repository contains the source code for hosting the TRTL apps service. Visit [trtlapps.io](https://trtlapps.io) for more information.
 
-## Create firebase prejects
-
-#### Production project
+## Create firebase preject
 
 Go to the [Firebase console](https://console.firebase.google.com) and create a new project.
 
