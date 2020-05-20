@@ -779,7 +779,7 @@ async function closeSharedInstance() {
 }
 
 function getAppEngineApiBase(): string {
-  return functions.config().appengine.api_base;
+  return `https://${process.env.GCLOUD_PROJECT}.appspot.com`;
 }
 
 async function startWalletFromString(

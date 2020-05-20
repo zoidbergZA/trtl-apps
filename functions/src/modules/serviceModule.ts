@@ -43,12 +43,17 @@ export async function boostrapService(adminEmail: string): Promise<[string | und
 
   await batch.commit();
 
-  await admin.firestore().doc('globals/config').create(defaultServiceConfig);
-  await admin.firestore().doc('admin/config').create({ wallet_password: functions.config().serviceadmin.password });
+  const serviceConfig = defaultServiceConfig;
+  serviceConfig.adminEmail = adminEmail;
+
+  await Promise.all([
+    admin.firestore().doc('globals/config').create(serviceConfig),
+    admin.firestore().doc('admin/config').create({ wallet_password: functions.config().serviceadmin.password })
+  ]);
 
   console.log('service config created! creating master wallet...');
 
-  return await WalletManager.createMasterWallet(defaultServiceConfig);
+  return await WalletManager.createMasterWallet(serviceConfig);
 }
 
 exports.onServiceUserCreated = functions.auth.user().onCreate(async (userRecord) => {

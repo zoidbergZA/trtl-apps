@@ -194,7 +194,7 @@ async function startWallet(startReq: StartWalletRequest)
     return [undefined, new WB.WalletError(WB.WalletErrorCode.UNKNOWN_ERROR)];
   }
 
-  const bucketName = process.env.WALLETS_BUCKET;
+  const bucketName = `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com`;
   const fileLocation = `saved_wallets/${process.env.WALLET_FILENAME}`;
 
   console.log(`loading wallet from storage bucket [${bucketName}], file location [${fileLocation}]...`);
