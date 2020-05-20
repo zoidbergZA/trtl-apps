@@ -25,7 +25,9 @@ Repeat the steps above to create a firebase project for a development environmen
 Open a terminal and navigate to the root directory of your project.
 
 Run `npm install` in the *root* directory.
+
 Run `npm install` in the */functions* directory.
+
 Run `npm install` in the */app_engine* directory.
 
 ## Deploying to App Engine
@@ -55,6 +57,7 @@ gcloud configurations:
 Deploy your app for a specific environment:
 
   `gcloud app deploy app-production.yaml`
+
   `gcloud app deploy app-development.yaml` (optional)
 
 ### Secure the endpoints
