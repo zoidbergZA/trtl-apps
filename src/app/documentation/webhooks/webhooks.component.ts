@@ -79,7 +79,7 @@ export class WebhooksComponent implements OnInit {
         nodeFee: 10,
         serviceFee: 0
       },
-      userDebited: true,
+      accountDebited: true,
       address: 'TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he',
       timestamp: 1576340903981,
       lastUpdate: 1576341061152,
@@ -106,7 +106,7 @@ export class WebhooksComponent implements OnInit {
         nodeFee: 10,
         serviceFee: 0
       },
-      userDebited: false,
+      accountDebited: false,
       address: 'TRTLv32bGBP2cfM3SdijU4TTYnCPoR33g5eTas6n9HamBvu8ozc9BZHWza5j7cmBFSgh4dmmGRongfoEEzcvuAEF8dLxixsS7he',
       timestamp: 1576340903981,
       lastUpdate: 1576341061152,
