@@ -718,10 +718,10 @@ async function cancelFailedWithdrawal(appId: string, withdrawalId: string): Prom
       }
 
       const withdrawalUpdate: WithdrawalUpdate = {
-        status:       'completed',
-        failed:       true,
-        userDebited:  false,
-        lastUpdate:   Date.now()
+        status:         'completed',
+        failed:         true,
+        accountDebited: false,
+        lastUpdate:     Date.now()
       }
 
       const accountUpdate: AccountUpdate = {
@@ -747,27 +747,27 @@ async function executePreparedWithdrawal(
   preparedWithdrawal: PreparedWithdrawal,
   serviceConfig: ServiceConfig): Promise<Withdrawal> {
 
-  const appId       = preparedWithdrawal.appId;
+  const { paymentId, appId, accountId, txHash, amount, fees, address } = preparedWithdrawal;
   const withdrawDoc = admin.firestore().collection(`apps/${appId}/withdrawals`).doc();
-  const timestamp   = Date.now();
+  const timestamp = Date.now();
 
   const withdrawal: Withdrawal = {
     id:                   withdrawDoc.id,
-    paymentId:            preparedWithdrawal.paymentId,
-    txHash:               preparedWithdrawal.txHash,
+    paymentId:            paymentId,
+    txHash:               txHash,
     status:               'pending',
     blockHeight:          0,
-    appId:                preparedWithdrawal.appId,
-    accountId:            preparedWithdrawal.accountId,
-    amount:               preparedWithdrawal.amount,
-    fees:                 preparedWithdrawal.fees,
-    address:              preparedWithdrawal.address,
+    appId:                appId,
+    accountId:            accountId,
+    amount:               amount,
+    fees:                 fees,
+    address:              address,
     preparedWithdrawalId: preparedWithdrawal.id,
     requestedAtBlock:     0,
     timestamp:            timestamp,
     lastUpdate:           timestamp,
     failed:               false,
-    userDebited:          true,
+    accountDebited:       true,
     retries:              0
   };
 

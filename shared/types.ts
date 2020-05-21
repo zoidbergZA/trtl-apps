@@ -157,7 +157,7 @@ export interface Withdrawal {
   amount: number;
   fees: Fees;
   serviceChargeId?: string;
-  userDebited: boolean;
+  accountDebited: boolean;
   address: string;
   timestamp: number;
   lastUpdate: number;
@@ -178,7 +178,7 @@ export interface WithdrawalUpdate {
   blockHeight?: number;
   failed?: boolean;
   daemonErrorCode?: number;
-  userDebited?: boolean;
+  accountDebited?: boolean;
   txHash?: string;
   retries?: number;
 }
