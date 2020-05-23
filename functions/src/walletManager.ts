@@ -50,10 +50,9 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
 }
 
 export async function getWalletStatus(): Promise<[WalletStatus[] | undefined, undefined | ServiceError]> {
-  // TODO: refactor into 2 functions for each instance
   const [serviceWallet, serviceWalletError] = await getServiceWallet(false);
 
-  const firebaseWalletStatus: WalletStatus = {
+  let firebaseWalletStatus: WalletStatus = {
     name: 'firebase',
     started: false
   }
@@ -64,30 +63,20 @@ export async function getWalletStatus(): Promise<[WalletStatus[] | undefined, un
   }
 
   if (serviceWallet) {
-    const firebaseSyncInfo = serviceWallet.instance.wallet.getSyncStatus();
-    const connectionInfo = serviceWallet.instance.wallet.getDaemonConnectionInfo();
+    firebaseWalletStatus = getFirebaseWalletStatus(serviceWallet);
+    const [token, tokenError] = await getAppEngineToken();
 
-    firebaseWalletStatus.started = true;
-    firebaseWalletStatus.walletHeight = firebaseSyncInfo[0];
-    firebaseWalletStatus.networkHeight = firebaseSyncInfo[2];
-    firebaseWalletStatus.daemonHost = connectionInfo.host;
-    firebaseWalletStatus.daemonPort = connectionInfo.port;
-  } else {
-    console.log((serviceWalletError as ServiceError).message);
-  }
-
-  const [token, tokenError] = await getAppEngineToken();
-
-  if (token && serviceWallet) {
-    await warmupAppEngineWallet(token, serviceWallet.serviceConfig);
-
-    const statusResponse = await getAppEngineStatus(token);
-
-    if (statusResponse) {
-      appEngineWalletStatus = statusResponse;
+    if (token) {
+      // await warmupAppEngineWallet(token, serviceWallet.serviceConfig);
+      appEngineWalletStatus = await getAppEngineWalletStatus(token);
+    } else {
+      appEngineWalletStatus.error = (tokenError as ServiceError).message;
     }
-  } else {
-    console.log(tokenError);
+  } else if (serviceWalletError) {
+    console.log(serviceWalletError.message);
+
+    firebaseWalletStatus.error = serviceWalletError.message;
+    appEngineWalletStatus.error = serviceWalletError.message;
   }
 
   return [[firebaseWalletStatus, appEngineWalletStatus], undefined];
@@ -375,24 +364,6 @@ export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
   };
 }
 
-export async function getAppEngineStatus(jwtToken: string): Promise<WalletStatus | undefined> {
-  const appEngineApi = getAppEngineApiBase();
-  const statusEndpoint = `${appEngineApi}/status`;
-
-  const reqConfig = {
-    headers: { Authorization: "Bearer " + jwtToken }
-  }
-
-  try {
-    const statusResponse = await axios.get(statusEndpoint, reqConfig);
-    return statusResponse.data as WalletStatus;
-  } catch (error) {
-    console.log(error);
-
-    return undefined;
-  }
-}
-
 export async function rewindAppEngineWallet(
   distance: number,
   serviceConfig: ServiceConfig): Promise<[number | undefined, undefined | ServiceError]> {
@@ -432,7 +403,7 @@ export async function rewindAppEngineWallet(
 }
 
 export async function warmupAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
-  const status = await getAppEngineStatus(jwtToken);
+  const status = await getAppEngineWalletStatus(jwtToken);
 
   if (!status) {
     return false;
@@ -779,7 +750,7 @@ async function getWalletInstance(
   const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
 
   if (wallet) {
-    const instance = new WalletInstance(wallet, latestSave, uuidv4());
+    const instance = new WalletInstance(wallet, latestSave, uuidv4(), Date.now());
 
     if (shared) {
       sharedInstance = instance;
@@ -809,6 +780,47 @@ async function checkWalletInstanceRestartNeeded(
   }
 
   return false;
+}
+
+function getFirebaseWalletStatus(serviceWallet: ServiceWallet): WalletStatus {
+  const firebaseSyncInfo = serviceWallet.instance.wallet.getSyncStatus();
+  const connectionInfo = serviceWallet.instance.wallet.getDaemonConnectionInfo();
+
+  const walletStatus: WalletStatus = {
+    name: 'firebase',
+    started: true,
+    walletHeight: firebaseSyncInfo[0],
+    networkHeight: firebaseSyncInfo[2],
+    daemonHost: connectionInfo.host,
+    daemonPort: connectionInfo.port,
+    uptime: Date.now() - serviceWallet.instance.startedAt
+  }
+
+  return walletStatus;
+}
+
+async function getAppEngineWalletStatus(token: string): Promise<WalletStatus> {
+  const appEngineApi = getAppEngineApiBase();
+  const statusEndpoint = `${appEngineApi}/status`;
+
+  const reqConfig = {
+    headers: { Authorization: "Bearer " + token }
+  }
+
+  try {
+    const statusResponse = await axios.get(statusEndpoint, reqConfig);
+    return statusResponse.data as WalletStatus;
+  } catch (error) {
+    console.log(error);
+
+    const status: WalletStatus = {
+      name: 'app engine',
+      started: false,
+      error: error
+    }
+
+    return status;
+  }
 }
 
 async function closeSharedInstance() {

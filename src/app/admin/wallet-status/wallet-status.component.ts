@@ -10,8 +10,8 @@ import { RewindWalletDialogComponent } from '../rewind-wallet-dialog/rewind-wall
   styleUrls: ['./wallet-status.component.scss']
 })
 export class WalletStatusComponent implements OnInit {
-  fetchingStatus = false;
-  displayedColumns: string[] = ['name', 'started', 'uptime', 'host', 'port', 'wHeight', 'nHeight'];
+  fetching = false;
+  displayedColumns: string[] = ['name', 'started', 'uptime', 'host', 'wHeight', 'nHeight'];
   status: WalletStatus[] | undefined;
 
   constructor(public dialog: MatDialog, private adminService: AdminService) { }
@@ -20,14 +20,35 @@ export class WalletStatusComponent implements OnInit {
   }
 
   async refreshStatusClick() {
-    this.fetchingStatus = true;
+    this.fetching = true;
     this.status  = await this.adminService.getWalletStatus();
-    this.fetchingStatus = false;
+    this.fetching = false;
   }
 
   rewindServiceWallet() {
     this.dialog.open(RewindWalletDialogComponent, {
       width: '800px',
     });
+  }
+
+  toHMS(miliseconds: number | undefined): string {
+    if (!miliseconds) {
+      return '0';
+    }
+
+    const totalSeconds = miliseconds / 1000;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    let result = `${minutes
+      .toString()
+      .padStart(1, '0')}:${seconds.toString().padStart(2, '0')}`;
+    if (!!hours) {
+      result = `${hours.toString()}:${minutes
+        .toString()
+        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return result;
   }
 }

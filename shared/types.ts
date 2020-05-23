@@ -225,6 +225,7 @@ export interface WalletStatus {
   daemonPort?: number;
   walletHeight?: number;
   networkHeight?: number;
+  error?: string;
 }
 
 export interface DaemonErrorEvent {
