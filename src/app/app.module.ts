@@ -78,6 +78,8 @@ import { ReportsComponent } from './admin/reports/reports.component';
 import { DaemonErrorsComponent } from './admin/daemon-errors/daemon-errors.component';
 import { WalletHistoryComponent } from './admin/wallet-history/wallet-history.component';
 import { AdminSideNavComponent } from './admin/admin-side-nav/admin-side-nav.component';
+import { WalletManagementComponent } from './admin/wallet-management/wallet-management.component';
+import { WalletStatusComponent } from './admin/wallet-status/wallet-status.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -149,7 +151,9 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     ReportsComponent,
     DaemonErrorsComponent,
     WalletHistoryComponent,
-    AdminSideNavComponent
+    AdminSideNavComponent,
+    WalletManagementComponent,
+    WalletStatusComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
