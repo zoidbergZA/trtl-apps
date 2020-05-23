@@ -6,7 +6,7 @@ import * as sgMail from '@sendgrid/mail';
 import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from '../types';
 import { sleep } from '../utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
-import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceStatus, ServiceUser } from '../../../shared/types';
+import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceUser } from '../../../shared/types';
 import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId,
   defaultServiceConfig, defaultNodes } from '../constants';
 import { ServiceError } from '../serviceError';
@@ -147,58 +147,58 @@ export async function validateInviteCode(code: string): Promise<boolean> {
   return !invite.claimed;
 }
 
-export async function getServiceStatus(): Promise<[ServiceStatus | undefined, undefined | ServiceError]> {
-  const status: ServiceStatus = {
-    serviceHalted: false,
-    daemonHost: '',
-    daemonPort: 0,
-    serviceCharge: 0,
-    firebaseWalletOk: false,
-    firebaseWalletSyncInfo: [0,0,0],
-    appEngineWalletOk: false
-  }
+// export async function getServiceStatus(): Promise<[ServiceStatus | undefined, undefined | ServiceError]> {
+//   const status: ServiceStatus = {
+//     serviceHalted: false,
+//     daemonHost: '',
+//     daemonPort: 0,
+//     serviceCharge: 0,
+//     firebaseWalletOk: false,
+//     firebaseWalletSyncInfo: [0,0,0],
+//     appEngineWalletOk: false
+//   }
 
-  const [serviceWallet, serviceWalletError] = await WalletManager.getServiceWallet(false);
+//   const [serviceWallet, serviceWalletError] = await WalletManager.getServiceWallet(false);
 
-  if (serviceWallet) {
-    const config = serviceWallet.serviceConfig;
+//   if (serviceWallet) {
+//     const config = serviceWallet.serviceConfig;
 
-    status.serviceHalted  = config.serviceHalted;
-    status.daemonHost     = config.daemonHost;
-    status.daemonPort     = config.daemonPort;
-    status.serviceCharge  = config.serviceCharge;
+//     status.serviceHalted  = config.serviceHalted;
+//     status.daemonHost     = config.daemonHost;
+//     status.daemonPort     = config.daemonPort;
+//     status.serviceCharge  = config.serviceCharge;
 
-    status.firebaseWalletSyncInfo = serviceWallet.instance.wallet.getSyncStatus();
-    const heightDelta = status.firebaseWalletSyncInfo[2] - status.firebaseWalletSyncInfo[0];
+//     status.firebaseWalletSyncInfo = serviceWallet.instance.wallet.getSyncStatus();
+//     const heightDelta = status.firebaseWalletSyncInfo[2] - status.firebaseWalletSyncInfo[0];
 
-    if (heightDelta < 60) {
-      status.firebaseWalletOk = true;
-    }
-  } else {
-    console.log((serviceWalletError as ServiceError).message);
-  }
+//     if (heightDelta < 60) {
+//       status.firebaseWalletOk = true;
+//     }
+//   } else {
+//     console.log((serviceWalletError as ServiceError).message);
+//   }
 
-  const [token, tokenError] = await WalletManager.getAppEngineToken();
+//   const [token, tokenError] = await WalletManager.getAppEngineToken();
 
-  if (token && serviceWallet) {
-    await WalletManager.warmupAppEngineWallet(token, serviceWallet.serviceConfig);
+//   if (token && serviceWallet) {
+//     await WalletManager.warmupAppEngineWallet(token, serviceWallet.serviceConfig);
 
-    const walletStatus = await WalletManager.getAppEngineStatus(token);
-    status.appEngineWalletStatus = walletStatus;
+//     const walletStatus = await WalletManager.getAppEngineStatus(token);
+//     status.appEngineWalletStatus = walletStatus;
 
-    if (walletStatus && walletStatus.walletHeight && walletStatus.networkHeight) {
-      const heightDelta = walletStatus.networkHeight - walletStatus.walletHeight;
+//     if (walletStatus && walletStatus.walletHeight && walletStatus.networkHeight) {
+//       const heightDelta = walletStatus.networkHeight - walletStatus.walletHeight;
 
-      if (heightDelta < 240) {
-        status.appEngineWalletOk = true;
-      }
-    }
-  } else {
-    console.log(tokenError);
-  }
+//       if (heightDelta < 240) {
+//         status.appEngineWalletOk = true;
+//       }
+//     }
+//   } else {
+//     console.log(tokenError);
+//   }
 
-  return [status, undefined];
-}
+//   return [status, undefined];
+// }
 
 export async function updateMasterWallet(): Promise<void> {
   const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false, false);

@@ -2,11 +2,12 @@ import * as express from "express";
 import WB = require("turtlecoin-wallet-backend");
 const  { Storage } = require("@google-cloud/storage");
 const { Firestore } = require("@google-cloud/firestore");
-import { PrepareTransactionRequest, StartWalletRequest, WalletStatus, PreparedTxItem } from "./types";
+import { PrepareTransactionRequest, StartWalletRequest, WalletStatus, PreparedTxItem } from "../shared/types";
 
 const storage = new Storage();
 const firestore = new Firestore();
 
+const WALLET_INSTANCE_NAME = 'app engine';
 const PORT = Number(process.env.PORT) || 8080;
 const WAIT_FOR_SYNC_TIMEOUT = 1000 * 10;
 const PREPARED_TX_TIMEOUT = 1000 * 2 * 60;
@@ -31,6 +32,7 @@ app.post("/start", async (req, res) => {
   const [startedWallet, error] = await startWallet(startWalletReq);
 
   const result: WalletStatus = {
+    name: WALLET_INSTANCE_NAME,
     started: startWallet !== undefined
   };
 
@@ -55,8 +57,8 @@ app.get("/stop", async (req, res) => {
 });
 
 app.get("/status", (req, res) => {
-
   const status: WalletStatus = {
+    name: WALLET_INSTANCE_NAME,
     started: wallet !== undefined
   };
 

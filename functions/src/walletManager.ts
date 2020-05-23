@@ -49,6 +49,50 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
   return [seed, undefined];
 }
 
+export async function getWalletStatus(): Promise<[WalletStatus[] | undefined, undefined | ServiceError]> {
+  // TODO: refactor into 2 functions for each instance
+  const [serviceWallet, serviceWalletError] = await getServiceWallet(false);
+
+  const firebaseWalletStatus: WalletStatus = {
+    name: 'firebase',
+    started: false
+  }
+
+  let appEngineWalletStatus: WalletStatus = {
+    name: 'app engine',
+    started: false
+  }
+
+  if (serviceWallet) {
+    const firebaseSyncInfo = serviceWallet.instance.wallet.getSyncStatus();
+    const connectionInfo = serviceWallet.instance.wallet.getDaemonConnectionInfo();
+
+    firebaseWalletStatus.started = true;
+    firebaseWalletStatus.walletHeight = firebaseSyncInfo[0];
+    firebaseWalletStatus.networkHeight = firebaseSyncInfo[2];
+    firebaseWalletStatus.daemonHost = connectionInfo.host;
+    firebaseWalletStatus.daemonPort = connectionInfo.port;
+  } else {
+    console.log((serviceWalletError as ServiceError).message);
+  }
+
+  const [token, tokenError] = await getAppEngineToken();
+
+  if (token && serviceWallet) {
+    await warmupAppEngineWallet(token, serviceWallet.serviceConfig);
+
+    const statusResponse = await getAppEngineStatus(token);
+
+    if (statusResponse) {
+      appEngineWalletStatus = statusResponse;
+    }
+  } else {
+    console.log(tokenError);
+  }
+
+  return [[firebaseWalletStatus, appEngineWalletStatus], undefined];
+}
+
 export async function getServiceWallet(
   waitForSync: boolean = true,
   shared: boolean = true): Promise<[ServiceWallet | undefined, undefined | ServiceError]> {

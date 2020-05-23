@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { AdminService } from '../providers/admin.service';
 import { ServiceStatus } from 'shared/types';
 import { MatDialog } from '@angular/material';
-import { RewindWalletDialogComponent } from './rewind-wallet-dialog/rewind-wallet-dialog.component';
 
 @Component({
   selector: 'app-admin',
@@ -12,25 +11,12 @@ import { RewindWalletDialogComponent } from './rewind-wallet-dialog/rewind-walle
 export class AdminComponent implements OnInit {
 
   serviceStatus: ServiceStatus | undefined;
-  fetchingStatus = false;
 
   constructor(
     public dialog: MatDialog,
     private adminService: AdminService) { }
 
   ngOnInit() {
-  }
-
-  async serviceStatusClick() {
-    this.fetchingStatus = true;
-    this.serviceStatus  = await this.adminService.getServiceStatus();
-    this.fetchingStatus = false;
-  }
-
-  rewindServiceWallet() {
-    this.dialog.open(RewindWalletDialogComponent, {
-      width: '800px',
-    });
   }
 
   getSyncInfoString(syncInfo: [number, number, number]): string {
