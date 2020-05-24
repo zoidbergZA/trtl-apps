@@ -67,6 +67,7 @@ import { AdminService } from './providers/admin.service';
 import { WithdrawalInspectorComponent } from './admin/withdrawal-inspector/withdrawal-inspector.component';
 import { GenericObjectInspectorComponent } from './generic-object-inspector/generic-object-inspector.component';
 import { DepositInspectorComponent } from './admin/deposit-inspector/deposit-inspector.component';
+import { ConfigManagementComponent } from './admin/config-management/config-management.component';
 import { NodeManagementComponent } from './admin/node-management/node-management.component';
 import { NodeInfoCardComponent } from './admin/node-info-card/node-info-card.component';
 import { EditNodeDialogComponent } from './admin/dialogs/edit-node-dialog/edit-node-dialog.component';
@@ -139,6 +140,7 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     WithdrawalInspectorComponent,
     GenericObjectInspectorComponent,
     DepositInspectorComponent,
+    ConfigManagementComponent,
     NodeManagementComponent,
     NodeInfoCardComponent,
     EditNodeDialogComponent,

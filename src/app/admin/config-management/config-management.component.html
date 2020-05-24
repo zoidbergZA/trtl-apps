@@ -1,0 +1,14 @@
+<div class="page-content">
+  <div class="containter">
+    <div class="y-spacer"></div>
+    <mat-card>
+      <mat-card-content>
+        <mat-card-title>Service configuration management</mat-card-title>
+        <div *ngIf="serviceConfig | async as config">
+          <generic-object-inspector [object]="config"></generic-object-inspector>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
+<div class="y-spacer"></div>
