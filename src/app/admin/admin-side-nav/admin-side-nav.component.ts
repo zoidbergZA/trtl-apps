@@ -21,10 +21,6 @@ export class AdminSideNavComponent implements OnInit {
     this.router.navigate(['/admin/wallet-management']);
   }
 
-  onServiceConfigClick() {
-    this.router.navigate(['/admin/config-management']);
-  }
-
   onReportsClick() {
     this.router.navigate(['/admin/reports']);
   }
