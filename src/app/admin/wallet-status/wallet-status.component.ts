@@ -31,24 +31,11 @@ export class WalletStatusComponent implements OnInit {
     });
   }
 
-  toHMS(miliseconds: number | undefined): string {
+  toMinutes(miliseconds: number | undefined): string {
     if (!miliseconds) {
       return '0';
     }
 
-    const totalSeconds = miliseconds / 1000;
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    let result = `${minutes
-      .toString()
-      .padStart(1, '0')}:${seconds.toString().padStart(2, '0')}`;
-    if (!!hours) {
-      result = `${hours.toString()}:${minutes
-        .toString()
-        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    return result;
+    return `${Math.ceil(miliseconds / 1000 / 60).toString()}mins`;
   }
 }

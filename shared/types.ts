@@ -205,18 +205,6 @@ export interface ServiceChargeUpdate {
   status?: ServiceChargeStatus;
 }
 
-// TODO: remove
-export interface ServiceStatus {
-  serviceHalted: boolean;
-  daemonHost: string;
-  daemonPort: number;
-  serviceCharge: number;
-  firebaseWalletOk: boolean;
-  firebaseWalletSyncInfo: [number, number, number];
-  appEngineWalletOk: boolean;
-  appEngineWalletStatus?: WalletStatus;
-}
-
 export interface WalletStatus {
   name: string;
   started: boolean;

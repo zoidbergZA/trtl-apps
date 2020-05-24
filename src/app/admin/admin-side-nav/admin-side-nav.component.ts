@@ -29,10 +29,6 @@ export class AdminSideNavComponent implements OnInit {
     this.router.navigate(['/admin/reports']);
   }
 
-  onServiceChargeManagementClick() {
-    this.router.navigate(['/admin/charges-management']);
-  }
-
   onInspectDepositClick() {
     this.router.navigate(['/admin/deposit-inspector']);
   }

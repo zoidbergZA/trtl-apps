@@ -16,7 +16,6 @@ import { AdminComponent } from './admin/admin.component';
 import { UserProfileComponent } from './user-profile/user-profile.component';
 import { WithdrawalInspectorComponent } from './admin/withdrawal-inspector/withdrawal-inspector.component';
 import { DepositInspectorComponent } from './admin/deposit-inspector/deposit-inspector.component';
-import { ServiceChargeManagementComponent } from './admin/service-charge-management/service-charge-management.component';
 import { ConfigManagementComponent } from './admin/config-management/config-management.component';
 import { ReportsComponent } from './admin/reports/reports.component';
 import { AdminGuard } from './guards/admin-guard.service';
@@ -84,11 +83,6 @@ const routes: Routes = [
   {
     path:         'admin/reports',
     component:    ReportsComponent,
-    canActivate:  [AdminGuard]
-  },
-  {
-    path:         'admin/charges-management',
-    component:    ServiceChargeManagementComponent,
     canActivate:  [AdminGuard]
   },
   {

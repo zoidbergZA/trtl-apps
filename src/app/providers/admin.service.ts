@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireFunctions } from '@angular/fire/functions';
-import { ServiceStatus, Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus } from 'shared/types';
+import { Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { ServiceConfig, ServiceNode, SavedWallet } from 'functions/src/types';

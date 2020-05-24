@@ -24,7 +24,7 @@
         <!-- Uptime Column -->
         <ng-container matColumnDef="uptime">
           <th mat-header-cell *matHeaderCellDef> Uptime </th>
-          <td mat-cell *matCellDef="let element"> {{toHMS(element.uptime)}} </td>
+          <td mat-cell *matCellDef="let element"> {{toMinutes(element.uptime)}} </td>
         </ng-container>
         <!-- Host Column -->
         <ng-container matColumnDef="host">
