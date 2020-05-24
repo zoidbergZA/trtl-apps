@@ -67,7 +67,6 @@ import { AdminService } from './providers/admin.service';
 import { WithdrawalInspectorComponent } from './admin/withdrawal-inspector/withdrawal-inspector.component';
 import { GenericObjectInspectorComponent } from './generic-object-inspector/generic-object-inspector.component';
 import { DepositInspectorComponent } from './admin/deposit-inspector/deposit-inspector.component';
-import { ServiceChargeManagementComponent } from './admin/service-charge-management/service-charge-management.component';
 import { ConfigManagementComponent } from './admin/config-management/config-management.component';
 import { NodeManagementComponent } from './admin/node-management/node-management.component';
 import { NodeInfoCardComponent } from './admin/node-info-card/node-info-card.component';
@@ -78,6 +77,8 @@ import { ReportsComponent } from './admin/reports/reports.component';
 import { DaemonErrorsComponent } from './admin/daemon-errors/daemon-errors.component';
 import { WalletHistoryComponent } from './admin/wallet-history/wallet-history.component';
 import { AdminSideNavComponent } from './admin/admin-side-nav/admin-side-nav.component';
+import { WalletManagementComponent } from './admin/wallet-management/wallet-management.component';
+import { WalletStatusComponent } from './admin/wallet-status/wallet-status.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -139,7 +140,6 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     WithdrawalInspectorComponent,
     GenericObjectInspectorComponent,
     DepositInspectorComponent,
-    ServiceChargeManagementComponent,
     ConfigManagementComponent,
     NodeManagementComponent,
     NodeInfoCardComponent,
@@ -149,7 +149,9 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     ReportsComponent,
     DaemonErrorsComponent,
     WalletHistoryComponent,
-    AdminSideNavComponent
+    AdminSideNavComponent,
+    WalletManagementComponent,
+    WalletStatusComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,

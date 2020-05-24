@@ -49,6 +49,39 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
   return [seed, undefined];
 }
 
+export async function getWalletStatus(): Promise<[WalletStatus[] | undefined, undefined | ServiceError]> {
+  const [serviceWallet, serviceWalletError] = await getServiceWallet(false);
+
+  let firebaseWalletStatus: WalletStatus = {
+    name: 'firebase',
+    started: false
+  }
+
+  let appEngineWalletStatus: WalletStatus = {
+    name: 'app engine',
+    started: false
+  }
+
+  if (serviceWallet) {
+    firebaseWalletStatus = getFirebaseWalletStatus(serviceWallet);
+    const [token, tokenError] = await getAppEngineToken();
+
+    if (token) {
+      // await warmupAppEngineWallet(token, serviceWallet.serviceConfig);
+      appEngineWalletStatus = await getAppEngineWalletStatus(token);
+    } else {
+      appEngineWalletStatus.error = (tokenError as ServiceError).message;
+    }
+  } else if (serviceWalletError) {
+    console.log(serviceWalletError.message);
+
+    firebaseWalletStatus.error = serviceWalletError.message;
+    appEngineWalletStatus.error = serviceWalletError.message;
+  }
+
+  return [[firebaseWalletStatus, appEngineWalletStatus], undefined];
+}
+
 export async function getServiceWallet(
   waitForSync: boolean = true,
   shared: boolean = true): Promise<[ServiceWallet | undefined, undefined | ServiceError]> {
@@ -331,24 +364,6 @@ export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
   };
 }
 
-export async function getAppEngineStatus(jwtToken: string): Promise<WalletStatus | undefined> {
-  const appEngineApi = getAppEngineApiBase();
-  const statusEndpoint = `${appEngineApi}/status`;
-
-  const reqConfig = {
-    headers: { Authorization: "Bearer " + jwtToken }
-  }
-
-  try {
-    const statusResponse = await axios.get(statusEndpoint, reqConfig);
-    return statusResponse.data as WalletStatus;
-  } catch (error) {
-    console.log(error);
-
-    return undefined;
-  }
-}
-
 export async function rewindAppEngineWallet(
   distance: number,
   serviceConfig: ServiceConfig): Promise<[number | undefined, undefined | ServiceError]> {
@@ -388,7 +403,7 @@ export async function rewindAppEngineWallet(
 }
 
 export async function warmupAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
-  const status = await getAppEngineStatus(jwtToken);
+  const status = await getAppEngineWalletStatus(jwtToken);
 
   if (!status) {
     return false;
@@ -735,7 +750,7 @@ async function getWalletInstance(
   const [wallet, error] = await startWalletFromString(encryptedString, serviceConfig.daemonHost, serviceConfig.daemonPort);
 
   if (wallet) {
-    const instance = new WalletInstance(wallet, latestSave, uuidv4());
+    const instance = new WalletInstance(wallet, latestSave, uuidv4(), Date.now());
 
     if (shared) {
       sharedInstance = instance;
@@ -765,6 +780,47 @@ async function checkWalletInstanceRestartNeeded(
   }
 
   return false;
+}
+
+function getFirebaseWalletStatus(serviceWallet: ServiceWallet): WalletStatus {
+  const firebaseSyncInfo = serviceWallet.instance.wallet.getSyncStatus();
+  const connectionInfo = serviceWallet.instance.wallet.getDaemonConnectionInfo();
+
+  const walletStatus: WalletStatus = {
+    name: 'firebase',
+    started: true,
+    walletHeight: firebaseSyncInfo[0],
+    networkHeight: firebaseSyncInfo[2],
+    daemonHost: connectionInfo.host,
+    daemonPort: connectionInfo.port,
+    uptime: Date.now() - serviceWallet.instance.startedAt
+  }
+
+  return walletStatus;
+}
+
+async function getAppEngineWalletStatus(token: string): Promise<WalletStatus> {
+  const appEngineApi = getAppEngineApiBase();
+  const statusEndpoint = `${appEngineApi}/status`;
+
+  const reqConfig = {
+    headers: { Authorization: "Bearer " + token }
+  }
+
+  try {
+    const statusResponse = await axios.get(statusEndpoint, reqConfig);
+    return statusResponse.data as WalletStatus;
+  } catch (error) {
+    console.log(error);
+
+    const status: WalletStatus = {
+      name: 'app engine',
+      started: false,
+      error: error
+    }
+
+    return status;
+  }
 }
 
 async function closeSharedInstance() {

@@ -11,14 +11,14 @@ import { SavedWallet } from '../types';
 
 const cors = require('cors')({ origin: true });
 
-export const getServiceStatus = functions.https.onCall(async (data, context) => {
+export const getWalletStatus = functions.https.onCall(async (data, context) => {
   const isAdmin = await isAdminUserCheck(context);
 
   if (!isAdmin) {
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
   }
 
-  const [status, error] = await ServiceModule.getServiceStatus();
+  const [status, error] = await WalletManager.getWalletStatus();
 
   if (!status) {
     const err = error as ServiceError;

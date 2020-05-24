@@ -205,24 +205,15 @@ export interface ServiceChargeUpdate {
   status?: ServiceChargeStatus;
 }
 
-export interface ServiceStatus {
-  serviceHalted: boolean;
-  daemonHost: string;
-  daemonPort: number;
-  serviceCharge: number;
-  firebaseWalletOk: boolean;
-  firebaseWalletSyncInfo: [number, number, number];
-  appEngineWalletOk: boolean;
-  appEngineWalletStatus?: WalletStatus;
-}
-
 export interface WalletStatus {
+  name: string;
   started: boolean;
   uptime?: number;
   daemonHost?: string;
   daemonPort?: number;
   walletHeight?: number;
   networkHeight?: number;
+  error?: string;
 }
 
 export interface DaemonErrorEvent {
@@ -247,4 +238,23 @@ export interface GoogleServiceAccountKey {
   token_uri: string;
   auth_provider_x509_cert_url: string;
   client_x509_cert_url: string;
+}
+
+export interface PrepareTransactionRequest {
+  subWallet: string;
+  sendAddress: string;
+  amount: number;
+  senderId?: string;
+  paymentId?: string;
+}
+
+export interface StartWalletRequest {
+  daemonHost: string;
+  daemonPort: number;
+}
+
+export interface PreparedTxItem {
+  hash: string;
+  timestamp: number;
+  senderId?: string;
 }

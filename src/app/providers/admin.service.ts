@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireFunctions } from '@angular/fire/functions';
-import { ServiceStatus, Withdrawal, Deposit, Account, DaemonErrorEvent } from 'shared/types';
+import { Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { ServiceConfig, ServiceNode, SavedWallet } from 'functions/src/types';
@@ -14,10 +14,10 @@ export class AdminService {
     private afs: AngularFirestore,
     private afFunctions: AngularFireFunctions) { }
 
-  async getServiceStatus(): Promise<ServiceStatus | undefined> {
+  async getWalletStatus(): Promise<WalletStatus[] | undefined> {
     try {
-      const response = await this.afFunctions.httpsCallable('serviceAdmin-getServiceStatus')({ }).toPromise();
-      return response as ServiceStatus;
+      const response = await this.afFunctions.httpsCallable('serviceAdmin-getWalletStatus')({ }).toPromise();
+      return response as WalletStatus[];
     } catch (error) {
       console.log(error);
       return undefined;

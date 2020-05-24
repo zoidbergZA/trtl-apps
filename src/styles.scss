@@ -83,12 +83,17 @@ td {
   padding-bottom: 12px;
 }
 
+.page-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .page-content {
   margin-top: 20px;
   margin-left: 40px;
   margin-right: 40px;
   max-width: 800px;
-  margin: auto;
 }
 
 .page-title {

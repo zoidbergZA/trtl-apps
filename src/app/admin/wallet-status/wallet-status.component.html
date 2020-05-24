@@ -1,0 +1,50 @@
+<mat-card>
+  <mat-card-title>Wallet status</mat-card-title>
+  <mat-card-content>
+    <div *ngIf="fetching">
+      <mat-spinner diameter="64"></mat-spinner>
+    </div>
+    <ng-container *ngIf="!fetching">
+      <button mat-icon-button (click)="refreshStatusClick()"><mat-icon>refresh</mat-icon></button>
+      <button mat-stroked-button color="warn" (click)="rewindServiceWallet()">rewind</button>
+      <p *ngIf="!status">
+        Click refresh to fetch the current wallet status
+      </p>
+      <table mat-table *ngIf="status" [dataSource]="status">
+        <!-- Name Column -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef> Name </th>
+          <td mat-cell *matCellDef="let element"> {{element.name}} </td>
+        </ng-container>
+        <!-- Started Column -->
+        <ng-container matColumnDef="started">
+          <th mat-header-cell *matHeaderCellDef> Started </th>
+          <td mat-cell *matCellDef="let element"> {{element.started}} </td>
+        </ng-container>
+        <!-- Uptime Column -->
+        <ng-container matColumnDef="uptime">
+          <th mat-header-cell *matHeaderCellDef> Uptime </th>
+          <td mat-cell *matCellDef="let element"> {{toMinutes(element.uptime)}} </td>
+        </ng-container>
+        <!-- Host Column -->
+        <ng-container matColumnDef="host">
+          <th mat-header-cell *matHeaderCellDef> Host </th>
+          <td mat-cell *matCellDef="let element"> {{element.daemonHost}}:{{element.daemonPort}} </td>
+        </ng-container>
+        <!-- Wallet Height Column -->
+        <ng-container matColumnDef="wHeight">
+          <th mat-header-cell *matHeaderCellDef> Wheight </th>
+          <td mat-cell *matCellDef="let element"> {{element.walletHeight}} </td>
+        </ng-container>
+        <!-- Network Height Column -->
+        <ng-container matColumnDef="nHeight">
+          <th mat-header-cell *matHeaderCellDef> Nheight </th>
+          <td mat-cell *matCellDef="let element"> {{element.networkHeight}} </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </ng-container>
+  </mat-card-content>
+</mat-card>

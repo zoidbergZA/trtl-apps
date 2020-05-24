@@ -4,11 +4,13 @@ export class WalletInstance {
   wallet: WalletBackend;
   loadedFrom: SavedWallet;
   instanceId: string;
+  startedAt: number;
 
-  constructor(instance: WalletBackend, loadedFrom: SavedWallet, id: string) {
+  constructor(instance: WalletBackend, loadedFrom: SavedWallet, id: string, startedAt: number) {
     this.wallet     = instance;
     this.loadedFrom = loadedFrom;
     this.instanceId = id;
+    this.startedAt  = startedAt;
   }
 }
 

@@ -1,86 +1,93 @@
-<div class="page-content">
-  <h2 class="title-text">Create new app</h2>
-  <div class="container">
-    <mat-card>
-      <mat-card-content>
-        <div *ngIf="termsAgreed">
-          <div class="busy-spinner" *ngIf="creatingApp">
-            <mat-spinner diameter="64"></mat-spinner>
-          </div>
-          <div *ngIf="!creatingApp">
-            <p *ngIf="errorMessage" class="error-text">{{ errorMessage }}</p>
-            <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
-              <mat-form-field class="name-input">
-                <input matInput
-                  formControlName="appName"
-                  type="text"
-                  maxlength="24"
-                  minlength="3"
-                  autocomplete="off"
-                  placeholder="app name">
-              </mat-form-field>
-              <div *ngIf="inviteOnly">
-                <p>
-                  This service is currently invitation-only while in alpha testing, contact us on the
-                  TurtleCoin discord if you would like to participate in early testing.
-                </p>
-                <mat-form-field class="invite-input">
-                  <input matInput
-                    formControlName="inviteCode"
-                    type="text"
-                    autocomplete="off"
-                    placeholder="invite code">
-                </mat-form-field>
-                <p><span class="warning-text">IMPORTANT:</span> This service is still in early testing stages, only create apps for testing purposes and use small amounts.</p>
-              </div>
+<div class="page-container">
+  <div class="page-content">
+    <h2 class="title-text">Create new app</h2>
+    <div class="container">
+      <mat-card>
+        <mat-card-content>
+          <div *ngIf="termsAgreed">
+            <div class="busy-spinner" *ngIf="creatingApp">
+              <mat-spinner diameter="64"></mat-spinner>
+            </div>
+            <div *ngIf="!creatingApp">
+              <p *ngIf="errorMessage" class="error-text">{{ errorMessage }}</p>
               <div>
-                <button mat-stroked-button
-                  type="submit"
-                  [disabled]="!form.valid">Create app</button>
+                <p>
+                  This service is hosted for DEMO purposes only, contact us on the TurtleCoin discord if
+                  you would like to receive an invation code to try out the service.
+                </p>
+                <p>
+                  See the project <a href="https://github.com/turtlecoin/trtl-apps" target="_blank">README.MD</a> on Github for instructions on how to fork the repo
+                  and self-host the TRTLApps service for your projects.
+                </p>
               </div>
-            </form>
+              <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+                <mat-form-field class="name-input">
+                  <input matInput
+                    formControlName="appName"
+                    type="text"
+                    maxlength="24"
+                    minlength="3"
+                    autocomplete="off"
+                    placeholder="app name">
+                </mat-form-field>
+                <div *ngIf="inviteOnly">
+                  <mat-form-field class="invite-input">
+                    <input matInput
+                      formControlName="inviteCode"
+                      type="text"
+                      autocomplete="off"
+                      placeholder="invite code">
+                  </mat-form-field>
+                </div>
+                <div>
+                  <button mat-stroked-button
+                    type="submit"
+                    [disabled]="!form.valid">Create app</button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-        <div *ngIf="!termsAgreed && !creatingApp">
-          <div *ngIf="!termsAgreed">
-            <form class="form-content" [formGroup]="termsForm" (ngSubmit)="onAgree()">
-              <table>
-                <tr>
-                  <td class="table-key">
-                    <mat-checkbox formControlName="term1" required></mat-checkbox>
-                  </td>
-                  <td class="table-value">
-                    <span>I understand that network and service fees are charged when sending transactions.</span>
-                  </td>
-                </tr>
-                <tr>
-                <tr>
-                  <td class="table-key">
-                    <mat-checkbox formControlName="term2" required></mat-checkbox>
-                  </td>
-                  <td class="table-value">
-                    <span>I understand that this service is currently still in beta testing and should be used for experimental purposes only.</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="table-key">
-                    <mat-checkbox formControlName="term3" required></mat-checkbox>
-                  </td>
-                  <td class="table-value">
-                    <span>I understand that no warranty or guarantee is provided, expressed, or implied when using this service and any funds lost in using this service are not the responsibility of the application creator, publisher, or distributor.</span>
-                  </td>
-                </tr>
-              </table>
-              <div class="center-text">
-                <button mat-stroked-button
-                  class="button"
-                  type="submit"
-                  [disabled]="!termsForm.valid">continue</button>
-              </div>
-            </form>
+          <div *ngIf="!termsAgreed && !creatingApp">
+            <div *ngIf="!termsAgreed">
+              <form class="form-content" [formGroup]="termsForm" (ngSubmit)="onAgree()">
+                <table>
+                  <tr>
+                    <td class="table-key">
+                      <mat-checkbox formControlName="term1" required></mat-checkbox>
+                    </td>
+                    <td class="table-value">
+                      <span>I understand that network and service fees are charged when sending transactions.</span>
+                    </td>
+                  </tr>
+                  <tr>
+                  <tr>
+                    <td class="table-key">
+                      <mat-checkbox formControlName="term2" required></mat-checkbox>
+                    </td>
+                    <td class="table-value">
+                      <span>I understand that this service is currently still in beta testing and should be used for experimental purposes only.</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="table-key">
+                      <mat-checkbox formControlName="term3" required></mat-checkbox>
+                    </td>
+                    <td class="table-value">
+                      <span>I understand that no warranty or guarantee is provided, expressed, or implied when using this service and any funds lost in using this service are not the responsibility of the application creator, publisher, or distributor.</span>
+                    </td>
+                  </tr>
+                </table>
+                <div class="center-text">
+                  <button mat-stroked-button
+                    class="button"
+                    type="submit"
+                    [disabled]="!termsForm.valid">continue</button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
+        </mat-card-content>
+      </mat-card>
+    </div>
   </div>
 </div>
