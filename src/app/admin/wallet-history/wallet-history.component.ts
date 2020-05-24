@@ -11,6 +11,7 @@ import { MatDialog } from '@angular/material';
 })
 export class WalletHistoryComponent implements OnInit {
   savedWallets$: Observable<SavedWallet[]> | undefined;
+  displayedColumns: string[] = ['date', 'info', 'id'];
 
   constructor(public dialog: MatDialog, private adminService: AdminService) { }
 
