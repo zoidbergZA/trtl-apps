@@ -81,11 +81,28 @@ exports.onServiceUserCreated = functions.auth.user().onCreate(async (userRecord)
   await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
 });
 
+// TODO: move function to admin module
 export async function giveUserAdminRights(uid: string): Promise<boolean> {
+  const [user, userError] = await getServiceUser(uid);
+
+  if (!user) {
+    console.log(userError?.message);
+    return false;
+  }
+
+  if (user.roles && user.roles.includes('admin')) {
+    // user already has role
+    return false;
+  }
+
   try {
     await admin.auth().setCustomUserClaims(uid, { admin: true });
-    return true;
 
+    await admin.firestore().doc(`serviceUsers`).update({
+      roles: admin.firestore.FieldValue.arrayUnion('admin')
+    });
+
+    return true;
   } catch (error) {
     console.log(error);
     return false;
@@ -554,6 +571,17 @@ async function getServiceNodeByUrl(url: string): Promise<ServiceNode | undefined
   }
 
   return snapshot.docs[0].data() as ServiceNode;
+}
+
+
+async function getServiceUser(uid: string): Promise<[ServiceUser | undefined, undefined | ServiceError]> {
+  const userDoc = await admin.firestore().doc(`serviceUsers/${uid}`).get();
+
+  if (!userDoc.exists) {
+    return [undefined, new ServiceError('service/unknown-error', 'service user not found.')];
+  }
+
+  return [userDoc.data() as ServiceUser, undefined];
 }
 
 function doServiceNodeUpdates(serviceNodes: ServiceNode[], nodeStatuses: NodeStatus[]): Promise<any> {

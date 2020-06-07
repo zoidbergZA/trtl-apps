@@ -6,7 +6,7 @@ import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
 import * as Analytics from './analyticsModule';
 import { ServiceError } from '../serviceError';
-import { ServiceCharge } from '../../../shared/types';
+import { ServiceCharge, ServiceUser } from '../../../shared/types';
 import { SavedWallet } from '../types';
 
 const cors = require('cors')({ origin: true });
