@@ -21,6 +21,11 @@ service cloud.firestore {
      allow write: if false;
     }
 
+    match /serviceUsers/{user} {
+     allow read: if request.auth.token.admin == true;
+     allow write: if request.auth.token.admin == true;
+    }
+
     match /apps/{appId} {
       allow read: if request.auth.uid == resource.data.owner;
       allow write: if false;

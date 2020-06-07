@@ -79,6 +79,8 @@ import { WalletHistoryComponent } from './admin/wallet-history/wallet-history.co
 import { AdminSideNavComponent } from './admin/admin-side-nav/admin-side-nav.component';
 import { WalletManagementComponent } from './admin/wallet-management/wallet-management.component';
 import { WalletStatusComponent } from './admin/wallet-status/wallet-status.component';
+import { RoleManagementComponent } from './admin/role-management/role-management.component';
+import { AdminListItemComponent } from './admin/admin-list-item/admin-list-item.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -151,7 +153,9 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     WalletHistoryComponent,
     AdminSideNavComponent,
     WalletManagementComponent,
-    WalletStatusComponent
+    WalletStatusComponent,
+    RoleManagementComponent,
+    AdminListItemComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,

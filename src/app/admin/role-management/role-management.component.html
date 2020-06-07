@@ -1,0 +1,12 @@
+<div class="page-container">
+  <div class="page-content">
+    <div *ngIf="serviceConfig$ | async as config">
+      <mat-card>
+        <mat-card-title>Admin role management</mat-card-title>
+        <mat-card-content *ngIf="admins$ | async as admins">
+          <admin-list-item *ngFor="let admin of admins"></admin-list-item>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>

@@ -32,4 +32,8 @@ export class AdminSideNavComponent implements OnInit {
   onInspectWithdrawalClick() {
     this.router.navigate(['/admin/withdrawal-inspector']);
   }
+
+  onRoleManagementClick() {
+    this.router.navigate(['/admin/role-management']);
+  }
 }

@@ -2,6 +2,7 @@ export interface ServiceUser {
   id: string;
   displayName: string;
   email?: string;
+  roles?: string[];
 }
 
 export interface Account {
