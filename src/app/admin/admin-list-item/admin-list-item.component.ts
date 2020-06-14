@@ -1,4 +1,4 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 import { ServiceUser } from 'shared/types';
 
 @Component({
@@ -10,8 +10,14 @@ export class AdminListItemComponent implements OnInit {
 
   @Input() user: ServiceUser | undefined;
 
+  @Output() removeRoleClick = new EventEmitter<ServiceUser>();
+
   constructor() { }
 
   ngOnInit() {
+  }
+
+  onRemoveClick() {
+    this.removeRoleClick.emit(this.user);
   }
 }

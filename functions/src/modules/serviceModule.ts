@@ -101,8 +101,45 @@ export async function assignUserRole(
 
   await admin.auth().setCustomUserClaims(uid, claims);
 
-  await admin.firestore().doc(`serviceUsers`).update({
+  await admin.firestore().doc(`serviceUsers/${uid}`).update({
     roles: admin.firestore.FieldValue.arrayUnion(role)
+  });
+}
+
+export async function removeUserRole(
+  uid: string,
+  role: UserRole
+): Promise<void> {
+  const [user, userError] = await getServiceUser(uid);
+
+  if (!user) {
+    const err = userError as ServiceError;
+    throw new Error(err.message);
+  }
+
+  if (!user.roles || !user.roles.includes(role)) {
+    throw new Error(`user with id [${uid}] does not have role [${role}]`);
+  }
+
+  if (role === 'admin') {
+    const [config, configError] = await getServiceConfig();
+
+    if (!config) {
+      throw new Error((configError as ServiceError).message);
+    }
+
+    if (config.adminEmail === user.email) {
+      throw new Error('Can not remove admin role from primary admin user!');
+    }
+  }
+
+  const claims: any = {};
+  claims[role] = false;
+
+  await admin.auth().setCustomUserClaims(uid, claims);
+
+  await admin.firestore().doc(`serviceUsers/${uid}`).update({
+    roles: admin.firestore.FieldValue.arrayRemove(role)
   });
 }
 
@@ -475,6 +512,28 @@ export async function haltService(reason: string): Promise<void> {
   await sendAdminEmail('Alert - Service halted!', reason);
 }
 
+export async function getServiceUser(uid: string): Promise<[ServiceUser | undefined, undefined | ServiceError]> {
+  const userDoc = await admin.firestore().doc(`serviceUsers/${uid}`).get();
+
+  if (!userDoc.exists) {
+    return [undefined, new ServiceError('service/unknown-error', 'service user not found.')];
+  }
+
+  return [userDoc.data() as ServiceUser, undefined];
+}
+
+export async function getServiceUserByEmail(email: string): Promise<[ServiceUser | undefined, undefined | ServiceError]> {
+  const snaphsot = await admin.firestore().collection(`serviceUsers`)
+                    .where('email', '==', email)
+                    .get();
+
+  if (snaphsot.size !== 1) {
+    return [undefined, new ServiceError('service/unknown-error', 'service user not found.')];
+  }
+
+  return [snaphsot.docs[0].data() as ServiceUser, undefined];
+}
+
 export async function sendAdminEmail(subject: string, body: string): Promise<void> {
   const sendGridKey = functions.config().sendgrid.apikey;
 
@@ -515,18 +574,6 @@ async function getServiceNodeByUrl(url: string): Promise<ServiceNode | undefined
   }
 
   return snapshot.docs[0].data() as ServiceNode;
-}
-
-// TODO: get service user by email function
-
-async function getServiceUser(uid: string): Promise<[ServiceUser | undefined, undefined | ServiceError]> {
-  const userDoc = await admin.firestore().doc(`serviceUsers/${uid}`).get();
-
-  if (!userDoc.exists) {
-    return [undefined, new ServiceError('service/unknown-error', 'service user not found.')];
-  }
-
-  return [userDoc.data() as ServiceUser, undefined];
 }
 
 function doServiceNodeUpdates(serviceNodes: ServiceNode[], nodeStatuses: NodeStatus[]): Promise<any> {

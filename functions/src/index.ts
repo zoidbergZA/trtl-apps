@@ -7,7 +7,6 @@ import * as AccountsModule from './modules/accountsModule';
 import * as ServiceAdmin from './modules/adminModule';
 import * as DepositsModule from './modules/depositsModule';
 import * as WithdrawalsModule from './modules/withdrawalsModule';
-import * as Analytics from './modules/analyticsModule';
 import { api as serviceApi } from './serviceApi';
 
 admin.initializeApp();
@@ -24,13 +23,3 @@ export const withdrawals  = WithdrawalsModule;
 
 // TODO: remove temporary <any> cast below after github issue is resolved: https://github.com/firebase/firebase-functions/issues/587
 export const endpoints    = functions.https.onRequest(<any>expressApp);
-
-try {
-  const appInsightsApiKey = functions.config().azure.appinsights;
-
-  if (appInsightsApiKey) {
-    Analytics.initAppInsights(appInsightsApiKey);
-  }
-} catch (error) {
-  // no app insights API key set
-}

@@ -129,10 +129,18 @@ export const assignUserRole = functions.https.onCall(async (data, context) => {
   }
 
   const email: string | undefined = data.email;
-  const userId: string | undefined = data.uid;
   const role: UserRole | undefined = data.role;
+  let userId: string | undefined = data.uid;
 
-  // if email is defined, get user ID by email
+  if (email) {
+    const [user, userError] = await ServiceModule.getServiceUserByEmail(email);
+
+    if (!user) {
+      throw new functions.https.HttpsError('invalid-argument', (userError as ServiceError).message);
+    } else {
+      userId = user.id;
+    }
+  }
 
   if (!userId) {
     throw new functions.https.HttpsError('invalid-argument', 'Invalid userID provided.');
@@ -143,6 +151,32 @@ export const assignUserRole = functions.https.onCall(async (data, context) => {
   }
 
   return ServiceModule.assignUserRole(userId, role).then(() => {
+    return { result: 'OK' };
+  }).catch(error => {
+    console.log(error);
+    throw new functions.https.HttpsError('internal', error);
+  });
+});
+
+export const removeUserRole = functions.https.onCall(async (data, context) => {
+  const isAdmin = await isAdminUserCheck(context);
+
+  if (!isAdmin) {
+    throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
+  }
+
+  const role: UserRole | undefined = data.role;
+  const userId: string | undefined = data.uid;
+
+  if (!userId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid userID parameter provided.');
+  }
+
+  if (!role) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid parameter role provided.');
+  }
+
+  return ServiceModule.removeUserRole(userId, role).then(() => {
     return { result: 'OK' };
   }).catch(error => {
     console.log(error);

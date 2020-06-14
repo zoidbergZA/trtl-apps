@@ -81,6 +81,8 @@ import { WalletManagementComponent } from './admin/wallet-management/wallet-mana
 import { WalletStatusComponent } from './admin/wallet-status/wallet-status.component';
 import { RoleManagementComponent } from './admin/role-management/role-management.component';
 import { AdminListItemComponent } from './admin/admin-list-item/admin-list-item.component';
+import { AddUserRoleDialogComponent } from './admin/dialogs/add-user-role-dialog/add-user-role-dialog.component';
+import { RemoveUserRoleDialogComponent } from './admin/dialogs/remove-user-role-dialog/remove-user-role-dialog.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -155,7 +157,9 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     WalletManagementComponent,
     WalletStatusComponent,
     RoleManagementComponent,
-    AdminListItemComponent
+    AdminListItemComponent,
+    AddUserRoleDialogComponent,
+    RemoveUserRoleDialogComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
@@ -171,7 +175,9 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     PasswordRecoveryDialogComponent,
     EditNodeDialogComponent,
     ConfirmationDialogComponent,
-    RewindWalletDialogComponent
+    RewindWalletDialogComponent,
+    AddUserRoleDialogComponent,
+    RemoveUserRoleDialogComponent
   ],
   imports: [
     BrowserModule,

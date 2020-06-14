@@ -69,8 +69,16 @@ export class AdminService {
     }
   }
 
-  async assignUserRole(uid: string, role: UserRole): Promise<void> {
+  async assignUserRole(uid: string | undefined, email: string | undefined, role: UserRole): Promise<void> {
     await this.afFunctions.httpsCallable('serviceAdmin-assignUserRole')({
+      uid,
+      email,
+      role
+    }).toPromise();
+  }
+
+  async removeUserRole(uid: string, role: UserRole): Promise<void> {
+    await this.afFunctions.httpsCallable('serviceAdmin-removeUserRole')({
       uid,
       role
     }).toPromise();

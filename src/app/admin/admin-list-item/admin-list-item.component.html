@@ -3,7 +3,7 @@
     <div>{{ user.email }}</div>
     <div class="spacer"></div>
     <div>
-      <button mat-icon-button>
+      <button mat-icon-button (click)="onRemoveClick()">
         <mat-icon color="warn">clear</mat-icon>
       </button>
     </div>

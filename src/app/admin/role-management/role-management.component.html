@@ -6,12 +6,14 @@
         <div class="section">
           <p class="section-title">Admin users</p>
           <div class="section-item">
-            <button mat-stroked-button><mat-icon>add</mat-icon> add</button>
+            <button mat-stroked-button
+              (click)="onAddAdminClick()"><mat-icon>add</mat-icon> add</button>
           </div>
         </div>
         <mat-card-content *ngIf="admins$ | async as admins">
           <admin-list-item *ngFor="let admin of admins"
-            [user]=admin>
+            [user]=admin
+            (removeRoleClick)="onRemoveAdminClick($event)">
           </admin-list-item>
         </mat-card-content>
       </mat-card>
