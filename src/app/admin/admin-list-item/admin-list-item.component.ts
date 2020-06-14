@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
+import { ServiceUser } from 'shared/types';
 
 @Component({
   selector: 'admin-list-item',
@@ -7,9 +8,10 @@ import { Component, OnInit } from '@angular/core';
 })
 export class AdminListItemComponent implements OnInit {
 
+  @Input() user: ServiceUser | undefined;
+
   constructor() { }
 
   ngOnInit() {
   }
-
 }

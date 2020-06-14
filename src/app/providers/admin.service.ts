@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireFunctions } from '@angular/fire/functions';
-import { Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus, ServiceUser } from 'shared/types';
+import { Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus, ServiceUser, UserRole } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { ServiceConfig, ServiceNode, SavedWallet } from 'functions/src/types';
@@ -69,6 +69,13 @@ export class AdminService {
     }
   }
 
+  async assignUserRole(uid: string, role: UserRole): Promise<void> {
+    await this.afFunctions.httpsCallable('serviceAdmin-assignUserRole')({
+      uid,
+      role
+    }).toPromise();
+  }
+
   getWalletSavesHistory$(limit: number): Observable<SavedWallet[]> {
     return this.afs
       .collection<SavedWallet>('wallets/master/saves', ref => ref
@@ -82,7 +89,7 @@ export class AdminService {
     return this.afs.doc<ServiceConfig>('globals/config').valueChanges();
   }
 
-  getUsersByRole$(role: string, limit: number = 50): Observable<ServiceUser[]> {
+  getUsersByRole$(role: UserRole, limit: number = 50): Observable<ServiceUser[]> {
     return this.afs
       .collection<ServiceUser>('serviceUsers', ref => ref
         .where('roles', 'array-contains', role)

@@ -6,7 +6,7 @@ import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
 import * as Analytics from './analyticsModule';
 import { ServiceError } from '../serviceError';
-import { ServiceCharge, ServiceUser } from '../../../shared/types';
+import { ServiceCharge, UserRole } from '../../../shared/types';
 import { SavedWallet } from '../types';
 
 const cors = require('cors')({ origin: true });
@@ -121,21 +121,29 @@ export const getServiceChargeAccounts = functions.https.onCall(async (data, cont
   return accounts;
 });
 
-export const giveUserAdminRights = functions.https.onCall(async (data, context) => {
+export const assignUserRole = functions.https.onCall(async (data, context) => {
   const isAdmin = await isAdminUserCheck(context);
 
   if (!isAdmin) {
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
   }
 
+  const email: string | undefined = data.email;
   const userId: string | undefined = data.uid;
+  const role: UserRole | undefined = data.role;
+
+  // if email is defined, get user ID by email
 
   if (!userId) {
-    throw new functions.https.HttpsError('failed-precondition', 'Invalid userID provided.');
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid userID provided.');
   }
 
-  return ServiceModule.giveUserAdminRights(userId).then(succeeded => {
-    return { succeeded: succeeded };
+  if (!role) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid role provided.');
+  }
+
+  return ServiceModule.assignUserRole(userId, role).then(() => {
+    return { result: 'OK' };
   }).catch(error => {
     console.log(error);
     throw new functions.https.HttpsError('internal', error);

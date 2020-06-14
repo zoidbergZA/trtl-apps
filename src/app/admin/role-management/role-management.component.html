@@ -1,10 +1,18 @@
+<h2 class="center-text">Role management</h2>
 <div class="page-container">
   <div class="page-content">
     <div *ngIf="serviceConfig$ | async as config">
       <mat-card>
-        <mat-card-title>Admin role management</mat-card-title>
+        <div class="section">
+          <p class="section-title">Admin users</p>
+          <div class="section-item">
+            <button mat-stroked-button><mat-icon>add</mat-icon> add</button>
+          </div>
+        </div>
         <mat-card-content *ngIf="admins$ | async as admins">
-          <admin-list-item *ngFor="let admin of admins"></admin-list-item>
+          <admin-list-item *ngFor="let admin of admins"
+            [user]=admin>
+          </admin-list-item>
         </mat-card-content>
       </mat-card>
     </div>
