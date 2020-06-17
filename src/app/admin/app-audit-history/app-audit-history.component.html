@@ -1,6 +1,10 @@
 <mat-card class="card-holder">
   <mat-card-title>Audit history</mat-card-title>
   <mat-card-content>
-    <p>app-audit-history works!</p>
+    <ng-container *ngIf="audits">
+      <div *ngFor="let audit of audits">
+        <audit-list-item></audit-list-item>
+      </div>
+    </ng-container>
   </mat-card-content>
 </mat-card>

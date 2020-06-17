@@ -3,7 +3,8 @@ import { AngularFireFunctions } from '@angular/fire/functions';
 import { Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus, ServiceUser, UserRole, TurtleApp } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
-import { ServiceConfig, ServiceNode, SavedWallet } from 'functions/src/types';
+import { map } from 'rxjs/operators';
+import { ServiceConfig, ServiceNode, SavedWallet, AppAuditResult } from 'functions/src/types';
 
 @Injectable({
   providedIn: 'root'
@@ -92,6 +93,17 @@ export class AdminService {
     }
 
     return snapshot.data() as TurtleApp;
+  }
+
+  getAppAudits(appId: string, limit: number = 30): Promise<AppAuditResult[]> {
+    return this.firestore
+      .collection<AppAuditResult>('appAudits', ref => ref
+        .where('appId', '==', appId)
+        .orderBy('timestamp', 'desc')
+        .limit(limit))
+      .get()
+      .pipe(map(s => s.docs.map(d => d.data() as AppAuditResult)))
+      .toPromise();
   }
 
   getWalletSavesHistory$(limit: number): Observable<SavedWallet[]> {

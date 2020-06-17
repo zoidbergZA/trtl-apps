@@ -1,8 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { AdminService } from 'src/app/providers/admin.service';
-import { ConsoleService } from 'src/app/providers/console.service';
 import { TurtleApp } from 'shared/types';
-import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-inspector',
