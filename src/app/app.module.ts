@@ -72,7 +72,7 @@ import { NodeManagementComponent } from './admin/node-management/node-management
 import { NodeInfoCardComponent } from './admin/node-info-card/node-info-card.component';
 import { EditNodeDialogComponent } from './admin/dialogs/edit-node-dialog/edit-node-dialog.component';
 import { ConfirmationDialogComponent } from './dialogs/confirmation-dialog/confirmation-dialog.component';
-import { RewindWalletDialogComponent } from './admin/rewind-wallet-dialog/rewind-wallet-dialog.component';
+import { RewindWalletDialogComponent } from './admin/dialogs/rewind-wallet-dialog/rewind-wallet-dialog.component';
 import { ReportsComponent } from './admin/reports/reports.component';
 import { DaemonErrorsComponent } from './admin/daemon-errors/daemon-errors.component';
 import { WalletHistoryComponent } from './admin/wallet-history/wallet-history.component';
