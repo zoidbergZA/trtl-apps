@@ -26,8 +26,13 @@ service cloud.firestore {
      allow write: if request.auth.token.admin == true;
     }
 
+    match /appAudits/{auditId} {
+     allow read: if request.auth.token.admin == true;
+     allow write: if false;
+    }
+
     match /apps/{appId} {
-      allow read: if request.auth.uid == resource.data.owner;
+      allow read: if request.auth.uid == resource.data.owner || request.auth.token.admin == true;
       allow write: if false;
 
       match /accounts/{account} {

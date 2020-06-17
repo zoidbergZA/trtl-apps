@@ -30,7 +30,7 @@ export class OverviewComponent implements OnInit {
       this.appId = params.appId;
 
       if (this.appId) {
-        this.consoleService.getApp(this.appId).subscribe(app => {
+        this.consoleService.getApp$(this.appId).subscribe(app => {
           this.app = app;
         });
       }

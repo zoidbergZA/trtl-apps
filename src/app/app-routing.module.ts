@@ -20,6 +20,7 @@ import { ReportsComponent } from './admin/reports/reports.component';
 import { AdminGuard } from './guards/admin-guard.service';
 import { WalletManagementComponent } from './admin/wallet-management/wallet-management.component';
 import { RoleManagementComponent } from './admin/role-management/role-management.component';
+import { AppInspectorComponent } from './admin/app-inspector/app-inspector.component';
 
 const redirectUnauthorizedToSignIn  = () => redirectUnauthorizedTo(['/signin']);
 const redirectLoggedInToConsole     = () => redirectLoggedInTo(['/console']);
@@ -83,6 +84,11 @@ const routes: Routes = [
   {
     path:         'admin/reports',
     component:    ReportsComponent,
+    canActivate:  [AdminGuard]
+  },
+  {
+    path:         'admin/app-inspector',
+    component:    AppInspectorComponent,
     canActivate:  [AdminGuard]
   },
   {

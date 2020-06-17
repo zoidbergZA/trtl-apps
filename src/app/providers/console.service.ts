@@ -111,7 +111,7 @@ export class ConsoleService {
     }
   }
 
-  getApp(appId: string): Observable<TurtleApp | undefined> {
+  getApp$(appId: string): Observable<TurtleApp | undefined> {
     return this.firestore.doc<TurtleApp>(`apps/${appId}`).valueChanges();
   }
 

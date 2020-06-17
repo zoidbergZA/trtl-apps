@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AngularFireFunctions } from '@angular/fire/functions';
-import { Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus, ServiceUser, UserRole } from 'shared/types';
+import { Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus, ServiceUser, UserRole, TurtleApp } from 'shared/types';
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { ServiceConfig, ServiceNode, SavedWallet } from 'functions/src/types';
@@ -11,7 +11,7 @@ import { ServiceConfig, ServiceNode, SavedWallet } from 'functions/src/types';
 export class AdminService {
 
   constructor(
-    private afs: AngularFirestore,
+    private firestore: AngularFirestore,
     private afFunctions: AngularFireFunctions) { }
 
   async getWalletStatus(): Promise<WalletStatus[] | undefined> {
@@ -84,8 +84,18 @@ export class AdminService {
     }).toPromise();
   }
 
+  async getApp(appId: string): Promise<TurtleApp | undefined> {
+    const snapshot = await this.firestore.doc<TurtleApp>(`apps/${appId}`).get().toPromise();
+
+    if (!snapshot.exists) {
+      return undefined;
+    }
+
+    return snapshot.data() as TurtleApp;
+  }
+
   getWalletSavesHistory$(limit: number): Observable<SavedWallet[]> {
-    return this.afs
+    return this.firestore
       .collection<SavedWallet>('wallets/master/saves', ref => ref
         .where('hasFile', '==', true)
         .orderBy('timestamp', 'desc')
@@ -94,11 +104,11 @@ export class AdminService {
   }
 
   getServiceConfig$(): Observable<ServiceConfig | undefined> {
-    return this.afs.doc<ServiceConfig>('globals/config').valueChanges();
+    return this.firestore.doc<ServiceConfig>('globals/config').valueChanges();
   }
 
   getUsersByRole$(role: UserRole, limit: number = 50): Observable<ServiceUser[]> {
-    return this.afs
+    return this.firestore
       .collection<ServiceUser>('serviceUsers', ref => ref
         .where('roles', 'array-contains', role)
         .limit(limit))
@@ -106,13 +116,13 @@ export class AdminService {
   }
 
   getServiceNodes$(): Observable<ServiceNode[]> {
-    return this.afs
+    return this.firestore
       .collection<ServiceNode>('nodes', ref => ref.orderBy('priority', 'desc'))
       .valueChanges();
   }
 
   getDaemonErrors$(): Observable<DaemonErrorEvent[]> {
-    return this.afs.
+    return this.firestore.
       collection<DaemonErrorEvent>('admin/reports/daemonErrors', ref =>
         ref.orderBy('timestamp', 'desc')
         .limit(50))

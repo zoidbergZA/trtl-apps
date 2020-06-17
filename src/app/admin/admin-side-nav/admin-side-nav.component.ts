@@ -25,6 +25,10 @@ export class AdminSideNavComponent implements OnInit {
     this.router.navigate(['/admin/reports']);
   }
 
+  onAppInspectorClick() {
+    this.router.navigate(['/admin/app-inspector']);
+  }
+
   onInspectDepositClick() {
     this.router.navigate(['/admin/deposit-inspector']);
   }
