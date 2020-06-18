@@ -25,6 +25,10 @@ export class AdminSideNavComponent implements OnInit {
     this.router.navigate(['/admin/reports']);
   }
 
+  onInvitationsClick() {
+    this.router.navigate(['/admin/service-invitations']);
+  }
+
   onAppInspectorClick() {
     this.router.navigate(['/admin/app-inspector']);
   }

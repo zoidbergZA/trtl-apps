@@ -191,7 +191,9 @@ export const createInvitationsBatch = functions.https.onCall(async (data, contex
     throw new functions.https.HttpsError('failed-precondition', 'The function must be called by admin user.');
   }
 
-  return ServiceModule.createInvitationsBatch(10).then(result => {
+  const amount = data.amount | 10;
+
+  return ServiceModule.createInvitationsBatch(amount).then(result => {
     const invitesCount = result[0];
     const serviceError = result[1];
 

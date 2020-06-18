@@ -4,7 +4,7 @@ import { Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus, ServiceUs
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { ServiceConfig, ServiceNode, SavedWallet, AppAuditResult } from 'functions/src/types';
+import { ServiceConfig, ServiceNode, SavedWallet, AppAuditResult, AppInviteCode } from 'functions/src/types';
 
 @Injectable({
   providedIn: 'root'
@@ -93,6 +93,21 @@ export class AdminService {
     }
 
     return snapshot.data() as TurtleApp;
+  }
+
+  async generateServiceInvitations(amount: number = 5): Promise<void> {
+    await this.afFunctions.httpsCallable('serviceAdmin-createInvitationsBatch')({
+      amount
+    }).toPromise();
+  }
+
+  getServiceInvitations$(limit: number = 15): Observable<AppInviteCode[]> {
+    return this.firestore
+      .collection<AppInviteCode>('appInvites', ref => ref
+        .where('claimed', '==', false)
+        .limit(limit)
+        .orderBy('createdAt', 'asc'))
+      .valueChanges();
   }
 
   getAppAudits(appId: string, limit: number = 30): Promise<AppAuditResult[]> {
