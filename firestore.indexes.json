@@ -29,6 +29,20 @@
       ]
     },
     {
+      "collectionGroup": "appInvites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "claimed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "apps",
       "queryScope": "COLLECTION",
       "fields": [

@@ -31,6 +31,11 @@ service cloud.firestore {
      allow write: if false;
     }
 
+    match /appInvites/{inviteId} {
+     allow read: if request.auth.token.admin == true;
+     allow write: if false;
+    }
+
     match /apps/{appId} {
       allow read: if request.auth.uid == resource.data.owner || request.auth.token.admin == true;
       allow write: if false;
