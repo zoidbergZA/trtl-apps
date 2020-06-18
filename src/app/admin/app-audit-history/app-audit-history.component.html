@@ -3,7 +3,7 @@
   <mat-card-content>
     <ng-container *ngIf="audits">
       <div *ngFor="let audit of audits">
-        <audit-list-item></audit-list-item>
+        <audit-list-item [audit]="audit"></audit-list-item>
       </div>
     </ng-container>
   </mat-card-content>

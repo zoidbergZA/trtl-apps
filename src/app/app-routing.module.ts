@@ -21,6 +21,7 @@ import { AdminGuard } from './guards/admin-guard.service';
 import { WalletManagementComponent } from './admin/wallet-management/wallet-management.component';
 import { RoleManagementComponent } from './admin/role-management/role-management.component';
 import { AppInspectorComponent } from './admin/app-inspector/app-inspector.component';
+import { AppAuditDetailsComponent } from './admin/app-audit-details/app-audit-details.component';
 
 const redirectUnauthorizedToSignIn  = () => redirectUnauthorizedTo(['/signin']);
 const redirectLoggedInToConsole     = () => redirectLoggedInTo(['/console']);
@@ -89,6 +90,11 @@ const routes: Routes = [
   {
     path:         'admin/app-inspector',
     component:    AppInspectorComponent,
+    canActivate:  [AdminGuard]
+  },
+  {
+    path:         'admin/app-inspector/audit/:auditId',
+    component:    AppAuditDetailsComponent,
     canActivate:  [AdminGuard]
   },
   {

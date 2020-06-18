@@ -106,6 +106,10 @@ export class AdminService {
       .toPromise();
   }
 
+  getAppAudit$(auditId: string): Observable<AppAuditResult | undefined> {
+    return this.firestore.doc<AppAuditResult>(`appAudits/${auditId}`).valueChanges();
+  }
+
   getWalletSavesHistory$(limit: number): Observable<SavedWallet[]> {
     return this.firestore
       .collection<SavedWallet>('wallets/master/saves', ref => ref

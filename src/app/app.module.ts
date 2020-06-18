@@ -86,6 +86,7 @@ import { RemoveUserRoleDialogComponent } from './admin/dialogs/remove-user-role-
 import { AppInspectorComponent } from './admin/app-inspector/app-inspector.component';
 import { AppAuditHistoryComponent } from './admin/app-audit-history/app-audit-history.component';
 import { AuditListItemComponent } from './admin/app-audit-history/audit-list-item/audit-list-item.component';
+import { AppAuditDetailsComponent } from './admin/app-audit-details/app-audit-details.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -165,7 +166,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     RemoveUserRoleDialogComponent,
     AppInspectorComponent,
     AppAuditHistoryComponent,
-    AuditListItemComponent
+    AuditListItemComponent,
+    AppAuditDetailsComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,

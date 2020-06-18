@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
+import { AppAuditResult } from 'functions/src/types';
 
 @Component({
   selector: 'audit-list-item',
@@ -6,6 +7,8 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./audit-list-item.component.scss']
 })
 export class AuditListItemComponent implements OnInit {
+
+  @Input() audit: AppAuditResult | undefined;
 
   constructor() { }
 
