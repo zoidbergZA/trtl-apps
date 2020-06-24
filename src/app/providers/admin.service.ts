@@ -4,7 +4,7 @@ import { Withdrawal, Deposit, Account, DaemonErrorEvent, WalletStatus, ServiceUs
 import { AngularFirestore } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { ServiceConfig, ServiceNode, SavedWallet, AppAuditResult, AppInviteCode } from 'functions/src/types';
+import { ServiceConfig, ServiceNode, SavedWallet, AppAuditResult, AppInviteCode, ServiceNodeUpdate } from 'functions/src/types';
 
 @Injectable({
   providedIn: 'root'
@@ -150,6 +150,10 @@ export class AdminService {
     return this.firestore
       .collection<ServiceNode>('nodes', ref => ref.orderBy('priority', 'desc'))
       .valueChanges();
+  }
+
+  async updateServiceNode(nodeId: string, update: ServiceNodeUpdate): Promise<void> {
+    await this.firestore.doc<ServiceNode>(`nodes/${nodeId}`).update(update);
   }
 
   getDaemonErrors$(): Observable<DaemonErrorEvent[]> {
