@@ -14,23 +14,27 @@ export class EditNodeDialogComponent implements OnInit {
   form: FormGroup;
   busy = false;
   error: string | undefined;
-  node: ServiceNode;
+  node: ServiceNode | undefined;
 
   constructor(
     public dialogRef: MatDialogRef<EditNodeDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: ServiceNode,
+    @Inject(MAT_DIALOG_DATA) public data: ServiceNode | undefined,
     private adminService: AdminService
   ) {
     this.node = data;
 
+    const url       = data ? data.url : '';
+    const port      = data ? data.port : 0;
+    const priority  = data ? data.priority : 0;
+
     this.form = new FormGroup({
-      url: new FormControl(data.url, Validators.compose([
+      url: new FormControl(url, Validators.compose([
         Validators.required
       ])),
-      port: new FormControl(data.port, Validators.compose([
+      port: new FormControl(port, Validators.compose([
         Validators.required
       ])),
-      priority: new FormControl(data.priority, Validators.compose([
+      priority: new FormControl(priority, Validators.compose([
         Validators.required
       ]))
     });
@@ -43,8 +47,8 @@ export class EditNodeDialogComponent implements OnInit {
     this.dialogRef.close();
   }
 
-  async onSubmit(data: ServiceNodeUpdate) {
-    const { url, port, priority } = data;
+  async onSubmit(formData: ServiceNodeUpdate): Promise<void> {
+    const { url, port, priority } = formData;
 
     if (!url || !port || !priority) {
       return;
@@ -60,8 +64,42 @@ export class EditNodeDialogComponent implements OnInit {
       priority
     };
 
+    if (this.node) {
+      await this.updateNode(this.node, update);
+    } else {
+      await this.addNode(url, port, priority);
+    }
+  }
+
+  async updateNode(node: ServiceNode, update: ServiceNodeUpdate): Promise<void> {
     try {
-      await this.adminService.updateServiceNode(this.node.id, update);
+      await this.adminService.updateServiceNode(node.id, update);
+      this.dialogRef.close();
+    } catch (error) {
+      this.error = error;
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async addNode(url: string, port: number, priority: number): Promise<void> {
+    try {
+      await this.adminService.addServiceNode(url, port, priority);
+      this.dialogRef.close();
+    } catch (error) {
+      this.error = error;
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async removeNode(): Promise<void> {
+    if (!this.node) {
+      return;
+    }
+
+    try {
+      await this.adminService.removeNode(this.node.id);
       this.dialogRef.close();
     } catch (error) {
       this.error = error;

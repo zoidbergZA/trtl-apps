@@ -152,8 +152,34 @@ export class AdminService {
       .valueChanges();
   }
 
+  async addServiceNode(url: string, port: number, priority: number): Promise<void> {
+    const id = this.firestore.createId();
+
+    const node: ServiceNode = {
+      id,
+      name: `[fetching node info...] ${url}:${port}`,
+      url,
+      port,
+      priority,
+      ssl: false,
+      cache: false,
+      fee: 0,
+      availability: 0,
+      online: false,
+      version: '0.0.0',
+      lastUpdateAt: Date.now(),
+      lastDropAt: 0
+    };
+
+    await this.firestore.doc<ServiceNode>(`nodes/${id}`).set(node);
+  }
+
   async updateServiceNode(nodeId: string, update: ServiceNodeUpdate): Promise<void> {
     await this.firestore.doc<ServiceNode>(`nodes/${nodeId}`).update(update);
+  }
+
+  async removeNode(nodeId: string): Promise<void> {
+    await this.firestore.doc<ServiceNode>(`nodes/${nodeId}`).delete();
   }
 
   getDaemonErrors$(): Observable<DaemonErrorEvent[]> {
