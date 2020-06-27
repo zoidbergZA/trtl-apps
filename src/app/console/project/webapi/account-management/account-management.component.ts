@@ -46,7 +46,6 @@ export class AccountManagementComponent implements OnInit {
   readonly limitIncrement = 20;
   readonly maxLimit       = 200;
 
-  // tslint:disable-next-line:variable-name
   _app: TurtleApp | undefined;
   accountFilter$ = new BehaviorSubject<string>('');
   appAccounts$: Observable<Account[]> | undefined;
@@ -88,6 +87,12 @@ export class AccountManagementComponent implements OnInit {
   }
 
   onSearchValueChanged(searchValue: string) {
+    if (searchValue === undefined || searchValue === '') {
+      this.accountFilter$.next(searchValue);
+    }
+  }
+
+  onSearchValueSubmitted(searchValue: string) {
     this.searchValue = searchValue;
     this.accountFilter$.next(searchValue);
   }

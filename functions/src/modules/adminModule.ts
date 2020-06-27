@@ -75,7 +75,7 @@ export const getDepositHistory = functions.https.onCall(async (data, context) =>
 
   if (!history) {
     const err = error as ServiceError;
-    throw new functions.https.HttpsError('internal', err.message);
+    throw new functions.https.HttpsError('not-found', err.message);
   }
 
   return history;

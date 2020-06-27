@@ -15,14 +15,12 @@ export class WithdrawalsViewComponent implements OnInit {
   readonly limitIncrement = 20;
   readonly maxLimit       = 200;
 
-  // tslint:disable-next-line:variable-name
   _app: TurtleApp | undefined;
   withdrawals$: Observable<Withdrawal[] | undefined> | undefined;
   displayedColumns: string[] = ['withdrawalId', 'createdDate', 'amount', 'status'];
 
   withdrawalFilter$ = new BehaviorSubject<string>('');
   limit$            = new BehaviorSubject<number>(this.limitIncrement);
-  searchValue       = '';
   fetching          = false;
   showLoadMore      = false;
 
@@ -62,7 +60,12 @@ export class WithdrawalsViewComponent implements OnInit {
   }
 
   onSearchValueChanged(searchValue: string) {
-    this.searchValue = searchValue;
+    if (searchValue === undefined || searchValue === '') {
+      this.withdrawalFilter$.next(searchValue);
+    }
+  }
+
+  onSearchValueSubmitted(searchValue: string) {
     this.withdrawalFilter$.next(searchValue);
   }
 

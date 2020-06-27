@@ -41,7 +41,6 @@ export class AdminService {
 
       return response as Deposit[];
     } catch (error) {
-      console.log(error);
       return undefined;
     }
   }
@@ -54,7 +53,6 @@ export class AdminService {
 
       return response as Withdrawal[];
     } catch (error) {
-      console.log(error);
       return undefined;
     }
   }

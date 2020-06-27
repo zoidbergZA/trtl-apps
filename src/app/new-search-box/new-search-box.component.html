@@ -7,7 +7,8 @@
         [placeholder]="placeholder"
         formControlName="search">
     </mat-form-field>
-    <button mat-stroked-button
+    <button *ngIf="showButton"
+      mat-stroked-button
       type="submit"
       [hidden]="!showButton"
       [disabled]="!form.valid">{{ buttonLabel }}</button>

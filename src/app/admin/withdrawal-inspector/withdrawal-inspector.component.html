@@ -8,15 +8,16 @@
           <mat-spinner diameter="64"></mat-spinner>
         </div>
         <div *ngIf="!fetching">
-          <div class="api-search-container">
-            <search-box (searchChanged)="onSearchValueChanged($event)"></search-box>
-            <div class="search-button">
-              <button mat-flat-button color="primary" (click)="onSearchClick()">Find Withdrawal</button>
-            </div>
-          </div>
+          <new-search-box
+            class="api-search-container"
+            placeholder="enter deposit ID..."
+            (searchSubmitted)="onSearchClick($event)"></new-search-box>
+        </div>
+        <div *ngIf="message">
+          <p>{{ message }}</p>
         </div>
         <div *ngIf="history">
-          <h2 class="history-title" class="center-text">History of withdrawal ID: <span class="code-font">{{ searchValue }}</span></h2>
+          <h2 class="history-title" class="center-text">History of withdrawal ID: <span class="code-font">{{ history[0].id }}</span></h2>
           <div *ngFor="let item of history">
             <h4>{{ item.lastUpdate | date: 'short' }}</h4>
             <generic-object-inspector [object]=item></generic-object-inspector>

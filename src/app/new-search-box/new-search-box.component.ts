@@ -39,7 +39,6 @@ export class NewSearchBoxComponent implements OnInit, OnDestroy {
   }
 
   onSubmit(data: any) {
-    console.log(data.search);
     this.searchSubmitted.emit(data.search);
   }
 }
