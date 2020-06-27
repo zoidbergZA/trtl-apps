@@ -1,0 +1,15 @@
+<form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+  <div class="container">
+    <mat-form-field class="form-field" appearance="outline">
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput
+        type="search"
+        [placeholder]="placeholder"
+        formControlName="search">
+    </mat-form-field>
+    <button mat-stroked-button
+      type="submit"
+      [hidden]="!showButton"
+      [disabled]="!form.valid">{{ buttonLabel }}</button>
+  </div>
+</form>

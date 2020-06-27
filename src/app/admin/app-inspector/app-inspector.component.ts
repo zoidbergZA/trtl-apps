@@ -9,7 +9,6 @@ import { TurtleApp } from 'shared/types';
 })
 export class AppInspectorComponent implements OnInit {
 
-  searchValue = '';
   fetching = false;
   app: TurtleApp | undefined;
 
@@ -18,19 +17,14 @@ export class AppInspectorComponent implements OnInit {
   ngOnInit() {
   }
 
-  onSearchValueChanged(searchValue: string) {
-    this.searchValue = searchValue;
-  }
-
-  async onSearchClick() {
+  async onSearchClick(value: string) {
     this.app = undefined;
 
-    if (this.fetching || this.searchValue === '') {
+    if (this.fetching) {
       return;
     }
-
     this.fetching = true;
-    this.app = await this.adminService.getApp(this.searchValue);
+    this.app = await this.adminService.getApp(value);
     this.fetching = false;
   }
 }
