@@ -7,10 +7,10 @@
           <mat-spinner diameter="64"></mat-spinner>
         </div>
         <div *ngIf="!fetching">
-          <new-search-box
+          <search-box
             class="api-search-container"
             placeholder="enter app ID..."
-            (searchSubmitted)="onSearchClick($event)"></new-search-box>
+            (searchSubmitted)="onSearchClick($event)"></search-box>
         </div>
       </mat-card-content>
     </mat-card>

@@ -1,12 +1,16 @@
-<form class="form-content" [formGroup]="form">
-  <mat-form-field class="form-field" appearance="outline">
-    <mat-icon matPrefix>search</mat-icon>
-    <input matInput
-      type="search"
-      placeholder="  search"
-      formControlName="search">
-    <button mat-button *ngIf="form.controls.search.value" matSuffix mat-icon-button aria-label="Clear" (click)="onClearClick()">
-      <mat-icon>close</mat-icon>
-    </button>
-  </mat-form-field>
+<form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+  <div class="container">
+    <mat-form-field class="form-field" appearance="outline">
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput
+        type="search"
+        [placeholder]="placeholder"
+        formControlName="search">
+    </mat-form-field>
+    <button *ngIf="showButton"
+      mat-stroked-button
+      type="submit"
+      [hidden]="!showButton"
+      [disabled]="!form.valid">{{ buttonLabel }}</button>
+  </div>
 </form>

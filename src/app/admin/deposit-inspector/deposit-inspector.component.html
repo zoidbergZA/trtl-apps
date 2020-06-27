@@ -8,10 +8,10 @@
           <mat-spinner diameter="64"></mat-spinner>
         </div>
         <div *ngIf="!fetching">
-          <new-search-box
+          <search-box
             class="api-search-container"
             placeholder="enter deposit ID..."
-            (searchSubmitted)="onSearchClick($event)"></new-search-box>
+            (searchSubmitted)="onSearchClick($event)"></search-box>
         </div>
         <div *ngIf="message">
           <p>{{ message }}</p>

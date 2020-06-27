@@ -88,7 +88,6 @@ import { AppAuditHistoryComponent } from './admin/app-audit-history/app-audit-hi
 import { AuditListItemComponent } from './admin/app-audit-history/audit-list-item/audit-list-item.component';
 import { AppAuditDetailsComponent } from './admin/app-audit-details/app-audit-details.component';
 import { ServiceInvitationsComponent } from './admin/service-invitations/service-invitations.component';
-import { NewSearchBoxComponent } from './new-search-box/new-search-box.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -170,8 +169,7 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     AppAuditHistoryComponent,
     AuditListItemComponent,
     AppAuditDetailsComponent,
-    ServiceInvitationsComponent,
-    NewSearchBoxComponent
+    ServiceInvitationsComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
