@@ -11,6 +11,9 @@
             class="api-search-container"
             placeholder="enter app ID..."
             (searchSubmitted)="onSearchClick($event)"></search-box>
+            <div *ngIf="message">
+              <p>{{ message }}</p>
+            </div>
         </div>
       </mat-card-content>
     </mat-card>

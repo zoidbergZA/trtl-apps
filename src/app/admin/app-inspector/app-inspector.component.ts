@@ -11,6 +11,7 @@ export class AppInspectorComponent implements OnInit {
 
   fetching = false;
   app: TurtleApp | undefined;
+  message: string | undefined;
 
   constructor(private adminService: AdminService) { }
 
@@ -19,6 +20,7 @@ export class AppInspectorComponent implements OnInit {
 
   async onSearchClick(value: string) {
     this.app = undefined;
+    this.message = undefined;
 
     if (this.fetching) {
       return;
@@ -26,5 +28,9 @@ export class AppInspectorComponent implements OnInit {
     this.fetching = true;
     this.app = await this.adminService.getApp(value);
     this.fetching = false;
+
+    if (!this.app) {
+      this.message = 'App not found.';
+    }
   }
 }
