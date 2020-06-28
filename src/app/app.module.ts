@@ -72,13 +72,22 @@ import { NodeManagementComponent } from './admin/node-management/node-management
 import { NodeInfoCardComponent } from './admin/node-info-card/node-info-card.component';
 import { EditNodeDialogComponent } from './admin/dialogs/edit-node-dialog/edit-node-dialog.component';
 import { ConfirmationDialogComponent } from './dialogs/confirmation-dialog/confirmation-dialog.component';
-import { RewindWalletDialogComponent } from './admin/rewind-wallet-dialog/rewind-wallet-dialog.component';
+import { RewindWalletDialogComponent } from './admin/dialogs/rewind-wallet-dialog/rewind-wallet-dialog.component';
 import { ReportsComponent } from './admin/reports/reports.component';
 import { DaemonErrorsComponent } from './admin/daemon-errors/daemon-errors.component';
 import { WalletHistoryComponent } from './admin/wallet-history/wallet-history.component';
 import { AdminSideNavComponent } from './admin/admin-side-nav/admin-side-nav.component';
 import { WalletManagementComponent } from './admin/wallet-management/wallet-management.component';
 import { WalletStatusComponent } from './admin/wallet-status/wallet-status.component';
+import { RoleManagementComponent } from './admin/role-management/role-management.component';
+import { AdminListItemComponent } from './admin/admin-list-item/admin-list-item.component';
+import { AddUserRoleDialogComponent } from './admin/dialogs/add-user-role-dialog/add-user-role-dialog.component';
+import { RemoveUserRoleDialogComponent } from './admin/dialogs/remove-user-role-dialog/remove-user-role-dialog.component';
+import { AppInspectorComponent } from './admin/app-inspector/app-inspector.component';
+import { AppAuditHistoryComponent } from './admin/app-audit-history/app-audit-history.component';
+import { AuditListItemComponent } from './admin/app-audit-history/audit-list-item/audit-list-item.component';
+import { AppAuditDetailsComponent } from './admin/app-audit-details/app-audit-details.component';
+import { ServiceInvitationsComponent } from './admin/service-invitations/service-invitations.component';
 
 export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
   align: 'left',
@@ -151,7 +160,16 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     WalletHistoryComponent,
     AdminSideNavComponent,
     WalletManagementComponent,
-    WalletStatusComponent
+    WalletStatusComponent,
+    RoleManagementComponent,
+    AdminListItemComponent,
+    AddUserRoleDialogComponent,
+    RemoveUserRoleDialogComponent,
+    AppInspectorComponent,
+    AppAuditHistoryComponent,
+    AuditListItemComponent,
+    AppAuditDetailsComponent,
+    ServiceInvitationsComponent
   ],
   entryComponents: [
     AccountDetailsDialogComponent,
@@ -167,7 +185,9 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     PasswordRecoveryDialogComponent,
     EditNodeDialogComponent,
     ConfirmationDialogComponent,
-    RewindWalletDialogComponent
+    RewindWalletDialogComponent,
+    AddUserRoleDialogComponent,
+    RemoveUserRoleDialogComponent
   ],
   imports: [
     BrowserModule,

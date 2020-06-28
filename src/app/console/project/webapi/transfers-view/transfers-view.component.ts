@@ -15,14 +15,12 @@ export class TransfersViewComponent implements OnInit {
   readonly limitIncrement = 20;
   readonly maxLimit       = 200;
 
-  // tslint:disable-next-line:variable-name
   _app: TurtleApp | undefined;
   displayedColumns: string[] = ['transferId', 'createdDate', 'amount', 'recipients'];
   transfers$: Observable<Transfer[] | undefined> | undefined;
 
   transferFilter$ = new BehaviorSubject<string>('');
   limit$          = new BehaviorSubject<number>(this.limitIncrement);
-  searchValue     = '';
   fetching        = false;
   showLoadMore    = false;
 
@@ -62,7 +60,12 @@ export class TransfersViewComponent implements OnInit {
   }
 
   onSearchValueChanged(searchValue: string) {
-    this.searchValue = searchValue;
+    if (searchValue === undefined || searchValue === '') {
+      this.transferFilter$.next(searchValue);
+    }
+  }
+
+  onSearchValueSubmitted(searchValue: string) {
     this.transferFilter$.next(searchValue);
   }
 

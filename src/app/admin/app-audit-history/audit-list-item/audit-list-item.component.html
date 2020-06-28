@@ -1,0 +1,8 @@
+<div *ngIf="audit" class="container">
+  <p class="item">{{ audit.timestamp | date:'short' }}</p>
+  <a class="item item-id" [routerLink]="['/admin/app-inspector/audit', audit.id]">{{ audit.id }}</a>
+  <mat-chip-list class="item">
+    <mat-chip color="primary" selected *ngIf="audit.passed">passed</mat-chip>
+    <mat-chip color="warn" selected *ngIf="!audit.passed">failed</mat-chip>
+  </mat-chip-list>
+</div>

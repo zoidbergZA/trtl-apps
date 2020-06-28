@@ -1,7 +1,9 @@
 <div class="api-top-panel">
-  <div class="api-search-container">
-    <search-box (searchChanged)="onSearchValueChanged($event)"></search-box>
-  </div>
+  <search-box
+    class="api-search-container"
+    placeholder="search account ID..."
+    (searchChanged)="onSearchValueChanged($event)"
+    (searchSubmitted)="onSearchValueSubmitted($event)"></search-box>
 </div>
 <div class="api-table-container">
   <mat-table [dataSource]="deposits$" class="mat-elevation-z8">

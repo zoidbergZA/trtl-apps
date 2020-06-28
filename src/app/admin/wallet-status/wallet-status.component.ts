@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { WalletStatus } from 'shared/types';
 import { AdminService } from 'src/app/providers/admin.service';
 import { MatDialog } from '@angular/material';
-import { RewindWalletDialogComponent } from '../rewind-wallet-dialog/rewind-wallet-dialog.component';
+import { RewindWalletDialogComponent } from '../dialogs/rewind-wallet-dialog/rewind-wallet-dialog.component';
 
 @Component({
   selector: 'wallet-status',

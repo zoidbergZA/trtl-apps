@@ -1,25 +1,71 @@
-<h3>{{ data.name }}</h3>
-<form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
-  <table>
-    <tr>
-      <td class="table-key">x</td>
-      <td class="table-value">
-        <mat-form-field class="input-field">
-          <input matInput
-            formControlName="stringValue"
-            type="text"
-            autocomplete="off"
-            placeholder="enter value">
-        </mat-form-field>
-      </td>
-    </tr>
-  </table>
-  <div>
-    <button mat-stroked-button
-      type="submit"
-      [disabled]="!form.valid">save</button>
-  </div>
-</form>
+<ng-container *ngIf="node">
+  <h3>{{ node.name }}</h3>
+  <h4>{{ node.url }}:{{ node.port }}</h4>
+</ng-container>
+<ng-container *ngIf="!node">
+  <h3>Add node</h3>
+</ng-container>
+<p *ngIf="error" class="center-text error-text">{{ error }}</p>
+<ng-container *ngIf="!busy">
+  <form class="form-content" [formGroup]="form" (ngSubmit)="onSubmit(form.value)">
+    <table>
+      <tr>
+        <td class="table-key">url</td>
+        <td class="table-value">
+          <mat-form-field class="input-field">
+            <input
+              matInput
+              formControlName="url"
+              type="text"
+              autocomplete="off"
+              placeholder="url">
+          </mat-form-field>
+        </td>
+      </tr>
+      <tr>
+        <td class="table-key">port</td>
+        <td class="table-value">
+          <mat-form-field class="input-field">
+            <input
+              matInput
+              formControlName="port"
+              type="number"
+              autocomplete="off"
+              placeholder="port">
+          </mat-form-field>
+        </td>
+      </tr>
+      <tr>
+        <td class="table-key">priority</td>
+        <td class="table-value">
+          <mat-form-field class="input-field">
+            <input
+              matInput
+              formControlName="priority"
+              type="number"
+              autocomplete="off"
+              placeholder="priority">
+          </mat-form-field>
+        </td>
+      </tr>
+    </table>
+    <div>
+      <button
+        mat-stroked-button
+        type="submit"
+        [disabled]="!form.valid">save</button>
+      <button *ngIf="node"
+        mat-stroked-button
+        color="warn"
+        class="btn-spacer"
+        (click)="removeNode()"
+        ><mat-icon>clear</mat-icon> remove node</button>
+    </div>
+  </form>
+</ng-container>
+<div *ngIf="busy">
+  <mat-spinner diameter="64"></mat-spinner>
+</div>
 <div style="display: flex; justify-content: flex-end">
   <button mat-flat-button (click)="onCancelClick()">cancel</button>
 </div>

@@ -111,7 +111,7 @@ export class ConsoleService {
     }
   }
 
-  getApp(appId: string): Observable<TurtleApp | undefined> {
+  getApp$(appId: string): Observable<TurtleApp | undefined> {
     return this.firestore.doc<TurtleApp>(`apps/${appId}`).valueChanges();
   }
 
@@ -119,7 +119,7 @@ export class ConsoleService {
     if (accountId && accountId !== '') {
       return this.firestore
       .collection<Account>(`apps/${appId}/accounts`, ref => ref
-        .where('accountId', '==', accountId).limit(limit)
+        .where('id', '==', accountId).limit(limit)
         .orderBy('createdAt', 'desc'))
       .valueChanges();
     } else {

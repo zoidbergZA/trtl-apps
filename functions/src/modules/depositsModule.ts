@@ -120,7 +120,7 @@ export async function getDepositHistory(depositId: string): Promise<[Deposit[] |
                   .get();
 
   if (query.size === 0) {
-    return [undefined, new ServiceError('app/withdrawal-not-found')];
+    return [undefined, new ServiceError('app/deposit-not-found')];
   }
 
   const history = query.docs.map(d => d.data() as Deposit);

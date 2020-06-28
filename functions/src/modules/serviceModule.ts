@@ -6,7 +6,7 @@ import * as sgMail from '@sendgrid/mail';
 import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from '../types';
 import { sleep } from '../utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
-import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceUser } from '../../../shared/types';
+import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceUser, UserRole } from '../../../shared/types';
 import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId,
   defaultServiceConfig, defaultNodes } from '../constants';
 import { ServiceError } from '../serviceError';
@@ -28,10 +28,10 @@ export async function boostrapService(adminEmail: string): Promise<[string | und
     return [undefined, new ServiceError('service/unknown-error', error)];
   }
 
-  const adminGranted = await giveUserAdminRights(userID);
-
-  if (!adminGranted) {
-    return [undefined, new ServiceError('service/unknown-error', 'Failed to give user admin rights.')];
+  try {
+    await assignUserRole(userID, 'admin');
+  } catch (error) {
+    return [undefined, new ServiceError('service/unknown-error', error)];
   }
 
   const batch = admin.firestore().batch();
@@ -81,15 +81,66 @@ exports.onServiceUserCreated = functions.auth.user().onCreate(async (userRecord)
   await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
 });
 
-export async function giveUserAdminRights(uid: string): Promise<boolean> {
-  try {
-    await admin.auth().setCustomUserClaims(uid, { admin: true });
-    return true;
+export async function assignUserRole(
+  uid: string,
+  role: UserRole
+): Promise<void> {
+  const [user, userError] = await getServiceUser(uid);
 
-  } catch (error) {
-    console.log(error);
-    return false;
+  if (!user) {
+    const err = userError as ServiceError;
+    throw new Error(err.message);
   }
+
+  if (user.roles && user.roles.includes(role)) {
+    throw new Error(`user with id [${uid}] already has role [${role}]`);
+  }
+
+  const claims: any = {};
+  claims[role] = true;
+
+  await admin.auth().setCustomUserClaims(uid, claims);
+
+  await admin.firestore().doc(`serviceUsers/${uid}`).update({
+    roles: admin.firestore.FieldValue.arrayUnion(role)
+  });
+}
+
+export async function removeUserRole(
+  uid: string,
+  role: UserRole
+): Promise<void> {
+  const [user, userError] = await getServiceUser(uid);
+
+  if (!user) {
+    const err = userError as ServiceError;
+    throw new Error(err.message);
+  }
+
+  if (!user.roles || !user.roles.includes(role)) {
+    throw new Error(`user with id [${uid}] does not have role [${role}]`);
+  }
+
+  if (role === 'admin') {
+    const [config, configError] = await getServiceConfig();
+
+    if (!config) {
+      throw new Error((configError as ServiceError).message);
+    }
+
+    if (config.adminEmail === user.email) {
+      throw new Error('Can not remove admin role from primary admin user!');
+    }
+  }
+
+  const claims: any = {};
+  claims[role] = false;
+
+  await admin.auth().setCustomUserClaims(uid, claims);
+
+  await admin.firestore().doc(`serviceUsers/${uid}`).update({
+    roles: admin.firestore.FieldValue.arrayRemove(role)
+  });
 }
 
 export async function createInvitationsBatch(amount: number): Promise<[number | undefined, undefined | ServiceError]> {
@@ -146,59 +197,6 @@ export async function validateInviteCode(code: string): Promise<boolean> {
 
   return !invite.claimed;
 }
-
-// export async function getServiceStatus(): Promise<[ServiceStatus | undefined, undefined | ServiceError]> {
-//   const status: ServiceStatus = {
-//     serviceHalted: false,
-//     daemonHost: '',
-//     daemonPort: 0,
-//     serviceCharge: 0,
-//     firebaseWalletOk: false,
-//     firebaseWalletSyncInfo: [0,0,0],
-//     appEngineWalletOk: false
-//   }
-
-//   const [serviceWallet, serviceWalletError] = await WalletManager.getServiceWallet(false);
-
-//   if (serviceWallet) {
-//     const config = serviceWallet.serviceConfig;
-
-//     status.serviceHalted  = config.serviceHalted;
-//     status.daemonHost     = config.daemonHost;
-//     status.daemonPort     = config.daemonPort;
-//     status.serviceCharge  = config.serviceCharge;
-
-//     status.firebaseWalletSyncInfo = serviceWallet.instance.wallet.getSyncStatus();
-//     const heightDelta = status.firebaseWalletSyncInfo[2] - status.firebaseWalletSyncInfo[0];
-
-//     if (heightDelta < 60) {
-//       status.firebaseWalletOk = true;
-//     }
-//   } else {
-//     console.log((serviceWalletError as ServiceError).message);
-//   }
-
-//   const [token, tokenError] = await WalletManager.getAppEngineToken();
-
-//   if (token && serviceWallet) {
-//     await WalletManager.warmupAppEngineWallet(token, serviceWallet.serviceConfig);
-
-//     const walletStatus = await WalletManager.getAppEngineStatus(token);
-//     status.appEngineWalletStatus = walletStatus;
-
-//     if (walletStatus && walletStatus.walletHeight && walletStatus.networkHeight) {
-//       const heightDelta = walletStatus.networkHeight - walletStatus.walletHeight;
-
-//       if (heightDelta < 240) {
-//         status.appEngineWalletOk = true;
-//       }
-//     }
-//   } else {
-//     console.log(tokenError);
-//   }
-
-//   return [status, undefined];
-// }
 
 export async function updateMasterWallet(): Promise<void> {
   const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false, false);
@@ -512,6 +510,28 @@ export async function haltService(reason: string): Promise<void> {
 
   await admin.firestore().doc(`globals/config`).update(configUpdate);
   await sendAdminEmail('Alert - Service halted!', reason);
+}
+
+export async function getServiceUser(uid: string): Promise<[ServiceUser | undefined, undefined | ServiceError]> {
+  const userDoc = await admin.firestore().doc(`serviceUsers/${uid}`).get();
+
+  if (!userDoc.exists) {
+    return [undefined, new ServiceError('service/unknown-error', 'service user not found.')];
+  }
+
+  return [userDoc.data() as ServiceUser, undefined];
+}
+
+export async function getServiceUserByEmail(email: string): Promise<[ServiceUser | undefined, undefined | ServiceError]> {
+  const snaphsot = await admin.firestore().collection(`serviceUsers`)
+                    .where('email', '==', email)
+                    .get();
+
+  if (snaphsot.size !== 1) {
+    return [undefined, new ServiceError('service/unknown-error', 'service user not found.')];
+  }
+
+  return [snaphsot.docs[0].data() as ServiceUser, undefined];
 }
 
 export async function sendAdminEmail(subject: string, body: string): Promise<void> {

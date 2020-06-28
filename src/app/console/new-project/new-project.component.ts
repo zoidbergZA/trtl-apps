@@ -61,12 +61,9 @@ export class NewProjectComponent implements OnInit {
       } else {
         this.router.navigateByUrl(`app/${response.appId}/overview`);
       }
-
-      this.creatingApp = false;
     }).catch(error => {
-      this.creatingApp = false;
       this.snackbar.open('error creating app, please try again later.', undefined, { duration: 6000 });
-    });
+    }).finally(() => this.creatingApp = false);
   }
 }
 

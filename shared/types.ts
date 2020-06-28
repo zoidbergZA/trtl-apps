@@ -2,7 +2,10 @@ export interface ServiceUser {
   id: string;
   displayName: string;
   email?: string;
+  roles?: UserRole[];
 }
+
+export type UserRole = 'admin';
 
 export interface Account {
   id: string;

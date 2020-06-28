@@ -1,3 +1,13 @@
-.form-field {
+.form-content {
   width: 100%;
 }
+.container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.form-field {
+  margin-right: 15px;
+  flex-grow: 1;
+}
+

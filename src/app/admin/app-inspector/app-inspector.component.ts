@@ -1,0 +1,36 @@
+import { Component, OnInit } from '@angular/core';
+import { AdminService } from 'src/app/providers/admin.service';
+import { TurtleApp } from 'shared/types';
+
+@Component({
+  selector: 'app-inspector',
+  templateUrl: './app-inspector.component.html',
+  styleUrls: ['./app-inspector.component.scss']
+})
+export class AppInspectorComponent implements OnInit {
+
+  fetching = false;
+  app: TurtleApp | undefined;
+  message: string | undefined;
+
+  constructor(private adminService: AdminService) { }
+
+  ngOnInit() {
+  }
+
+  async onSearchClick(value: string) {
+    this.app = undefined;
+    this.message = undefined;
+
+    if (this.fetching) {
+      return;
+    }
+    this.fetching = true;
+    this.app = await this.adminService.getApp(value);
+    this.fetching = false;
+
+    if (!this.app) {
+      this.message = 'App not found.';
+    }
+  }
+}

@@ -1,0 +1,22 @@
+<h2 class="center-text">Role management</h2>
+<div class="page-container">
+  <div class="page-content">
+    <div *ngIf="serviceConfig$ | async as config">
+      <mat-card>
+        <div class="section">
+          <p class="section-title">Admin users</p>
+          <div class="section-item">
+            <button mat-stroked-button
+              (click)="onAddAdminClick()"><mat-icon>add</mat-icon> add</button>
+          </div>
+        </div>
+        <mat-card-content *ngIf="admins$ | async as admins">
+          <admin-list-item *ngFor="let admin of admins"
+            [user]=admin
+            (removeRoleClick)="onRemoveAdminClick($event)">
+          </admin-list-item>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>

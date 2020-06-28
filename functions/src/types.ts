@@ -82,6 +82,9 @@ export interface ServiceNode {
 export interface ServiceNodeUpdate {
   lastUpdateAt: number;
   name?: string;
+  url?: string;
+  port?: number;
+  priority?: number;
   ssl?: boolean;
   cache?: boolean;
   fee?: number;

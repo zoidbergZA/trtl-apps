@@ -15,14 +15,12 @@ export class DepositsViewComponent implements OnInit {
   readonly limitIncrement = 20;
   readonly maxLimit       = 200;
 
-  // tslint:disable-next-line:variable-name
   _app: TurtleApp | undefined;
   displayedColumns: string[] = ['depositId', 'createdDate', 'amount', 'status'];
   deposits$: Observable<Deposit[] | undefined> | undefined;
 
   depositFilter$  = new BehaviorSubject<string>('');
   limit$          = new BehaviorSubject<number>(this.limitIncrement);
-  searchValue     = '';
   fetching        = false;
   showLoadMore    = false;
 
@@ -61,7 +59,12 @@ export class DepositsViewComponent implements OnInit {
   }
 
   onSearchValueChanged(searchValue: string) {
-    this.searchValue = searchValue;
+    if (searchValue === undefined || searchValue === '') {
+      this.depositFilter$.next(searchValue);
+    }
+  }
+
+  onSearchValueSubmitted(searchValue: string) {
     this.depositFilter$.next(searchValue);
   }
 

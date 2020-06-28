@@ -1,0 +1,21 @@
+<h2 class="center-text">Remove user role</h2>
+<div class="container">
+  <div *ngIf="!working">
+    <p *ngIf="errorMessage" class="error-text center-text">{{ errorMessage }}</p>
+    <div *ngIf="!succeeded">
+      <p>Are you sure you want to remove role <span class="emphasize">{{ role }}</span> from user <span class="emphasize">{{ user.email }}</span>?</p>
+      <div class="action-box">
+        <button mat-raised-button color="primary" (click)="onConfirmClick()">confirm</button>
+      </div>
+    </div>
+    <div *ngIf="succeeded">
+      <p>User role successfully remove.</p>
+    </div>
+  </div>
+  <div *ngIf="working">
+    <mat-spinner diameter="64"></mat-spinner>
+  </div>
+  <div *ngIf="!working" style="display: flex; justify-content: flex-end">
+    <button mat-flat-button (click)="onCloseClick()">close</button>
+  </div>
+</div>

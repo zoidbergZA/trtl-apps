@@ -8,9 +8,11 @@
     >create new account</button>
     <mat-spinner *ngIf="creatingAccount" diameter="32"></mat-spinner>
   </div>
-  <div class="api-search-container">
-    <search-box (searchChanged)="onSearchValueChanged($event)"></search-box>
-  </div>
+  <search-box
+    class="api-search-container"
+    placeholder="search account ID..."
+    (searchChanged)="onSearchValueChanged($event)"
+    (searchSubmitted)="onSearchValueSubmitted($event)"></search-box>
 </div>
 <div class="api-table-container">
   <mat-table [dataSource]="appAccounts$" class="mat-elevation-z8">

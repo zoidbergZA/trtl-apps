@@ -1,10 +1,9 @@
-import { Component, OnInit, EventEmitter, Output, Input, OnDestroy } from '@angular/core';
-import { FormGroup, FormControl } from '@angular/forms';
-import { debounceTime } from 'rxjs/operators';
+import { Component, OnInit, Input, Output, EventEmitter, OnDestroy } from '@angular/core';
+import { FormGroup, FormControl, Validators } from '@angular/forms';
 import { SubscriptionLike } from 'rxjs';
+import { debounceTime } from 'rxjs/internal/operators/debounceTime';
 
 @Component({
-  // tslint:disable-next-line:component-selector
   selector: 'search-box',
   templateUrl: './search-box.component.html',
   styleUrls: ['./search-box.component.scss']
@@ -12,22 +11,24 @@ import { SubscriptionLike } from 'rxjs';
 export class SearchBoxComponent implements OnInit, OnDestroy {
 
   @Input() debounceTime = 300;
+  @Input() showButton = true;
+  @Input() placeholder = 'enter search term...';
+  @Input() buttonLabel = 'search';
 
   @Output() searchChanged = new EventEmitter<string>();
+  @Output() searchSubmitted = new EventEmitter<string>();
 
   form: FormGroup;
   private searchSubscription: SubscriptionLike;
 
   constructor() {
     this.form = new FormGroup({
-      search: new FormControl()
+      search: new FormControl('', Validators.required)
     });
 
     this.searchSubscription = this.form.controls.search.valueChanges.pipe(
       debounceTime(this.debounceTime)
-    ).subscribe(v => {
-      this.searchChanged.emit(v);
-    });
+    ).subscribe(v => this.searchChanged.emit(v));
   }
 
   ngOnInit() {
@@ -37,7 +38,7 @@ export class SearchBoxComponent implements OnInit, OnDestroy {
     this.searchSubscription.unsubscribe();
   }
 
-  onClearClick() {
-    this.form.controls.search.setValue('');
+  onSubmit(data: any) {
+    this.searchSubmitted.emit(data.search);
   }
 }

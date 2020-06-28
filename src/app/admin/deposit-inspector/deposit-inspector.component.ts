@@ -8,29 +8,29 @@ import { AdminService } from 'src/app/providers/admin.service';
   styleUrls: ['./deposit-inspector.component.scss']
 })
 export class DepositInspectorComponent implements OnInit {
-
-  searchValue = '';
   fetching = false;
   history: Deposit[] | undefined;
+  message: string | undefined;
 
   constructor(private adminService: AdminService) { }
 
   ngOnInit() {
   }
 
-  onSearchValueChanged(searchValue: string) {
-    this.searchValue = searchValue;
-  }
-
-  async onSearchClick() {
-    if (this.fetching || this.searchValue === '') {
+  async onSearchClick(value: string) {
+    if (this.fetching) {
       return;
     }
 
+    this.history = undefined;
+    this.message = undefined;
+
     this.fetching = true;
-
-    this.history = await this.adminService.getDepositHistory(this.searchValue);
-
+    this.history = await this.adminService.getDepositHistory(value);
     this.fetching = false;
+
+    if (!this.history) {
+      this.message = 'Deposit not found.';
+    }
   }
 }
