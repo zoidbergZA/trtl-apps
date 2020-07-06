@@ -30,9 +30,6 @@ import { TruncateAddressPipe } from './pipes/truncate-address';
 import { TurtleAmountPipe } from './pipes/trtl-amount';
 import { AccountOptionsComponent } from './console/project/webapi/account-options/account-options.component';
 import { DepositComponent } from './console/project/webapi/account-deposit/account-deposit.component';
-import { GetStartedNodeComponent } from './getting-started/get-started-node/get-started-node.component';
-import { GetStartedUnityComponent } from './getting-started/get-started-unity/get-started-unity.component';
-import { GetStartedHttpComponent } from './getting-started/get-started-http/get-started-http.component';
 import { ViewSecretDialogComponent } from './dialogs/view-secret-dialog/view-secret-dialog.component';
 import { ClipboardModule } from 'ngx-clipboard';
 import { AccountManagementComponent } from './console/project/webapi/account-management/account-management.component';
@@ -48,7 +45,6 @@ import { WithdrawalsViewComponent } from './console/project/webapi/withdrawals-v
 import { TransfersViewComponent } from './console/project/webapi/transfers-view/transfers-view.component';
 import { EditStringDialogComponent } from './dialogs/edit-string-dialog/edit-string-dialog.component';
 import { SetWebhookDialogComponent } from './dialogs/set-webhook-dialog/set-webhook-dialog.component';
-import { GettingStartedComponent } from './getting-started/getting-started.component';
 import { CopyStringBoxComponent } from './copy-string-box/copy-string-box.component';
 import { WithdrawalDetailsDialogComponent } from './dialogs/withdrawal-details-dialog/withdrawal-details-dialog.component';
 import { WithdrawalDetailsComponent } from './console/withdrawal-details/withdrawal-details.component';
@@ -58,9 +54,7 @@ import { TransferDetailsDialogComponent } from './dialogs/transfer-details-dialo
 import { SupportComponent } from './support/support.component';
 import { RecipientFormComponent } from './dialogs/user-transfer-dialog/recipient-form/recipient-form.component';
 import { SearchBoxComponent } from './search-box/search-box.component';
-import { WebhooksComponent } from './documentation/webhooks/webhooks.component';
 import { PasswordRecoveryDialogComponent } from './dialogs/password-recovery-dialog/password-recovery-dialog.component';
-import { DocumentationComponent } from './documentation/documentation.component';
 import { AdminComponent } from './admin/admin.component';
 import { UserProfileComponent } from './user-profile/user-profile.component';
 import { AdminService } from './providers/admin.service';
@@ -117,10 +111,6 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     TurtleAmountPipe,
     AccountOptionsComponent,
     DepositComponent,
-    GetStartedNodeComponent,
-    GetStartedUnityComponent,
-    GetStartedHttpComponent,
-    ViewSecretDialogComponent,
     AccountManagementComponent,
     DepositsViewComponent,
     DepositDetailsComponent,
@@ -132,7 +122,6 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     TransfersViewComponent,
     EditStringDialogComponent,
     SetWebhookDialogComponent,
-    GettingStartedComponent,
     CopyStringBoxComponent,
     WithdrawalDetailsDialogComponent,
     WithdrawalDetailsComponent,
@@ -141,9 +130,8 @@ export const CustomCurrencyMaskConfig: CurrencyMaskConfig = {
     SupportComponent,
     RecipientFormComponent,
     SearchBoxComponent,
-    WebhooksComponent,
     PasswordRecoveryDialogComponent,
-    DocumentationComponent,
+    ViewSecretDialogComponent,
     AdminComponent,
     UserProfileComponent,
     WithdrawalInspectorComponent,

@@ -8,10 +8,7 @@ import { RegisterComponent } from './sign-in/register/register.component';
 import { NewProjectComponent } from './console/new-project/new-project.component';
 import { OverviewComponent } from './console/project/overview/overview.component';
 import { WebapiComponent } from './console/project/webapi/webapi.component';
-import { GettingStartedComponent } from './getting-started/getting-started.component';
 import { SupportComponent } from './support/support.component';
-import { WebhooksComponent } from './documentation/webhooks/webhooks.component';
-import { DocumentationComponent } from './documentation/documentation.component';
 import { AdminComponent } from './admin/admin.component';
 import { UserProfileComponent } from './user-profile/user-profile.component';
 import { WithdrawalInspectorComponent } from './admin/withdrawal-inspector/withdrawal-inspector.component';
@@ -28,18 +25,6 @@ const redirectUnauthorizedToSignIn  = () => redirectUnauthorizedTo(['/signin']);
 const redirectLoggedInToConsole     = () => redirectLoggedInTo(['/console']);
 
 const routes: Routes = [
-  {
-    path:         'docs',
-    component:    DocumentationComponent,
-  },
-  {
-    path:         'docs/webhooks',
-    component:    WebhooksComponent,
-  },
-  {
-    path:         'getstarted',
-    component:    GettingStartedComponent,
-  },
   {
     path:         'support',
     component:    SupportComponent,

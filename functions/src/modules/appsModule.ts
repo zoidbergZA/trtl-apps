@@ -316,11 +316,11 @@ async function getUnclaimedSubWallet(): Promise<[SubWalletInfo | undefined, unde
   const unclaimedSubWallets = await WalletManager.getSubWalletInfos(true);
 
   const dateCutoff = Date.now() - (1000 * 60 * 60 * 24);
-  const candidates = unclaimedSubWallets.filter(w => w.createdAt >= dateCutoff && !w.deleted);
+  const candidates = unclaimedSubWallets.filter(w => w.createdAt <= dateCutoff && !w.deleted);
 
 
   if (candidates.length === 0) {
-    return [undefined, new ServiceError('service/no-unclaimed-subwallets', 'An error occured, please try again later.')];
+    return [undefined, new ServiceError('service/no-unclaimed-subwallets', 'No unclaimed sub-wallets available, please try again later.')];
   }
 
   const selectedSubWallet = candidates[Math.floor(Math.random() * candidates.length)];

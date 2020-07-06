@@ -37,16 +37,8 @@ export class TopBarComponent implements OnInit, OnDestroy {
     this.authService.signout();
   }
 
-  onGetStartedClick() {
-    this.router.navigate(['getstarted']);
-  }
-
-  onGetStartedNodeClick() {
-    window.open(Constants.trtlAppsNpmLink, '_blank');
-  }
-
-  onGetStartedHttpClick() {
-    window.open('/docs/openapi/', '_blank');
+  onDocsClick() {
+    window.open(Constants.docsAppsUrl, '_blank');
   }
 
   onAdminClick() {
