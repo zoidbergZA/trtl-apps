@@ -276,6 +276,9 @@ export async function updateMasterWallet(): Promise<void> {
     const batch = admin.firestore().batch();
     let newSubWalletCount = 0;
 
+    // if there are currently no unclaimed wallets, make the new batch available immediately
+    const createdAt = unclaimedSubWallets.length === 0 ? 0 : Date.now();
+
     newSubWallets.forEach(address => {
       const [publicSpendKey, privateSpendKey, err] = serviceWallet.instance.wallet.getSpendKeys(address);
 
@@ -286,7 +289,7 @@ export async function updateMasterWallet(): Promise<void> {
 
         const subWalletInfo: SubWalletInfo = {
           id:               doc.id,
-          createdAt:        Date.now(),
+          createdAt:        createdAt,
           address:          address,
           claimed:          false,
           deleted:          false,
