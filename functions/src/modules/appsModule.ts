@@ -22,12 +22,10 @@ export const createApp = functions.https.onCall(async (data, context) => {
 
   if (!owner || !appName) {
     throw new functions.https.HttpsError('invalid-argument', 'Invalid parameters provided.');
-  }
-
-  const userRecord = await admin.auth().getUser(owner);
-
-  if (!userRecord.emailVerified) {
-    throw new functions.https.HttpsError('failed-precondition', 'Verified email address required.');
+    return {
+      error: true,
+      message: 'Invalid parameters provided.'
+    }
   }
 
   const [serviceConfig, configError] = await ServiceModule.getServiceConfig();
@@ -40,6 +38,17 @@ export const createApp = functions.https.onCall(async (data, context) => {
       message: 'Service currently unavailable.'
     }
   }
+
+
+  // TODO: make the verified email requirement optional in serviceConfig
+  // const userRecord = await admin.auth().getUser(owner);
+
+  // if (!userRecord.emailVerified) {
+  //   return {
+  //     error: true,
+  //     message: 'Verified email address required.'
+  //   }
+  // }
 
   if (serviceConfig.inviteOnly) {
     if (!inviteCode) {

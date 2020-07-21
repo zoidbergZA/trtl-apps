@@ -270,14 +270,13 @@ export async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWa
                 .get();
   }
 
-  console.log('snapshot size: ' + snapshot.size);
+  if (snapshot.size === 0) {
+    return undefined;
+  }
 
   const save = snapshot.docs[0].data() as SavedWallet;
   console.log(`save id: ${save.id}, hasFile: ${save.hasFile}`);
 
-  if (snapshot.size === 0) {
-    return undefined;
-  }
 
   return snapshot.docs[0].data() as SavedWallet;
 }
