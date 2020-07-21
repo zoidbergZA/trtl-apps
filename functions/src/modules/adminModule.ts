@@ -208,7 +208,12 @@ export const createInvitationsBatch = functions.https.onCall(async (data, contex
   });
 });
 
-export const bootstrap = functions.https.onRequest(async (request, response) => {
+const runtimeOpts: functions.RuntimeOptions = {
+  timeoutSeconds: 540,
+  memory: "1GB"
+}
+
+export const bootstrap = functions.runWith(runtimeOpts).https.onRequest(async (request, response) => {
   cors(request, response, () => {
     const adminEmail: string | undefined = request.query.admin;
 
@@ -226,9 +231,12 @@ export const bootstrap = functions.https.onRequest(async (request, response) => 
           status: 'OK'
         });
       } else {
-        response.status(405).send((serviceError as ServiceError).message);
+        const err = (serviceError as ServiceError);
+        console.log(err.message);
+        response.status(405).send(err.message);
       }
     }).catch(error => {
+      console.log(error);
       response.status(405).send(error);
     });
   });

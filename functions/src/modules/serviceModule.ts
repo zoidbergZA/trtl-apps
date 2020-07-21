@@ -10,6 +10,7 @@ import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpda
 import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId,
   defaultServiceConfig, defaultNodes } from '../constants';
 import { ServiceError } from '../serviceError';
+import { UserRecord } from 'firebase-functions/lib/providers/auth';
 
 export async function boostrapService(adminEmail: string): Promise<[string | undefined, undefined | ServiceError]> {
   const [config] = await getServiceConfig();
@@ -23,6 +24,12 @@ export async function boostrapService(adminEmail: string): Promise<[string | und
   try {
     const userRecord = await admin.auth().getUserByEmail(adminEmail);
     userID = userRecord.uid;
+
+    const [serviceUser, userError] = await createServiceUser(userRecord);
+
+    if (!serviceUser) {
+      throw Error((userError as ServiceError).message);
+    }
   } catch (error) {
     console.log(error);
     return [undefined, new ServiceError('service/unknown-error', error)];
@@ -31,6 +38,7 @@ export async function boostrapService(adminEmail: string): Promise<[string | und
   try {
     await assignUserRole(userID, 'admin');
   } catch (error) {
+    console.log(error);
     return [undefined, new ServiceError('service/unknown-error', error)];
   }
 
@@ -53,32 +61,24 @@ export async function boostrapService(adminEmail: string): Promise<[string | und
 
   console.log('service config created! creating master wallet...');
 
-  return await WalletManager.createMasterWallet(serviceConfig);
+  const [seed, walletError] = await WalletManager.createMasterWallet(serviceConfig);
+
+  if (seed) {
+    await updateMasterWallet(true);
+  }
+
+  return [seed, walletError];
 }
 
-exports.onServiceUserCreated = functions.auth.user().onCreate(async (userRecord) => {
-  const id = userRecord.uid;
+exports.onAuthUserCreated = functions.auth.user().onCreate(async (userRecord) => {
+  const [serviceUser, userError] = await createServiceUser(userRecord);
 
-  let displayName = userRecord.displayName;
-
-  if (!displayName) {
-    if (userRecord.email) {
-      displayName = userRecord.email;
-    } else {
-      displayName = 'Service user';
-    }
+  if (!serviceUser) {
+    console.log((userError as ServiceError).message);
+    return;
   }
 
-  const serviceUser: ServiceUser = {
-    id: id,
-    displayName: displayName
-  }
-
-  if (userRecord.email) {
-    serviceUser.email = userRecord.email;
-  }
-
-  await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
+  console.log(`new service user created with id: ${serviceUser.id}`);
 });
 
 export async function assignUserRole(
@@ -198,7 +198,7 @@ export async function validateInviteCode(code: string): Promise<boolean> {
   return !invite.claimed;
 }
 
-export async function updateMasterWallet(): Promise<void> {
+export async function updateMasterWallet(skipSync: boolean = false): Promise<void> {
   const [serviceWallet, serviceError] = await WalletManager.getServiceWallet(false, false);
 
   if (!serviceWallet) {
@@ -211,29 +211,31 @@ export async function updateMasterWallet(): Promise<void> {
     return;
   }
 
-  console.log(`master wallet sync job started at: ${Date.now()}`);
+  if (!skipSync) {
+    console.log(`master wallet sync job started at: ${Date.now()}`);
 
-  const syncInfoStart   = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
-  const balanceStart    = serviceWallet.instance.wallet.getBalance();
+    const syncInfoStart   = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
+    const balanceStart    = serviceWallet.instance.wallet.getBalance();
 
-  console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
-  console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
+    console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
+    console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-  // rewind about 2 hours
-  await serviceWallet.instance.wallet.rewind(syncInfoStart.walletHeight - 240);
+    // rewind about 2 hours
+    await serviceWallet.instance.wallet.rewind(syncInfoStart.walletHeight - 240);
 
-  const syncSeconds = syncInfoStart.heightDelta < 400 ? 60 : 500;
+    const syncSeconds = syncInfoStart.heightDelta < 400 ? 60 : 500;
 
-  console.log(`run sync job for ${syncSeconds}s ...`);
-  await sleep(syncSeconds * 1000);
+    console.log(`run sync job for ${syncSeconds}s ...`);
+    await sleep(syncSeconds * 1000);
 
-  const syncInfoEnd     = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
-  const processedCount  = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
-  const balanceEnd      = serviceWallet.instance.wallet.getBalance();
+    const syncInfoEnd     = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
+    const processedCount  = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
+    const balanceEnd      = serviceWallet.instance.wallet.getBalance();
 
-  console.log(`blocks processed: ${processedCount}`);
-  console.log(`sync info at end: ${JSON.stringify(syncInfoEnd)}`);
-  console.log(`total balance at end: ${JSON.stringify(balanceEnd)}`);
+    console.log(`blocks processed: ${processedCount}`);
+    console.log(`sync info at end: ${JSON.stringify(syncInfoEnd)}`);
+    console.log(`total balance at end: ${JSON.stringify(balanceEnd)}`);
+  }
 
   // check if we should create more subWallets
   const unclaimedSubWallets = await WalletManager.getSubWalletInfos(true);
@@ -256,7 +258,9 @@ export async function updateMasterWallet(): Promise<void> {
     }
   }
 
-  if (syncInfoEnd.heightDelta <= 0) {
+  const syncInfo = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
+
+  if (!skipSync && syncInfo.heightDelta <= 0) {
     const optimizeStartAt = Date.now();
     const [numberOfTransactionsSent, ] = await serviceWallet.instance.wallet.optimize();
     const optimizeEndAt = Date.now();
@@ -513,6 +517,35 @@ export async function haltService(reason: string): Promise<void> {
 
   await admin.firestore().doc(`globals/config`).update(configUpdate);
   await sendAdminEmail('Alert - Service halted!', reason);
+}
+
+export async function createServiceUser(userRecord: UserRecord): Promise<[ServiceUser | undefined, undefined | ServiceError]> {
+  const id = userRecord.uid;
+  let displayName = userRecord.displayName;
+
+  if (!displayName) {
+    if (userRecord.email) {
+      displayName = userRecord.email;
+    } else {
+      displayName = 'Service user';
+    }
+  }
+
+  const serviceUser: ServiceUser = {
+    id: id,
+    displayName: displayName
+  }
+
+  if (userRecord.email) {
+    serviceUser.email = userRecord.email;
+  }
+
+  try {
+    await admin.firestore().doc(`serviceUsers/${id}`).set(serviceUser);
+    return [serviceUser, undefined];
+  } catch (error) {
+    return [undefined, new ServiceError('service/unknown-error', error)];
+  }
 }
 
 export async function getServiceUser(uid: string): Promise<[ServiceUser | undefined, undefined | ServiceError]> {
