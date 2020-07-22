@@ -7,24 +7,24 @@ on:
     branches:
       - development
 
-jobs:
-  firebase-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-node@master
-        with:
-          node-version: '10.x'
-      - name: Install cloud functions dependencies
-        working-directory: ./functions
-        run: npm install
-      - run: npm install
-      - run: npm run build
-      - uses: w9jds/firebase-action@master
-        with:
-          args: deploy -P trtlapps-development
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+# jobs:
+#   firebase-deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@master
+#       - uses: actions/setup-node@master
+#         with:
+#           node-version: '10.x'
+#       - name: Install cloud functions dependencies
+#         working-directory: ./functions
+#         run: npm install
+#       - run: npm install
+#       - run: npm run build
+#       - uses: w9jds/firebase-action@master
+#         with:
+#           args: deploy -P trtlapps-development
+#         env:
+#           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
   app-engine-deploy:
     runs-on: ubuntu-latest
@@ -35,7 +35,7 @@ jobs:
           service_account_email: ${{ secrets.GCP_SA_EMAIL_DEV }}
           service_account_key: ${{ secrets.GCP_SA_KEY_DEV }}
           project_id: ${{ secrets.GAE_PROJECT_ID_DEV }}
-          gae_config_path: ./app_engine/app-development.yaml
+          gae_config_path: app_engine/app-development.yaml
       - name: Build app engine project
         working-directory: ./app_engine
         run: npm run build
