@@ -1,0 +1,26 @@
+# This workflow will build and deploy on pushes to the development branch
+
+name: CI
+
+on:
+  push:
+    branches:
+    - ci-test
+
+jobs:
+  firebase-deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions/setup-node@master
+      with:
+        node-version: '10.x'
+    - run: npm install
+    - run: npm run build
+    - uses: w9jds/firebase-action@master
+      with:
+        args: deploy -P development
+      env:
+        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
