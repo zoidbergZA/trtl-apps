@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - development
-
 jobs:
 #   firebase-deploy:
 #     runs-on: ubuntu-latest
