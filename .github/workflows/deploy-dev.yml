@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@master
         with:
           node-version: '10.x'
-      - name: install cloud functions dependencies
+      - name: Install cloud functions dependencies
         working-directory: ./functions
         run: npm install
       - run: npm install
@@ -33,8 +33,11 @@ jobs:
           service_account_email: ${{ secrets.GCP_SA_EMAIL_DEV }}
           service_account_key: ${{ secrets.GCP_SA_KEY_DEV }}
           project_id: ${{ secrets.GAE_PROJECT_ID_DEV }}
+      - name: Build app engine project
         working-directory: ./app_engine
+        run: npm run build
       - name: Publish app to Google App Engine
+        working-directory: ./app_engine
         run: |
           gcloud auth activate-service-account ${{ secrets.GCP_SA_EMAIL_DEV }} --key-file=client-secret.json
           gcloud config set project ${{ secrets.GAE_PROJECT_ID_DEV }}
