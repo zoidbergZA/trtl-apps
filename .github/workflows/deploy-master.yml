@@ -1,11 +1,11 @@
 # This workflow will build and deploy on pushes to the development branch
 
-name: deploy-development
+name: deploy-master
 
 on:
   push:
     branches:
-      - development
+      - master
 
 jobs:
   firebase-deploy:
@@ -21,9 +21,9 @@ jobs:
         working-directory: ./functions
         run: npm install
       - run: npm install
-      - run: npm run build
+      - run: npm run build --prod
       - uses: w9jds/firebase-action@master
         with:
-          args: deploy -P trtlapps-development
+          args: deploy -P trtlapps-production
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
