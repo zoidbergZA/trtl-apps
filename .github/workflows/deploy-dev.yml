@@ -29,7 +29,6 @@ jobs:
   app-engine-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Initialize Google Cloud SDK
       - uses: actions/checkout@v2
       - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
         with:
