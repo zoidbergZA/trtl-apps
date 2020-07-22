@@ -21,7 +21,7 @@ jobs:
         working-directory: ./functions
         run: npm install
       - run: npm install
-      - run: npm run build --prod
+      - run: npm run buildprod
       - uses: w9jds/firebase-action@master
         with:
           args: deploy -P trtlapps-production
