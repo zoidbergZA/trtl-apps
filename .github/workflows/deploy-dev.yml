@@ -28,13 +28,12 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
       - name: Initialize Google Cloud SDK
-        working-directory: ./app_engine
         uses: zxyle/publish-gae-action@master
         with:
           service_account_email: ${{ secrets.GCP_SA_EMAIL_DEV }}
           service_account_key: ${{ secrets.GCP_SA_KEY_DEV }}
           project_id: ${{ secrets.GAE_PROJECT_ID_DEV }}
-
+        working-directory: ./app_engine
       - name: Publish app to Google App Engine
         run: |
           gcloud auth activate-service-account ${{ secrets.GCP_SA_EMAIL_DEV }} --key-file=client-secret.json
