@@ -13,14 +13,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@master
-    - uses: actions/setup-node@master
-      with:
-        node-version: '10.x'
-    - run: npm install
-    - run: npm run build
-    - uses: w9jds/firebase-action@master
-      with:
-        args: deploy -P development
-      env:
-        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@master
+        with:
+          node-version: '10.x'
+      - name: install cloud functions dependencies
+        working-directory: ./functions
+        run: npm install
+      - run: npm install
+      - run: npm run build
+      - uses: w9jds/firebase-action@master
+        with:
+          args: deploy -P development
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
