@@ -30,12 +30,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Initialize Google Cloud SDK
-        uses: zxyle/publish-gae-action@master
+      - uses: actions/checkout@v2
+      - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
         with:
+          version: '290.0.1'
           service_account_email: ${{ secrets.GCP_SA_EMAIL_DEV }}
           service_account_key: ${{ secrets.GCP_SA_KEY_DEV }}
           project_id: ${{ secrets.GAE_PROJECT_ID_DEV }}
-          # gae_config_path: ./app_engine/app-development.yaml
+          gae_config_path: ./app_engine/app-development.yaml
       - name: Build app engine project
         working-directory: ./app_engine
         run: npm run build
