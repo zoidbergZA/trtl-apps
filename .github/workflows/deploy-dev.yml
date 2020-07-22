@@ -1,30 +1,28 @@
 # This workflow will build and deploy on pushes to the development branch
 
 name: deploy-development
-
 on:
   push:
     branches:
       - development
 jobs:
-#   firebase-deploy:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@master
-#       - uses: actions/setup-node@master
-#         with:
-#           node-version: '10.x'
-#       - name: Install cloud functions dependencies
-#         working-directory: ./functions
-#         run: npm install
-#       - run: npm install
-#       - run: npm run build
-#       - uses: w9jds/firebase-action@master
-#         with:
-#           args: deploy -P trtlapps-development
-#         env:
-#           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-
+  firebase-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@master
+        with:
+          node-version: '10.x'
+      - name: Install cloud functions dependencies
+        working-directory: ./functions
+        run: npm install
+      - run: npm install
+      - run: npm run build
+      - uses: w9jds/firebase-action@master
+        with:
+          args: deploy -P trtlapps-development
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
   app-engine-deploy:
     runs-on: ubuntu-latest
     steps:
@@ -32,7 +30,6 @@ jobs:
       - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
         with:
           version: '290.0.1'
-          # service_account_email: ${{ secrets.GCP_SA_EMAIL_DEV }}
           service_account_key: ${{ secrets.GCP_SA_KEY_DEV }}
           project_id: ${{ secrets.GAE_PROJECT_ID_DEV }}
           export_default_credentials: true
