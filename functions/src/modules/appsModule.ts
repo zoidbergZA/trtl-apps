@@ -21,7 +21,6 @@ export const createApp = functions.https.onCall(async (data, context) => {
   const inviteCode: string | undefined = data.inviteCode;
 
   if (!owner || !appName) {
-    throw new functions.https.HttpsError('invalid-argument', 'Invalid parameters provided.');
     return {
       error: true,
       message: 'Invalid parameters provided.'
