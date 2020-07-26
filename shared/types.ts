@@ -148,6 +148,7 @@ export interface WithdrawalPreview {
   address: string;
   amount: number;
   fees: Fees;
+  txHash: string;
 }
 
 export type WithdrawStatus = 'pending' | 'confirming' | 'faulty' | 'lost' | 'completed';

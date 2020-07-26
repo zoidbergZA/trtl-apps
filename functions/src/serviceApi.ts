@@ -555,7 +555,8 @@ async function createPreparedWithdrawal(request: any, response: any): Promise<vo
     timestamp:      preparedWithdrawal.timestamp,
     address:        preparedWithdrawal.address,
     amount:         preparedWithdrawal.amount,
-    fees:            preparedWithdrawal.fees
+    fees:           preparedWithdrawal.fees,
+    txHash:         preparedWithdrawal.txHash
   }
 
   response.status(200).send(withdrawalPreview);
