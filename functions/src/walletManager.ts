@@ -414,6 +414,18 @@ export async function startAppEngineWallet(jwtToken: string, serviceConfig: Serv
 }
 
 export async function getAppEngineToken(): Promise<[string | undefined, undefined | ServiceError]> {
+  const tokenDoc = await admin.firestore().doc('admin/app_engine_token').get();
+
+  if (tokenDoc.exists) {
+    const credentials: any = tokenDoc.data();
+
+    console.log(`using cached app engine auth token, expires at: ${credentials.expiry_date}`);
+
+    if (credentials.id_token && credentials.expiry_date && credentials.expiry_date > Date.now()) {
+      return [credentials.id_token, undefined];
+    }
+  }
+
   const target_audience = functions.config().appengine.target_audience;
   const key = await getGoogleServiceAccountKey();
 
@@ -435,11 +447,20 @@ export async function getAppEngineToken(): Promise<[string | undefined, undefine
     const response = await jwtClient.authorize();
 
     if (response.id_token) {
+      // cache the token
+      const expiry_date = Date.now() + 1000 * 60 * 10; // TODO: replace hard-coded value with actual date if possible
+
+      await admin.firestore().doc('admin/app_engine_token').set({
+        id_token: response.id_token,
+        expiry_date: expiry_date
+      });
+
       return [response.id_token, undefined];
     } else {
       return [undefined, new ServiceError('service/unknown-error')];
     }
   } catch (error) {
+    console.log(error);
     return [undefined, new ServiceError('service/unknown-error', error)];
   }
 }
