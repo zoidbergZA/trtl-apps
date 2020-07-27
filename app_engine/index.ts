@@ -272,7 +272,7 @@ async function startWallet(serviceWalletInfo: ServiceWalletInfo)
 
       isStartingWallet  = false;
       walletStartedAt   = Date.now();
-      walletFile        = file;
+      walletFile        = serviceWalletInfo.filePath;
 
       logWalletSyncStatus(wallet);
 
