@@ -132,16 +132,3 @@ export interface AppAuditResult {
   appBalance: number;
   logs?: string[];
 }
-
-export interface PrepareTransactionRequest {
-  subWallet: string;
-  sendAddress: string;
-  amount: number;
-  senderId?: string;
-  paymentId?: string;
-}
-
-export interface StartWalletRequest {
-  daemonHost: string;
-  daemonPort: number;
-}
