@@ -167,6 +167,7 @@ app.post("/send", async (req, res) => {
   const restartNeeded = await checkWalletRestartNeeded(txRequest.serviceWalletInfo);
 
   if (restartNeeded) {
+    // TODO: if wallet restarts, prepared txs are lost, we can return error here already
     await startWallet(txRequest.serviceWalletInfo);
   }
 
@@ -198,17 +199,22 @@ app.listen(PORT, () => {
 });
 
 async function checkWalletRestartNeeded(serviceWalletInfo: ServiceWalletInfo): Promise<boolean> {
+  console.log('checking if wallet restart is needed...');
+
   if (!wallet) {
+    console.log('no current wallet instance, restart needed...');
     return true;
   }
 
   if (walletFile !== serviceWalletInfo.filePath) {
+    console.log(`wallet file ${walletFile} not the same as latest wallet file ${serviceWalletInfo.filePath}, restart needed...`);
     return true;
   }
 
   const daemonInfo = wallet.getDaemonConnectionInfo();
 
   if (daemonInfo.host !== serviceWalletInfo.daemonHost || daemonInfo.port !== serviceWalletInfo.daemonPort) {
+    console.log('different daemon info detected, restart needed...');
     return true;
   }
 
