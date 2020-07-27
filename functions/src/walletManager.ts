@@ -67,7 +67,6 @@ export async function getWalletStatus(): Promise<[WalletStatus[] | undefined, un
     const [token, tokenError] = await getAppEngineToken();
 
     if (token) {
-      // await warmupAppEngineWallet(token, serviceWallet.serviceConfig);
       appEngineWalletStatus = await getAppEngineWalletStatus(token);
     } else {
       appEngineWalletStatus.error = (tokenError as ServiceError).message;
@@ -146,15 +145,6 @@ export async function prepareAccountTransaction(
     return [undefined, jwtError];
   }
 
-  // const walletReady = await warmupAppEngineWallet(token, serviceConfig);
-
-  // console.log(`wallet ready? ${walletReady}`);
-
-  // if (!walletReady) {
-  //   return [undefined, new ServiceError('service/unknown-error', 'cloud wallet not ready.')];
-  // }
-
-
   if (!latestSave) {
     return [undefined, new ServiceError('service/master-wallet-file')];
   }
@@ -208,12 +198,6 @@ export async function sendPreparedTransaction(
   if (!latestSave) {
     return [undefined, new ServiceError('service/master-wallet-file')];
   }
-
-  // const walletReady = await warmupAppEngineWallet(token, serviceConfig);
-
-  // if (!walletReady) {
-  //   return [undefined, new ServiceError('service/unknown-error', 'cloud wallet not ready.')];
-  // }
 
   const serviceWalletInfo: ServiceWalletInfo = {
     daemonHost: serviceConfig.daemonHost,
@@ -391,72 +375,6 @@ export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
     heightDelta:    delta
   };
 }
-
-// export async function rewindAppEngineWallet(
-//   distance: number,
-//   serviceConfig: ServiceConfig): Promise<[number | undefined, undefined | ServiceError]> {
-
-//   const [token, jwtError] = await getAppEngineToken();
-
-//   if (!token) {
-//     console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
-//     return [undefined, jwtError];
-//   }
-
-//   const appEngineApi = getAppEngineApiBase();
-
-//   const reqConfig = {
-//     headers: { Authorization: "Bearer " + token }
-//   }
-
-//   const walletStarted = await startAppEngineWallet(token, serviceConfig);
-
-//   if (!walletStarted) {
-//     return [undefined, new ServiceError('service/unknown-error', 'failed to warmup app engine wallet.')]
-//   }
-
-//   const rewindEndpoint = `${appEngineApi}/rewind`;
-
-//   console.log(`rewinding App Engine wallet by distance: ${distance}`);
-
-//   try {
-//     const reqBody               = { distance: distance }
-//     const rewindResponse        = await axios.post(rewindEndpoint, reqBody, reqConfig);
-//     const walletHeight: number  = rewindResponse.data.walletHeight;
-
-//     return [walletHeight, undefined];
-//   } catch (error) {
-//     return [undefined, new ServiceError('service/unknown-error', error)];
-//   }
-// }
-
-// export async function warmupAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
-//   const status = await getAppEngineWalletStatus(jwtToken);
-
-//   if (!status) {
-//     return false;
-//   }
-
-//   const maxUptime = 1000 * 60 * 60 * 4 // 4 hours
-//   let restartRequired = false;
-
-//   if (!status.started) {
-//     restartRequired = true;
-//   } else {
-//     if (status.daemonHost !== serviceConfig.daemonHost) {
-//       restartRequired = true;
-//     }
-//     if (status.uptime && status.uptime > maxUptime) {
-//       restartRequired = true;
-//     }
-//   }
-
-//   if (!restartRequired) {
-//     return true;
-//   }
-
-//   return await startAppEngineWallet(jwtToken, serviceConfig);
-// }
 
 export async function startAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
   console.log(`starting up App Engine wallet...`);
@@ -738,12 +656,6 @@ async function saveWalletFirebase(
 
     await file.save(encryptedWallet);
     await docRef.set(saveData);
-
-    // TODO: remove saving separate latest file below
-    // save latest file
-    const latestFilePath = `${folderPath}/wallet_latest.bin`;
-    const latestFile = bucket.file(latestFilePath);
-    await latestFile.save(encryptedWallet);
 
     return saveData;
   } catch (error) {

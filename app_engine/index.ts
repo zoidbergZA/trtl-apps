@@ -167,8 +167,9 @@ app.post("/send", async (req, res) => {
   const restartNeeded = await checkWalletRestartNeeded(txRequest.serviceWalletInfo);
 
   if (restartNeeded) {
-    // TODO: if wallet restarts, prepared txs are lost, we can return error here already
-    await startWallet(txRequest.serviceWalletInfo);
+    // if wallet restarts, prepared txs are lost, we can return error here already
+    res.status(500).send("wallet instance not synced, try again later...");
+    return;
   }
 
   if (!wallet) {
@@ -218,6 +219,7 @@ async function checkWalletRestartNeeded(serviceWalletInfo: ServiceWalletInfo): P
     return true;
   }
 
+  console.log(`wallet restart is not needed, using instance from file: ${walletFile}`);
   return false;
 }
 
