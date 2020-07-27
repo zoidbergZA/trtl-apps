@@ -1,8 +1,8 @@
 import * as express from "express";
 import WB = require("turtlecoin-wallet-backend");
 import { PrepareTransactionRequest, ServiceWalletInfo, WalletStatus, PreparedTxItem, SendTransactionRequest } from "../shared/types";
-const  { Storage } = require("@google-cloud/storage");
-const { Firestore } = require("@google-cloud/firestore");
+import { Storage } from '@google-cloud/storage';
+import { Firestore } from '@google-cloud/firestore';
 
 const storage = new Storage();
 const firestore = new Firestore();
@@ -308,15 +308,28 @@ async function stopWallet(): Promise<any> {
 }
 
 async function getWalletPassword(): Promise<string | null> {
-  const adminDocRef = firestore.doc(process.env.ADMIN_DOC_LOCATION);
-  const adminDoc    = await adminDocRef.get();
+  const configPath = process.env.CONFIG_DOC_LOCATION;
 
-  if (!adminDoc.exists) {
-    console.log("admin doc not found in Firestore.");
+  if (!configPath) {
+    console.log('CONFIG_DOC_LOCATION env variable not defined.');
     return null;
   }
 
-  return adminDoc.data().wallet_password;
+  const configDocRef = firestore.doc(configPath);
+  const configDoc    = await configDocRef.get();
+
+  if (!configDoc.exists) {
+    console.log("config doc not found in Firestore.");
+    return null;
+  }
+
+  const config = configDoc.data();
+
+  if (config) {
+    return config.wallet_password;
+  }
+
+  return null;
 }
 
 function logWalletSyncStatus(walletInstance: WB.WalletBackend) {

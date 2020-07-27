@@ -4,4 +4,4 @@ basic_scaling:
   idle_timeout: 10m
 env_variables:
   # WALLET_FILENAME: "wallet_latest.bin"
-  ADMIN_DOC_LOCATION: "admin/config"
+  CONFIG_DOC_LOCATION: "admin/config"
