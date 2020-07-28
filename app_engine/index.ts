@@ -10,14 +10,12 @@ const firestore = new Firestore();
 const WALLET_INSTANCE_NAME = 'app engine';
 const PORT = Number(process.env.PORT) || 8080;
 const WAIT_FOR_SYNC_TIMEOUT = 1000 * 10;
-const PREPARED_TX_TIMEOUT = 1000 * 2 * 60;
 
 const app = express();
 app.use(express.json());
 
 let wallet: WB.WalletBackend | undefined;
 let walletFile: string | undefined;
-let preparedTxItems: PreparedTxItem[] | undefined;
 let walletStartedAt = 0;
 let isStartingWallet = false;
 
@@ -112,21 +110,7 @@ app.post("/prepare_transaction", async (req, res) => {
     return;
   }
 
-  prunePreparedTransactions();
-
-  // check if we should remove a previous senderID prepared tx (disabled for now)
-  if (preparedTxItems && txRequest.senderId) {
-    // const previousTxReq = preparedTxItems?.find(i => i.senderId === txRequest.senderId);
-
-    // if (previousTxReq) {
-    //   const index = preparedTxItems.indexOf(previousTxReq);
-
-    //   if (index > -1) {
-    //     preparedTxItems.splice(index, 1);
-    //     console.log(`removed previous prepared tx for senderID: ${previousTxReq.senderId}`);
-    //   }
-    // }
-  }
+  console.log(`sending transaction (not relaying to network)...`);
 
   const destinations: [string, number][] = [
     [txRequest.sendAddress, txRequest.amount],
@@ -141,18 +125,7 @@ app.post("/prepare_transaction", async (req, res) => {
                       txRequest.subWallet,
                       false);
 
-  if (sendResult.success && sendResult.transactionHash && preparedTxItems) {
-    const preparedTxItem: PreparedTxItem = {
-      hash:       sendResult.transactionHash,
-      timestamp:  Date.now(),
-      senderId:   txRequest.senderId
-    };
-
-    preparedTxItems.push(preparedTxItem);
-
-    console.log(`added new prepared tx item with hash: ${preparedTxItem.hash}, total count: ${preparedTxItems.length}`);
-  }
-
+  console.log(`send result: ${JSON.stringify(sendResult)}`);
   res.send(sendResult);
 });
 
@@ -240,7 +213,6 @@ async function startWallet(serviceWalletInfo: ServiceWalletInfo)
     wallet.removeAllListeners();
     wallet = undefined;
     walletFile = undefined;
-    preparedTxItems = [];
   }
 
   const walletPassword = await getWalletPassword();
@@ -341,37 +313,37 @@ function logWalletSyncStatus(walletInstance: WB.WalletBackend) {
   console.log(`wallet sync status :: wallet [${wHeight}], network [${nHeight}], delta [${heightDelta}]`);
 }
 
-function prunePreparedTransactions() {
-  if (!wallet || !preparedTxItems) {
-    return;
-  }
+// function prunePreparedTransactions() {
+//   if (!wallet || !preparedTxItems) {
+//     return;
+//   }
 
-  if (preparedTxItems.length === 0) {
-    return;
-  }
+//   if (preparedTxItems.length === 0) {
+//     return;
+//   }
 
-  console.log(`pruning wallet prepared transactions, total prepared tx count: ${preparedTxItems.length}`);
+//   console.log(`pruning wallet prepared transactions, total prepared tx count: ${preparedTxItems.length}`);
 
-  const cutoffTime = Date.now() - PREPARED_TX_TIMEOUT;
+//   const cutoffTime = Date.now() - PREPARED_TX_TIMEOUT;
 
-  while (true) {
-    if (preparedTxItems.length === 0) {
-      break;
-    }
+//   while (true) {
+//     if (preparedTxItems.length === 0) {
+//       break;
+//     }
 
-    if (preparedTxItems[0].timestamp <= cutoffTime) {
-      const removed = wallet.deletePreparedTransaction(preparedTxItems[0].hash);
+//     if (preparedTxItems[0].timestamp <= cutoffTime) {
+//       const removed = wallet.deletePreparedTransaction(preparedTxItems[0].hash);
 
-      if (removed) {
-        console.log(`removed prepared tx with hash ${preparedTxItems[0].hash} from the wallet.`);
-      }
+//       if (removed) {
+//         console.log(`removed prepared tx with hash ${preparedTxItems[0].hash} from the wallet.`);
+//       }
 
-      preparedTxItems.shift();
-    } else {
-      break;
-    }
-  }
-}
+//       preparedTxItems.shift();
+//     } else {
+//       break;
+//     }
+//   }
+// }
 
 export async function waitForWalletSync(walletInstance: WB.WalletBackend, timeoutMs: number): Promise<boolean> {
   const syncDetlaStart = getWalletSyncDelta(walletInstance);
@@ -379,7 +351,7 @@ export async function waitForWalletSync(walletInstance: WB.WalletBackend, timeou
   console.log(`wait for sync => sync delta at start: ${JSON.stringify(syncDetlaStart)}`);
 
   if (syncDetlaStart <= 0) {
-    return Promise.resolve(true);
+    return true;
   }
 
   const p1 = new Promise<boolean>((resolve, reject) => {
@@ -398,7 +370,7 @@ export async function waitForWalletSync(walletInstance: WB.WalletBackend, timeou
     const synced              = syncDeltaAfterWait <= 0;
 
     console.log(`wait for sync => height delta after max wait time: ${syncDeltaAfterWait}`);
-    return Promise.resolve(synced);
+    return synced;
   });
 
   return Promise.race([p1, p2]);
