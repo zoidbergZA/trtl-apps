@@ -9,7 +9,7 @@ const firestore = new Firestore();
 
 const WALLET_INSTANCE_NAME = 'app engine';
 const PORT = Number(process.env.PORT) || 8080;
-const WAIT_FOR_SYNC_TIMEOUT = 1000 * 10;
+const WAIT_FOR_SYNC_TIMEOUT = 1000 * 20;
 
 const app = express();
 app.use(express.json());
