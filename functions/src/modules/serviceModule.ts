@@ -273,8 +273,13 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
 
   const latestSaveFile = await WalletManager.getLatestSavedWallet(false);
 
-  if (!latestSaveFile || latestSaveFile.location !== loadedFromFile.location) {
-    console.log(`a newer saved file [${latestSaveFile?.location}] detected since update started with file [${loadedFromFile.location}], skipping save wallet.`);
+  if (!latestSaveFile) {
+    console.log(`faled to find latest saved wallet file, skipping save of this wallet file.`);
+    return;
+  }
+
+  if (latestSaveFile.location !== loadedFromFile.location) {
+    console.log(`a newer saved file [${latestSaveFile.location}] detected since update started with file [${loadedFromFile.location}], skipping save wallet.`);
     return;
   }
 
