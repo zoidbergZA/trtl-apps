@@ -17,7 +17,6 @@ import { generateRandomSignatureSegement } from '../utils';
 import { ServiceConfig, ServiceWallet } from '../types';
 import { Transaction, PreparedTransaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { WalletErrorCode, WalletError } from 'turtlecoin-wallet-backend';
-import { FeeType } from 'turtlecoin-wallet-backend/dist/lib/FeeType';
 
 exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
 .onCreate(async (snapshot, context) => {
@@ -329,8 +328,7 @@ export async function processLostWithdrawals(serviceWallet: ServiceWallet): Prom
 
   const lostWithdrawals = withdrawalDocs.docs.map(d => d.data() as Withdrawal);
 
-  const promises = lostWithdrawals.map(withdrawal =>
-                    processLostWithdrawal(withdrawal, serviceWallet));
+  const promises = lostWithdrawals.map(w => processLostWithdrawal(w, serviceWallet));
 
   await Promise.all(promises);
 }
@@ -396,7 +394,7 @@ async function processLostWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
                           const transfers = Array.from(tx.transfers.values());
 
                           // transfers must contain at least one negative amount transfer
-                          return transfers.find(t => t < 0)
+                          return transfers.some(t => t < 0)
                         });
 
   // it can be completed if we find it's payment ID in the wallet and it has needed confirmations
@@ -436,10 +434,8 @@ async function processFaultyWithdrawal(
 
   if (hasConfirmedFailureErrorCode(withdrawal)) {
     await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
-
     return;
   } else if (withdrawal.retries < 5) {
-    // retry with a new prepared withdrawal
     // TODO: refactor max retries var to service config
     return await retryFaultyWithdrawal(withdrawal, serviceWallet);
   }
@@ -467,10 +463,6 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
     return [undefined, new ServiceError('app/invalid-prepared-withdrawal', `invalid status: ${preparedWithdrawal.status}`)];
   }
 
-  const destinations: [string, number][] = [
-    [withdrawal.address, withdrawal.amount]
-  ];
-
   const [app, appError] = await AppModule.getApp(withdrawal.appId);
 
   if (!app) {
@@ -478,62 +470,41 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
     return;
   }
 
-  const txFee = FeeType.FixedFee(preparedWithdrawal.fees.txFee);
+  const [sendResult, sendError] = await WalletManager.sendPreparedTransaction(
+                                    preparedWithdrawal.txHash,
+                                    serviceWallet.serviceConfig);
 
-  // TODO: send using app engine
+  const withdrawalUpdate: WithdrawalUpdate = {
+    lastUpdate: Date.now(),
+    retries: withdrawal.retries + 1
+  }
 
-  const sendResult = await serviceWallet.instance.wallet.sendTransactionAdvanced(
-                      destinations,
-                      undefined,
-                      txFee,
-                      preparedWithdrawal.paymentId,
-                      [app.subWallet],
-                      app.subWallet,
-                      false);
+  if (!sendResult) {
+    const error = sendError as ServiceError;
+    console.log(`send prepared withdrawal error: ${error.message}`);
+
+    await withdrawalDocRef.update(withdrawalUpdate);
+    return [undefined, error];
+  }
 
   if (!sendResult.success) {
     const sendErrorMessage = sendResult.error.toString();
     console.log(`send error: [${sendResult.error.errorCode}] ${sendErrorMessage}`);
 
-    const withdrawalUpdate: WithdrawalUpdate = {
-      lastUpdate: Date.now(),
-      retries: withdrawal.retries + 1
-    }
-
     await withdrawalDocRef.update(withdrawalUpdate);
-
     return [undefined, new ServiceError('service/unknown-error', sendErrorMessage)];
   }
 
-  if (sendResult.transactionHash && sendResult.preparedTransaction && sendResult.fee !== undefined) {
-    const timestamp = Date.now();
-    const preparedTxJson = JSON.stringify(sendResult.preparedTransaction);
+  withdrawalUpdate.status = 'confirming';
+  withdrawalUpdate.daemonErrorCode = 0;
+  withdrawalUpdate.txHash = sendResult.transactionHash;
 
-    const preparedWithdrawalUpdate: PreparedWithdrawalUpdate = {
-      preparedTxJson: preparedTxJson,
-      lastUpdate:     timestamp,
-      txHash:         sendResult.transactionHash
-    }
-
-    const withdrawalUpdate: WithdrawalUpdate = {
-      lastUpdate: timestamp,
-      txHash: sendResult.transactionHash,
-      retries: withdrawal.retries + 1,
-      status: 'pending',
-      daemonErrorCode: 0
-    }
-
-    try {
-      const preparedPromise = preparedDocRef.update(preparedWithdrawalUpdate);
-      const withdrawalPromise = withdrawalDocRef.update(withdrawalUpdate);
-
-      await Promise.all([preparedPromise, withdrawalPromise]);
-
-      console.log(`retrying faulty withdrawal with new prepared tx, status has been reset to pending.`);
-    } catch (error) {
-      console.log(error);
-      return [undefined, new ServiceError('service/unknown-error')];
-    }
+  try {
+    await withdrawalDocRef.update(withdrawalUpdate);
+    console.log(`retrying faulty withdrawal with prepared tx, status has been reset to confirming.`);
+  } catch (error) {
+    console.log(error);
+    return [undefined, new ServiceError('service/unknown-error')];
   }
 }
 
