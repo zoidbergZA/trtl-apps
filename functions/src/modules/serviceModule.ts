@@ -269,6 +269,8 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
   }
 
+  // TODO: compare loadedFrom with latest save here before saving
+
   const [, saveError] = await WalletManager.saveWallet(serviceWallet.instance, false);
 
   if (saveError) {

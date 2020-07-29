@@ -96,6 +96,9 @@ app.post("/prepare_transaction", async (req, res) => {
 
   if (restartNeeded) {
     await startWallet(txRequest.serviceWalletInfo);
+
+    // TEMP TEST
+    await sleep(4000);
   }
 
   if (!wallet) {
