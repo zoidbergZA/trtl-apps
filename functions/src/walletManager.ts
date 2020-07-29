@@ -267,21 +267,12 @@ export async function saveWallet(instance: WalletInstance, isRewind: boolean): P
 }
 
 export async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | undefined> {
-  let snapshot = await admin.firestore().collection('wallets/master/saves')
-                  .where('checkpoint', '==', checkpoint)
-                  .where('hasFile', '==', true)
-                  .orderBy('timestamp', 'desc')
-                  .limit(1)
-                  .get();
-
-  if (snapshot.size < 1 && !checkpoint) {
-    console.log('fallback query...');
-    snapshot = await admin.firestore().collection('wallets/master/saves')
-                .where('hasFile', '==', true)
-                .orderBy('timestamp', 'desc')
-                .limit(1)
-                .get();
-  }
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('checkpoint', '==', checkpoint)
+                    .where('hasFile', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
 
   if (snapshot.size === 0) {
     return undefined;
