@@ -211,6 +211,8 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     return;
   }
 
+  const loadedFromFile = serviceWallet.instance.loadedFrom;
+
   if (!skipSync) {
     console.log(`master wallet sync job started at: ${Date.now()}`);
 
@@ -269,7 +271,12 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
   }
 
-  // TODO: compare loadedFrom with latest save here before saving
+  const latestSaveFile = await WalletManager.getLatestSavedWallet(false);
+
+  if (!latestSaveFile || latestSaveFile.location !== loadedFromFile.location) {
+    console.log(`a newer saved file [${latestSaveFile?.location}] detected since update started with file [${loadedFromFile.location}], skipping save wallet.`);
+    return;
+  }
 
   const [, saveError] = await WalletManager.saveWallet(serviceWallet.instance, false);
 
