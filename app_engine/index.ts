@@ -369,7 +369,6 @@ export async function waitForWalletSync(walletInstance: WB.WalletBackend, timeou
     const syncDeltaAfterWait  = getWalletSyncDelta(walletInstance);
     const synced              = syncDeltaAfterWait <= 0;
 
-    console.log(`wait for sync => height delta after max wait time: ${syncDeltaAfterWait}`);
     return synced;
   });
 
