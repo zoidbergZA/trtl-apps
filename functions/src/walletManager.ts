@@ -601,31 +601,36 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
     }
   }
 
-  // get candidate checkpoint
   const minCutoff = latestCheckpoint ? latestCheckpoint.timestamp + saveInterval : 0;
   const maxCutoff = now - evaluationPeriod;
 
   console.log(`minCutoff: ${minCutoff}`);
   console.log(`maxCutoff: ${maxCutoff}`);
 
-  const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('timestamp', '<', maxCutoff)
-                    .where('timestamp', '>', minCutoff)
-                    .where('hasFile', '==', true)
-                    .orderBy('timestamp', 'desc')
-                    .limit(1)
-                    .get();
+  const querySnapshot = await admin.firestore()
+                          .collection('wallets/master/saves')
+                          .where('timestamp', '<', maxCutoff)
+                          .where('timestamp', '>', minCutoff)
+                          .where('hasFile', '==', true)
+                          .orderBy('timestamp', 'desc')
+                          .get();
 
-  console.log('matches: ' + snapshot.size);
-
-  if (snapshot.size === 0) {
-    console.log('no valid candidate checkpoint found');
+  if (querySnapshot.size === 0) {
+    console.log('no checkpoint candidates found in the evaluation period.');
     return undefined;
   }
 
-  const candidate = snapshot.docs[0].data() as SavedWallet;
+  const candidates = querySnapshot.docs.map(d => d.data() as SavedWallet);
+  const hasRewind = candidates.some(c => c.isRewind);
 
-  // no failed audits in the evaluation period before and after canditate timestamp
+  if (hasRewind) {
+    console.log(`wallet rewind(s) occured in the evaluation period, skipping checkpoint creation.`);
+    return undefined;
+  }
+
+  const candidate = candidates[0];
+
+  // check no failed audits in the evaluation period before and after canditate timestamp
   const audits = await AuditsModule.getAppAuditsInPeriod(
                   candidate.timestamp - evaluationPeriod,
                   candidate.timestamp + evaluationPeriod);
