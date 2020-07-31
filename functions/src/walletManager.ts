@@ -589,7 +589,7 @@ async function waitForWalletSync(wallet: WalletBackend, timeout: number): Promis
 async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<SavedWallet | undefined> {
   const now = Date.now();
   const saveInterval = 1000 * 60 * 60 * 12; // TODO: refactor constants to config
-  const evaluationPeriod = 1000 * 60 * 60 * 24; // the amount of time before and after the canditate to evaluate
+  const evaluationPeriod = 1000 * 60 * 60 * 24;
 
   // at least the specified save interval must have passed since last checkpoint
   if (latestCheckpoint) {
@@ -601,8 +601,8 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
     }
   }
 
-  const minCutoff = latestCheckpoint ? latestCheckpoint.timestamp + saveInterval : 0;
   const maxCutoff = now - evaluationPeriod;
+  const minCutoff = maxCutoff - (2 * evaluationPeriod);
 
   console.log(`minCutoff: ${minCutoff}`);
   console.log(`maxCutoff: ${maxCutoff}`);
