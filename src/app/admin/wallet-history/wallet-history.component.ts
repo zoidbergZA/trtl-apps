@@ -16,6 +16,6 @@ export class WalletHistoryComponent implements OnInit {
   constructor(public dialog: MatDialog, private adminService: AdminService) { }
 
   ngOnInit() {
-    this.savedWallets$ = this.adminService.getWalletSavesHistory$(200);
+    this.savedWallets$ = this.adminService.getWalletSavesHistory$(400);
   }
 }
