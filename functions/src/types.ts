@@ -63,6 +63,10 @@ export interface ServiceConfigUpdate {
   adminEmail?: string;
 }
 
+export interface ServiceState {
+  lastAutoRewindAt?: number
+}
+
 export interface ServiceNode {
   id: string;
   name: string;

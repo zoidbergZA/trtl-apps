@@ -7,12 +7,12 @@ import * as DepositsModule from './depositsModule';
 import * as WithdrawalsModule from './withdrawalsModule';
 import { ServiceError } from '../serviceError';
 
-const runtimeOpts: functions.RuntimeOptions = {
+const longRunOpts: functions.RuntimeOptions = {
   timeoutSeconds: 540,
   memory: "1GB"
 }
 
-exports.updateMasterWallet = functions.runWith(runtimeOpts).pubsub.schedule('every 30 minutes').onRun(async (context) => {
+exports.updateMasterWallet = functions.runWith(longRunOpts).pubsub.schedule('every 30 minutes').onRun(async (context) => {
   await ServiceModule.updateMasterWallet();
 });
 
@@ -20,7 +20,7 @@ exports.updateWalletCheckpoints = functions.pubsub.schedule('every 30 minutes').
   await WalletManager.updateWalletCheckpoints();
 });
 
-exports.runAppAudits = functions.pubsub.schedule('every 6 hours').onRun(async (context) => {
+exports.runAppAudits = functions.runWith(longRunOpts).pubsub.schedule('every 10 minutes').onRun(async (context) => {
   const [serviceWallet, serviceError] = await WalletManager.getServiceWallet();
 
   if (!serviceWallet) {
@@ -28,7 +28,7 @@ exports.runAppAudits = functions.pubsub.schedule('every 6 hours').onRun(async (c
     return;
   }
 
-  await AuditsModule.runAppAudits(10, serviceWallet);
+  await AuditsModule.runAppAudits(20, serviceWallet);
 });
 
 exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(async (context) => {

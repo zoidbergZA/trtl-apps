@@ -58,9 +58,25 @@ export async function runAppAudits(appCount: number, serviceWallet: ServiceWalle
     return;
   }
 
-  const auditsJobs = apps.map(app => auditApp(app, serviceWallet.instance.wallet));
+  const auditsJobs    = apps.map(app => auditApp(app, serviceWallet.instance.wallet));
+  const auditResults  = await Promise.all(auditsJobs);
+  const failedAudit   = auditResults.find(a => !a.passed);
 
-  await Promise.all(auditsJobs);
+  if (failedAudit) {
+    console.log(`app [${failedAudit.appId}] failed audit, requesting wallet rewind...`);
+
+    let rewindReason = `App with id [${failedAudit.appId}] failed audit [${failedAudit.id}].`;
+
+    if (failedAudit.logs) {
+      rewindReason += '\n\n';
+
+      failedAudit.logs.forEach(log => {
+        rewindReason += `${log} \n`;
+      });
+    }
+
+    await ServiceModule.tryAutoRewind(rewindReason);
+  }
 }
 
 export async function requestAppAudit(appId: string): Promise<void> {
@@ -143,32 +159,14 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
                             .map(w => w.amount + w.fees.txFee + w.fees.nodeFee + w.fees.serviceFee)
                             .reduce((total, current) => total + current, 0);
 
-  const appAccounts           = await AppsModule.getAppAccounts(app.appId);
-  const appWalletTotalBalance = unlockedBalance + lockedBalance;
-  const accountsTotalUnlocked = appAccounts
-                                  .map(a => a.balanceUnlocked)
-                                  .reduce((total, current) => total + current, 0);
-
   const auditRef  = admin.firestore().collection('appAudits').doc();
   const auditId   = auditRef.id;
-  let auditPassed = true;
-
-  if (appWalletTotalBalance < accountsTotalUnlocked) {
-    auditPassed = false;
-    logs.push(`the sum of app account balances is more than the sub-wallet total balance!`);
-
-    const haltMessage = `App with id ${app.appId} has more total account unlocked balances than the
-      total sub-wallet balance. Service halted! App audit id: ${auditId}`;
-
-    await ServiceModule.haltService(haltMessage);
-  }
-
 
   const auditResult: AppAuditResult = {
     id:                     auditId,
     appId:                  app.appId,
     timestamp:              Date.now(),
-    passed:                 auditPassed,
+    passed:                 true,
     walletLockedBalance:    lockedBalance,
     walletUnlockedBalance:  unlockedBalance,
     totalCredited:          confirmedCredited,

@@ -3,7 +3,7 @@ import * as functions from 'firebase-functions';
 import * as WalletManager from '../walletManager';
 import * as axios from 'axios';
 import * as sgMail from '@sendgrid/mail';
-import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from '../types';
+import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode, ServiceState } from '../types';
 import { sleep } from '../utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
 import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceUser, UserRole } from '../../../shared/types';
@@ -345,6 +345,73 @@ export async function processServiceCharges(): Promise<void> {
   await Promise.all(promises);
 }
 
+export async function tryAutoRewind(reason: string): Promise<void> {
+  console.log('attempting auto rewind service wallet to checkpoint...');
+  const now = Date.now();
+
+  const fetches = await Promise.all([
+    WalletManager.getLatestSavedWallet(false),
+    WalletManager.getLatestSavedWallet(true),
+    getServiceState()
+  ]);
+
+  const latestSave        = fetches[0];
+  const latestCheckpoint  = fetches[1];
+  const serviceState      = fetches[2];
+
+  if (serviceState && serviceState.lastAutoRewindAt) {
+    // check that at least 10mins have passed since last auto-rewind
+    const cooldown = 1000 * 60 * 10;
+
+    if (serviceState.lastAutoRewindAt + cooldown > now) {
+      console.log(`not enough time has passed since last auto-rewind, skipping this attempt...`);
+      return;
+    }
+  }
+
+  if (!latestSave) {
+    console.log('failed to find latest wallet save file, skipping auto rewind.');
+    return;
+  }
+
+  if (!latestCheckpoint) {
+    console.log('failed to find latest wallet checkpoint file, skipping auto rewind.');
+    return;
+  }
+
+  if (latestSave.isRewind) {
+    console.log(`latest wallet save [${latestSave.location}] is a rewind file, skipping auto rewind...`);
+    return;
+  }
+
+  const rewindResult = await WalletManager.rewindToCheckpoint(latestCheckpoint);
+
+  if (!rewindResult) {
+    console.log(`failed to rewind wallet to checkpoint: [${latestCheckpoint.location}].`);
+    return;
+  }
+
+  const resultPromises: Promise<any>[] = [];
+
+  resultPromises.push(updateServiceState({
+    lastAutoRewindAt: now
+  }));
+
+  resultPromises.push(sendAdminEmail(
+    `TRTL Apps Service Wallet auto-rewind completed`,
+    `
+    The TRTL Apps service wallet has just successfully completed an auto-rewind. The rewind was triggered
+    for the following reason: \n\n
+    ${reason} \n\n
+    Check that the service is operating normally after the wallet has had time to re-sync.
+    `
+  ));
+
+  await Promise.all(resultPromises);
+
+  console.log(`succussfully completed auto rewind to checkpoint: [${latestCheckpoint.id}], new saved file: [${latestCheckpoint.location}].`);
+}
+
 export async function dropCurrentNode(currentNodeUrl: string): Promise<void> {
   console.log(`dropping current service node: ${currentNodeUrl}`);
 
@@ -469,6 +536,26 @@ export async function updateServiceNodes(): Promise<void> {
 
   } catch (error) {
     console.error(error);
+  }
+}
+
+async function getServiceState(): Promise<ServiceState | undefined> {
+  const stateDoc = await admin.firestore().doc('globals/state').get();
+
+  if (!stateDoc.exists) {
+    return undefined;
+  }
+
+  return stateDoc.data() as ServiceState;
+}
+
+async function updateServiceState(update: Partial<ServiceState>): Promise<boolean> {
+  try {
+    await admin.firestore().doc('globals/state').set(update, { merge: true });
+    return true;
+  } catch (error) {
+    console.log(error);
+    return false;
   }
 }
 
