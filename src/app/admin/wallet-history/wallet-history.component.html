@@ -30,6 +30,9 @@
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
       </table>
+      <div class="load-more-btn" *ngIf="!loading">
+        <button mat-stroked-button color="primary" (click)="onLoadMoreClick()">load more</button>
+      </div>
     </div>
   </mat-card-content>
 </mat-card>
