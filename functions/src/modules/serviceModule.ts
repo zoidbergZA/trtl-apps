@@ -282,26 +282,29 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     return;
   }
 
-  console.log(`checking wallet for missing txs before save...`);
-  const walletAudit = await auditWalletInstance(serviceWallet.instance);
+  // if the wallet is synced, check for missing transactions before saving
+  if (syncInfo.heightDelta <= 0) {
+    console.log(`checking wallet for missing txs before save...`);
+    const walletAudit = await auditWalletInstance(serviceWallet.instance);
 
-  if (!walletAudit.passed) {
-    console.log(`wallet instance failed audit! skipping wallet save.`);
+    if (!walletAudit.passed) {
+      console.log(`wallet instance failed audit! skipping wallet save.`);
 
-    await sendAdminEmail(
-      'TRTL Apps wallet instance failed audit',
-      `
-      Wallet instance loaded from file ${serviceWallet.instance.loadedFrom.location} during wallet update has missing transactions.
+      await sendAdminEmail(
+        'TRTL Apps wallet instance failed audit',
+        `
+        Wallet instance loaded from file ${serviceWallet.instance.loadedFrom.location} during wallet update has missing transactions.
 
-      Audit details:
+        Audit details:
 
-      ${JSON.stringify(walletAudit, null, 2)}
+        ${JSON.stringify(walletAudit, null, 2)}
 
-      Skipping wallet save for this update.
-      `
-    );
+        Skipping wallet save for this update.
+        `
+      );
 
-    return;
+      return;
+    }
   }
 
   const [, saveError] = await WalletManager.saveWallet(serviceWallet.instance, false);
