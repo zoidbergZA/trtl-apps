@@ -219,10 +219,8 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     console.log(`master wallet sync job started at: ${Date.now()}`);
 
     const syncInfoStart   = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
-    const balanceStart    = serviceWallet.instance.wallet.getBalance();
 
     console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
-    console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
     const syncSeconds = syncInfoStart.heightDelta < 400 ? 60 : 500;
 
@@ -231,11 +229,9 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
 
     const syncInfoEnd     = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
     const processedCount  = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
-    const balanceEnd      = serviceWallet.instance.wallet.getBalance();
 
     console.log(`blocks processed: ${processedCount}`);
     console.log(`sync info at end: ${JSON.stringify(syncInfoEnd)}`);
-    console.log(`total balance at end: ${JSON.stringify(balanceEnd)}`);
   }
 
   // check if we should create more subWallets
@@ -293,6 +289,8 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
       await sendAdminEmail(
         'TRTL Apps wallet instance failed audit',
         `
+        Firebase project: ${process.env.GCLOUD_PROJECT}
+
         Wallet instance loaded from file ${serviceWallet.instance.loadedFrom.location} during wallet update has missing transactions.
 
         Audit details:

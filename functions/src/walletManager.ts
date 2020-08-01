@@ -278,10 +278,6 @@ export async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWa
     return undefined;
   }
 
-  const save = snapshot.docs[0].data() as SavedWallet;
-  console.log(`save id: ${save.id}, hasFile: ${save.hasFile}`);
-
-
   return snapshot.docs[0].data() as SavedWallet;
 }
 
