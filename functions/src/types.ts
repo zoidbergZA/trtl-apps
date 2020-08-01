@@ -1,4 +1,5 @@
 import { WalletBackend } from "turtlecoin-wallet-backend";
+import { Deposit, Withdrawal } from "../../shared/types";
 
 export class WalletInstance {
   wallet: WalletBackend;
@@ -131,4 +132,10 @@ export interface AppAuditResult {
   totalDebited: number,
   appBalance: number;
   logs?: string[];
+}
+
+export interface WalletAuditResult {
+  passed: boolean,
+  missingDeposits?: Deposit[],
+  missingWithdrawals?: Withdrawal[]
 }

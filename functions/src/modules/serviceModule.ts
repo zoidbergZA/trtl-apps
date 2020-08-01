@@ -3,10 +3,12 @@ import * as functions from 'firebase-functions';
 import * as WalletManager from '../walletManager';
 import * as axios from 'axios';
 import * as sgMail from '@sendgrid/mail';
-import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from '../types';
+import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate,
+  AppInviteCode, WalletAuditResult, WalletInstance } from '../types';
 import { sleep } from '../utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
-import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceUser, UserRole } from '../../../shared/types';
+import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate,
+  ServiceUser, UserRole, Deposit, Withdrawal } from '../../../shared/types';
 import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId,
   defaultServiceConfig, defaultNodes } from '../constants';
 import { ServiceError } from '../serviceError';
@@ -280,6 +282,28 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
 
   if (latestSaveFile.location !== loadedFromFile.location) {
     console.log(`a newer saved file [${latestSaveFile.location}] detected since update started with file [${loadedFromFile.location}], skipping save wallet.`);
+    return;
+  }
+
+  console.log(`checking wallet for missing txs before save...`);
+  const walletAudit = await auditWalletInstance(serviceWallet.instance);
+
+  if (!walletAudit.passed) {
+    console.log(`wallet instance failed audit! skipping wallet save.`);
+
+    await sendAdminEmail(
+      'TRTL Apps wallet instance failed audit',
+      `
+      Wallet instance loaded from file ${serviceWallet.instance.loadedFrom} during wallet update has missing transactions.
+
+      Audit details:
+
+      ${JSON.stringify(walletAudit)}
+
+      Skipping wallet save for this update.
+      `
+    );
+
     return;
   }
 
@@ -656,4 +680,61 @@ function doServiceNodeUpdates(serviceNodes: ServiceNode[], nodeStatuses: NodeSta
   });
 
   return batch.commit();
+}
+
+async function auditWalletInstance(walletInstance: WalletInstance): Promise<WalletAuditResult> {
+  console.log(`checking wallet loaded from file [${walletInstance.loadedFrom}] for missing deposits and withdrawals...`);
+  const auditStartedAt = Date.now();
+
+  const depositsQuery = admin.firestore()
+                        .collectionGroup('deposits')
+                        .where('status', '==', 'completed')
+                        .where('cancelled', '==', false)
+                        .get();
+
+  const withdrawalsQuery = admin.firestore()
+                            .collectionGroup('withdrawals')
+                            .where('status', '==', 'completed')
+                            .where('failed', '==', false)
+                            .get();
+
+  const [depositDocs, withdrawalDocs] = await Promise.all([depositsQuery, withdrawalsQuery]);
+  const deposits = depositDocs.docs.map(d => d.data() as Deposit);
+  const withdrawals = withdrawalDocs.docs.map(w => w.data() as Withdrawal);
+  const walletTxs = walletInstance.wallet.getTransactions(undefined, undefined, false, undefined);
+
+  const missingDeposits: Deposit[] = [];
+  const missingWithdrawals: Withdrawal[] = [];
+
+  deposits.map(d => {
+    if (d.txHash && !walletTxs.find(tx => tx.hash === d.txHash)) {
+      missingDeposits.push(d);
+      console.log(`successfull deposit with with hash ${d.txHash} missing from wallet!`);
+    }
+  });
+
+  withdrawals.map(w => {
+    if (!walletTxs.find(tx => tx.hash === w.txHash)) {
+      missingWithdrawals.push(w);
+      console.log(`successfull withdrawal with hash ${w.txHash} missing from wallet!`);
+    }
+  });
+
+  const passed = missingDeposits.length === 0 && missingWithdrawals.length === 0;
+  const durationSeconds = (Date.now() - auditStartedAt) / 1000;
+  console.log(`wallet audit completed in ${durationSeconds}s, passed? [${passed}]`);
+
+  const result: WalletAuditResult = {
+    passed
+  };
+
+  if (missingDeposits.length > 0) {
+    result.missingDeposits = missingDeposits;
+  }
+
+  if (missingWithdrawals.length > 0) {
+    result.missingWithdrawals = missingWithdrawals;
+  }
+
+  return result;
 }
