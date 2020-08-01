@@ -224,9 +224,6 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
     console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
 
-    // rewind about 2 hours
-    await serviceWallet.instance.wallet.rewind(syncInfoStart.walletHeight - 240);
-
     const syncSeconds = syncInfoStart.heightDelta < 400 ? 60 : 500;
 
     console.log(`run sync job for ${syncSeconds}s ...`);
