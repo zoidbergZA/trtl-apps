@@ -291,11 +291,11 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     await sendAdminEmail(
       'TRTL Apps wallet instance failed audit',
       `
-      Wallet instance loaded from file ${serviceWallet.instance.loadedFrom} during wallet update has missing transactions.
+      Wallet instance loaded from file ${serviceWallet.instance.loadedFrom.location} during wallet update has missing transactions.
 
       Audit details:
 
-      ${JSON.stringify(walletAudit)}
+      ${JSON.stringify(walletAudit, null, 2)}
 
       Skipping wallet save for this update.
       `
@@ -680,7 +680,7 @@ function doServiceNodeUpdates(serviceNodes: ServiceNode[], nodeStatuses: NodeSta
 }
 
 async function auditWalletInstance(walletInstance: WalletInstance): Promise<WalletAuditResult> {
-  console.log(`checking wallet loaded from file [${walletInstance.loadedFrom}] for missing deposits and withdrawals...`);
+  console.log(`checking wallet loaded from file [${walletInstance.loadedFrom.location}] for missing deposits and withdrawals...`);
   const auditStartedAt = Date.now();
 
   const depositsQuery = admin.firestore()
@@ -706,14 +706,14 @@ async function auditWalletInstance(walletInstance: WalletInstance): Promise<Wall
   deposits.map(d => {
     if (d.txHash && !walletTxs.find(tx => tx.hash === d.txHash)) {
       missingDeposits.push(d);
-      console.log(`successfull deposit with with hash ${d.txHash} missing from wallet!`);
+      console.log(`successful deposit with with hash ${d.txHash} missing from wallet!`);
     }
   });
 
   withdrawals.map(w => {
     if (!walletTxs.find(tx => tx.hash === w.txHash)) {
       missingWithdrawals.push(w);
-      console.log(`successfull withdrawal with hash ${w.txHash} missing from wallet!`);
+      console.log(`successful withdrawal with hash ${w.txHash} missing from wallet!`);
     }
   });
 
