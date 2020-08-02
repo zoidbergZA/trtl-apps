@@ -159,12 +159,6 @@ export async function processPreparedWithdrawal(
   serviceConfig: ServiceConfig): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
 
   const appId = preparedWithdrawal.appId;
-  const preparedTransaction = JSON.parse(preparedWithdrawal.preparedTxJson) as PreparedTransaction;
-
-  if (!preparedTransaction) {
-    return [undefined, new ServiceError('app/invalid-prepared-withdrawal')];
-  }
-
   const withdrawalAccountDoc = await admin.firestore().doc(`apps/${appId}/accounts/${preparedWithdrawal.accountId}`).get();
 
   if (!withdrawalAccountDoc.exists) {
