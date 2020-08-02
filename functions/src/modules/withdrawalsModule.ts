@@ -10,12 +10,10 @@ import { ServiceError } from '../serviceError';
 import { createCallback, CallbackCode } from './webhookModule';
 import { Account, AccountUpdate, TurtleApp, Withdrawal, WithdrawalUpdate,
   ServiceCharge, ServiceChargeUpdate, PreparedWithdrawal,
-  PreparedWithdrawalUpdate,
-  Fees,
-  DaemonErrorEvent} from '../../../shared/types';
+  PreparedWithdrawalUpdate, Fees, DaemonErrorEvent} from '../../../shared/types';
 import { generateRandomSignatureSegement } from '../utils';
 import { ServiceConfig, ServiceWallet } from '../types';
-import { Transaction, PreparedTransaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
+import { Transaction, SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { WalletErrorCode, WalletError } from 'turtlecoin-wallet-backend';
 
 exports.onWithdrawalCreated = functions.firestore.document(`/apps/{appId}/withdrawals/{withdrawalId}`)
