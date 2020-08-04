@@ -1,39 +1,45 @@
 import * as express from "express";
 import WB = require("turtlecoin-wallet-backend");
-const  { Storage } = require("@google-cloud/storage");
-const { Firestore } = require("@google-cloud/firestore");
-import { PrepareTransactionRequest, StartWalletRequest, WalletStatus, PreparedTxItem } from "../shared/types";
+import { PrepareTransactionRequest, ServiceWalletInfo, WalletStatus, PreparedTxItem, SendTransactionRequest } from "../shared/types";
+import { Storage } from '@google-cloud/storage';
+import { Firestore } from '@google-cloud/firestore';
 
 const storage = new Storage();
 const firestore = new Firestore();
 
 const WALLET_INSTANCE_NAME = 'app engine';
 const PORT = Number(process.env.PORT) || 8080;
-const WAIT_FOR_SYNC_TIMEOUT = 1000 * 10;
-const PREPARED_TX_TIMEOUT = 1000 * 2 * 60;
+const WAIT_FOR_SYNC_TIMEOUT = 1000 * 20;
 
 const app = express();
 app.use(express.json());
 
 let wallet: WB.WalletBackend | undefined;
-let preparedTxItems: PreparedTxItem[] | undefined;
+let walletFile: string | undefined;
 let walletStartedAt = 0;
 let isStartingWallet = false;
 
 process.on("SIGTERM", async () => {
   console.log("Received SIGTERM. do cleanup...");
 
-  const save = process.env.AUTOSAVE === "true";
   await stopWallet();
 });
 
 app.post("/start", async (req, res) => {
-  const startWalletReq: StartWalletRequest = req.body;
-  const [startedWallet, error] = await startWallet(startWalletReq);
+  const serviceWalletInfo: ServiceWalletInfo | undefined = req.body;
+
+  if (!serviceWalletInfo) {
+    res.status(400).send({
+      message: 'Invalid ServiceWalletInfo provided.'
+    });
+    return;
+  }
+
+  const [startedWallet, error] = await startWallet(serviceWalletInfo);
 
   const result: WalletStatus = {
     name: WALLET_INSTANCE_NAME,
-    started: startWallet !== undefined
+    started: startedWallet !== undefined
   };
 
   if (startedWallet) {
@@ -68,6 +74,7 @@ app.get("/status", (req, res) => {
     const [wHeight, , nHeight] = wallet.getSyncStatus();
     const daemonInfo = wallet.getDaemonConnectionInfo();
 
+    status.walletFile     = walletFile;
     status.walletHeight   = wHeight;
     status.networkHeight  = nHeight;
     status.daemonHost     = daemonInfo.host;
@@ -78,6 +85,19 @@ app.get("/status", (req, res) => {
 });
 
 app.post("/prepare_transaction", async (req, res) => {
+  const txRequest: PrepareTransactionRequest | undefined = req.body;
+
+  if (!txRequest) {
+    res.status(400).send("Invalid prepare transaction request.");
+    return;
+  }
+
+  const restartNeeded = await checkWalletRestartNeeded(txRequest.serviceWalletInfo);
+
+  if (restartNeeded) {
+    await startWallet(txRequest.serviceWalletInfo);
+  }
+
   if (!wallet) {
     res.status(500).send("no wallet instance, call /start first.");
     return;
@@ -90,23 +110,7 @@ app.post("/prepare_transaction", async (req, res) => {
     return;
   }
 
-  prunePreparedTransactions();
-
-  const txRequest = req.body as PrepareTransactionRequest;
-
-  // check if we should remove a previous senderID prepared tx (disabled for now)
-  if (preparedTxItems && txRequest.senderId) {
-    // const previousTxReq = preparedTxItems?.find(i => i.senderId === txRequest.senderId);
-
-    // if (previousTxReq) {
-    //   const index = preparedTxItems.indexOf(previousTxReq);
-
-    //   if (index > -1) {
-    //     preparedTxItems.splice(index, 1);
-    //     console.log(`removed previous prepared tx for senderID: ${previousTxReq.senderId}`);
-    //   }
-    // }
-  }
+  console.log(`sending transaction (not relaying to network)...`);
 
   const destinations: [string, number][] = [
     [txRequest.sendAddress, txRequest.amount],
@@ -121,31 +125,28 @@ app.post("/prepare_transaction", async (req, res) => {
                       txRequest.subWallet,
                       false);
 
-  if (sendResult.success && sendResult.transactionHash && preparedTxItems) {
-    const preparedTxItem: PreparedTxItem = {
-      hash:       sendResult.transactionHash,
-      timestamp:  Date.now(),
-      senderId:   txRequest.senderId
-    };
-
-    preparedTxItems.push(preparedTxItem);
-
-    console.log(`added new prepared tx item with hash: ${preparedTxItem.hash}, total count: ${preparedTxItems.length}`);
-  }
-
+  console.log(`send result: ${JSON.stringify(sendResult)}`);
   res.send(sendResult);
 });
 
 app.post("/send", async (req, res) => {
-  if (!wallet) {
-    res.status(500).send("no wallet instance, call /start first.");
+  const txRequest: SendTransactionRequest | undefined = req.body;
+
+  if (!txRequest) {
+    res.status(400).send("Invalid transaction request.");
     return;
   }
 
-  const txHash: string | undefined = req.body.preparedTxHash;
+  const restartNeeded = await checkWalletRestartNeeded(txRequest.serviceWalletInfo);
 
-  if (!txHash) {
-    res.status(400).send("missing txHash param.");
+  if (restartNeeded) {
+    // if wallet restarts, prepared txs are lost, we can return error here already
+    res.status(500).send("wallet instance not synced, try again later...");
+    return;
+  }
+
+  if (!wallet) {
+    res.status(500).send("no wallet instance, call /start first.");
     return;
   }
 
@@ -156,9 +157,9 @@ app.post("/send", async (req, res) => {
     return;
   }
 
-  const sendResult = await wallet.sendPreparedTransaction(txHash);
+  const sendResult = await wallet.sendPreparedTransaction(txRequest.preparedTxHash);
 
-  console.log(`send prepared tx hash [${txHash}] result succeeded? ${sendResult.success}`);
+  console.log(`send prepared tx hash [${txRequest.preparedTxHash}] result succeeded? ${sendResult.success}`);
 
   if (!sendResult.success) {
     console.log(sendResult.error.toString());
@@ -171,10 +172,35 @@ app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
 });
 
-async function startWallet(startReq: StartWalletRequest)
+async function checkWalletRestartNeeded(serviceWalletInfo: ServiceWalletInfo): Promise<boolean> {
+  console.log('checking if wallet restart is needed...');
+
+  if (!wallet) {
+    console.log('no current wallet instance, restart needed...');
+    return true;
+  }
+
+  if (walletFile !== serviceWalletInfo.filePath) {
+    console.log(`wallet file ${walletFile} not the same as latest wallet file ${serviceWalletInfo.filePath}, restart needed...`);
+    return true;
+  }
+
+  const daemonInfo = wallet.getDaemonConnectionInfo();
+
+  if (daemonInfo.host !== serviceWalletInfo.daemonHost || daemonInfo.port !== serviceWalletInfo.daemonPort) {
+    console.log('different daemon info detected, restart needed...');
+    return true;
+  }
+
+  console.log(`wallet restart is not needed, using instance from file: ${walletFile}`);
+  return false;
+}
+
+async function startWallet(serviceWalletInfo: ServiceWalletInfo)
   : Promise<[WB.WalletBackend | undefined, undefined | WB.WalletError]> {
 
   if (isStartingWallet) {
+    console.log('Already starting a wallet instance, skipping start wallet call.');
     return [undefined, new WB.WalletError(WB.WalletErrorCode.UNKNOWN_ERROR)];
   }
 
@@ -186,7 +212,7 @@ async function startWallet(startReq: StartWalletRequest)
     await wallet.stop();
     wallet.removeAllListeners();
     wallet = undefined;
-    preparedTxItems = [];
+    walletFile = undefined;
   }
 
   const walletPassword = await getWalletPassword();
@@ -197,16 +223,15 @@ async function startWallet(startReq: StartWalletRequest)
   }
 
   const bucketName = `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com`;
-  const fileLocation = `saved_wallets/${process.env.WALLET_FILENAME}`;
 
-  console.log(`loading wallet from storage bucket [${bucketName}], file location [${fileLocation}]...`);
+  console.log(`loading wallet from storage bucket [${bucketName}], file location [${serviceWalletInfo.filePath}]...`);
 
   try {
     const bucket          = storage.bucket(bucketName);
-    const file            = bucket.file(fileLocation);
+    const file            = bucket.file(serviceWalletInfo.filePath);
     const buffer          = await file.download();
     const walletString    = buffer.toString();
-    const daemon          = new WB.Daemon(startReq.daemonHost, startReq.daemonPort);
+    const daemon          = new WB.Daemon(serviceWalletInfo.daemonHost, serviceWalletInfo.daemonPort);
 
     const [newInstance, error] = WB.WalletBackend.openWalletFromEncryptedString(
       daemon,
@@ -221,6 +246,7 @@ async function startWallet(startReq: StartWalletRequest)
 
       isStartingWallet  = false;
       walletStartedAt   = Date.now();
+      walletFile        = serviceWalletInfo.filePath;
 
       logWalletSyncStatus(wallet);
 
@@ -251,19 +277,33 @@ async function stopWallet(): Promise<any> {
   wallet.removeAllListeners();
 
   wallet = undefined;
+  walletFile = undefined;
   walletStartedAt = 0;
 }
 
 async function getWalletPassword(): Promise<string | null> {
-  const adminDocRef = firestore.doc(process.env.ADMIN_DOC_LOCATION);
-  const adminDoc    = await adminDocRef.get();
+  const configPath = process.env.CONFIG_DOC_LOCATION;
 
-  if (!adminDoc.exists) {
-    console.log("admin doc not found in Firestore.");
+  if (!configPath) {
+    console.log('CONFIG_DOC_LOCATION env variable not defined.');
     return null;
   }
 
-  return adminDoc.data().wallet_password;
+  const configDocRef = firestore.doc(configPath);
+  const configDoc    = await configDocRef.get();
+
+  if (!configDoc.exists) {
+    console.log("config doc not found in Firestore.");
+    return null;
+  }
+
+  const config = configDoc.data();
+
+  if (config) {
+    return config.wallet_password;
+  }
+
+  return null;
 }
 
 function logWalletSyncStatus(walletInstance: WB.WalletBackend) {
@@ -273,37 +313,37 @@ function logWalletSyncStatus(walletInstance: WB.WalletBackend) {
   console.log(`wallet sync status :: wallet [${wHeight}], network [${nHeight}], delta [${heightDelta}]`);
 }
 
-function prunePreparedTransactions() {
-  if (!wallet || !preparedTxItems) {
-    return;
-  }
+// function prunePreparedTransactions() {
+//   if (!wallet || !preparedTxItems) {
+//     return;
+//   }
 
-  if (preparedTxItems.length === 0) {
-    return;
-  }
+//   if (preparedTxItems.length === 0) {
+//     return;
+//   }
 
-  console.log(`pruning wallet prepared transactions, total prepared tx count: ${preparedTxItems.length}`);
+//   console.log(`pruning wallet prepared transactions, total prepared tx count: ${preparedTxItems.length}`);
 
-  const cutoffTime = Date.now() - PREPARED_TX_TIMEOUT;
+//   const cutoffTime = Date.now() - PREPARED_TX_TIMEOUT;
 
-  while (true) {
-    if (preparedTxItems.length === 0) {
-      break;
-    }
+//   while (true) {
+//     if (preparedTxItems.length === 0) {
+//       break;
+//     }
 
-    if (preparedTxItems[0].timestamp <= cutoffTime) {
-      const removed = wallet.deletePreparedTransaction(preparedTxItems[0].hash);
+//     if (preparedTxItems[0].timestamp <= cutoffTime) {
+//       const removed = wallet.deletePreparedTransaction(preparedTxItems[0].hash);
 
-      if (removed) {
-        console.log(`removed prepared tx with hash ${preparedTxItems[0].hash} from the wallet.`);
-      }
+//       if (removed) {
+//         console.log(`removed prepared tx with hash ${preparedTxItems[0].hash} from the wallet.`);
+//       }
 
-      preparedTxItems.shift();
-    } else {
-      break;
-    }
-  }
-}
+//       preparedTxItems.shift();
+//     } else {
+//       break;
+//     }
+//   }
+// }
 
 export async function waitForWalletSync(walletInstance: WB.WalletBackend, timeoutMs: number): Promise<boolean> {
   const syncDetlaStart = getWalletSyncDelta(walletInstance);
@@ -311,7 +351,7 @@ export async function waitForWalletSync(walletInstance: WB.WalletBackend, timeou
   console.log(`wait for sync => sync delta at start: ${JSON.stringify(syncDetlaStart)}`);
 
   if (syncDetlaStart <= 0) {
-    return Promise.resolve(true);
+    return true;
   }
 
   const p1 = new Promise<boolean>((resolve, reject) => {
@@ -329,8 +369,7 @@ export async function waitForWalletSync(walletInstance: WB.WalletBackend, timeou
     const syncDeltaAfterWait  = getWalletSyncDelta(walletInstance);
     const synced              = syncDeltaAfterWait <= 0;
 
-    console.log(`wait for sync => height delta after max wait time: ${syncDeltaAfterWait}`);
-    return Promise.resolve(synced);
+    return synced;
   });
 
   return Promise.race([p1, p2]);

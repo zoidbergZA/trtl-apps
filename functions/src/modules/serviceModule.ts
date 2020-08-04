@@ -3,10 +3,12 @@ import * as functions from 'firebase-functions';
 import * as WalletManager from '../walletManager';
 import * as axios from 'axios';
 import * as sgMail from '@sendgrid/mail';
-import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate, AppInviteCode } from '../types';
+import { ServiceConfig, ServiceNode, ServiceNodeUpdate, NodeStatus, ServiceConfigUpdate,
+  AppInviteCode, WalletAuditResult, WalletInstance } from '../types';
 import { sleep } from '../utils';
 import { WalletError } from 'turtlecoin-wallet-backend';
-import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate, ServiceUser, UserRole } from '../../../shared/types';
+import { Account, AccountUpdate, SubWalletInfo, ServiceCharge, ServiceChargeUpdate,
+  ServiceUser, UserRole, Deposit, Withdrawal } from '../../../shared/types';
 import { minUnclaimedSubWallets, availableNodesEndpoint, serviceChargesAccountId,
   defaultServiceConfig, defaultNodes } from '../constants';
 import { ServiceError } from '../serviceError';
@@ -211,17 +213,14 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     return;
   }
 
+  const loadedFromFile = serviceWallet.instance.loadedFrom;
+
   if (!skipSync) {
     console.log(`master wallet sync job started at: ${Date.now()}`);
 
     const syncInfoStart   = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
-    const balanceStart    = serviceWallet.instance.wallet.getBalance();
 
     console.log(`sync info at start: ${JSON.stringify(syncInfoStart)}`);
-    console.log(`total balance at start: ${JSON.stringify(balanceStart)}`);
-
-    // rewind about 2 hours
-    await serviceWallet.instance.wallet.rewind(syncInfoStart.walletHeight - 240);
 
     const syncSeconds = syncInfoStart.heightDelta < 400 ? 60 : 500;
 
@@ -230,11 +229,9 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
 
     const syncInfoEnd     = WalletManager.getWalletSyncInfo(serviceWallet.instance.wallet);
     const processedCount  = syncInfoEnd.walletHeight - syncInfoStart.walletHeight;
-    const balanceEnd      = serviceWallet.instance.wallet.getBalance();
 
     console.log(`blocks processed: ${processedCount}`);
     console.log(`sync info at end: ${JSON.stringify(syncInfoEnd)}`);
-    console.log(`total balance at end: ${JSON.stringify(balanceEnd)}`);
   }
 
   // check if we should create more subWallets
@@ -267,6 +264,45 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     const optimizeSeconds = (optimizeEndAt - optimizeStartAt) * 0.001;
 
     console.log(`optimize took: [${optimizeSeconds}]s, # txs sent: [${numberOfTransactionsSent}]`);
+  }
+
+  const latestSaveFile = await WalletManager.getLatestSavedWallet(false);
+
+  if (!latestSaveFile) {
+    console.log(`faled to find latest saved wallet file, skipping save of this wallet file.`);
+    return;
+  }
+
+  if (latestSaveFile.location !== loadedFromFile.location) {
+    console.log(`a newer saved file [${latestSaveFile.location}] detected since update started with file [${loadedFromFile.location}], skipping save wallet.`);
+    return;
+  }
+
+  // if the wallet is synced, check for missing transactions before saving
+  if (syncInfo.heightDelta <= 0) {
+    console.log(`checking wallet for missing txs before save...`);
+    const walletAudit = await auditWalletInstance(serviceWallet.instance);
+
+    if (!walletAudit.passed) {
+      console.log(`wallet instance failed audit! skipping wallet save.`);
+
+      await sendAdminEmail(
+        'TRTL Apps wallet instance failed audit',
+        `
+        Firebase project: ${process.env.GCLOUD_PROJECT}
+
+        Wallet instance loaded from file ${serviceWallet.instance.loadedFrom.location} during wallet update has missing transactions.
+
+        Audit details:
+
+        ${JSON.stringify(walletAudit, null, 2)}
+
+        Skipping wallet save for this update.
+        `
+      );
+
+      return;
+    }
   }
 
   const [, saveError] = await WalletManager.saveWallet(serviceWallet.instance, false);
@@ -642,4 +678,61 @@ function doServiceNodeUpdates(serviceNodes: ServiceNode[], nodeStatuses: NodeSta
   });
 
   return batch.commit();
+}
+
+async function auditWalletInstance(walletInstance: WalletInstance): Promise<WalletAuditResult> {
+  console.log(`checking wallet loaded from file [${walletInstance.loadedFrom.location}] for missing deposits and withdrawals...`);
+  const auditStartedAt = Date.now();
+
+  const depositsQuery = admin.firestore()
+                        .collectionGroup('deposits')
+                        .where('status', '==', 'completed')
+                        .where('cancelled', '==', false)
+                        .get();
+
+  const withdrawalsQuery = admin.firestore()
+                            .collectionGroup('withdrawals')
+                            .where('status', '==', 'completed')
+                            .where('failed', '==', false)
+                            .get();
+
+  const [depositDocs, withdrawalDocs] = await Promise.all([depositsQuery, withdrawalsQuery]);
+  const deposits = depositDocs.docs.map(d => d.data() as Deposit);
+  const withdrawals = withdrawalDocs.docs.map(w => w.data() as Withdrawal);
+  const walletTxs = walletInstance.wallet.getTransactions(undefined, undefined, false, undefined);
+
+  const missingDeposits: Deposit[] = [];
+  const missingWithdrawals: Withdrawal[] = [];
+
+  deposits.map(d => {
+    if (d.txHash && !walletTxs.find(tx => tx.hash === d.txHash)) {
+      missingDeposits.push(d);
+      console.log(`successful deposit with with hash ${d.txHash} missing from wallet!`);
+    }
+  });
+
+  withdrawals.map(w => {
+    if (!walletTxs.find(tx => tx.hash === w.txHash)) {
+      missingWithdrawals.push(w);
+      console.log(`successful withdrawal with hash ${w.txHash} missing from wallet!`);
+    }
+  });
+
+  const passed = missingDeposits.length === 0 && missingWithdrawals.length === 0;
+  const durationSeconds = (Date.now() - auditStartedAt) / 1000;
+  console.log(`wallet audit completed in ${durationSeconds}s, passed? [${passed}]`);
+
+  const result: WalletAuditResult = {
+    passed
+  };
+
+  if (missingDeposits.length > 0) {
+    result.missingDeposits = missingDeposits;
+  }
+
+  if (missingWithdrawals.length > 0) {
+    result.missingWithdrawals = missingWithdrawals;
+  }
+
+  return result;
 }

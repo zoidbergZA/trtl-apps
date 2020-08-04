@@ -9,8 +9,8 @@ import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-b
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
 import { ServiceWallet, ServiceConfig, WalletSyncInfo,
-  StartWalletRequest, PrepareTransactionRequest, SavedWallet, SavedWalletUpdate, WalletInstance } from './types';
-import { SubWalletInfo, WalletStatus, SubWalletInfoUpdate, GoogleServiceAccountKey } from '../../shared/types';
+  SavedWallet, SavedWalletUpdate, WalletInstance } from './types';
+import { SubWalletInfo, WalletStatus, SubWalletInfoUpdate, GoogleServiceAccountKey, PrepareTransactionRequest, ServiceWalletInfo, SendTransactionRequest } from '../../shared/types';
 import { SendTransactionResult } from 'turtlecoin-wallet-backend/dist/lib/Types';
 import { google } from 'googleapis';
 
@@ -67,7 +67,6 @@ export async function getWalletStatus(): Promise<[WalletStatus[] | undefined, un
     const [token, tokenError] = await getAppEngineToken();
 
     if (token) {
-      // await warmupAppEngineWallet(token, serviceWallet.serviceConfig);
       appEngineWalletStatus = await getAppEngineWalletStatus(token);
     } else {
       appEngineWalletStatus.error = (tokenError as ServiceError).message;
@@ -136,27 +135,33 @@ export async function prepareAccountTransaction(
   paymentId: string,
   amount: number): Promise<[SendTransactionResult | undefined, undefined | ServiceError]> {
 
-  const [token, jwtError] = await getAppEngineToken();
+  const fetchResult = await Promise.all([getAppEngineToken(), getLatestSavedWallet(false)]);
+
+  const [token, jwtError] = fetchResult[0];
+  const latestSave = fetchResult[1];
 
   if (!token) {
     console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
     return [undefined, jwtError];
   }
 
-  const walletReady = await warmupAppEngineWallet(token, serviceConfig);
+  if (!latestSave) {
+    return [undefined, new ServiceError('service/master-wallet-file')];
+  }
 
-  console.log(`wallet ready? ${walletReady}`);
-
-  if (!walletReady) {
-    return [undefined, new ServiceError('service/unknown-error', 'cloud wallet not ready.')];
+  const serviceWalletInfo: ServiceWalletInfo = {
+    daemonHost: serviceConfig.daemonHost,
+    daemonPort: serviceConfig.daemonPort,
+    filePath:   latestSave.location
   }
 
   const txRequest: PrepareTransactionRequest = {
-    subWallet: appWallet,
-    senderId: accountId,
-    sendAddress: sendAddress,
-    amount: amount,
-    paymentId: paymentId
+    serviceWalletInfo:  serviceWalletInfo,
+    subWallet:          appWallet,
+    senderId:           accountId,
+    sendAddress:        sendAddress,
+    amount:             amount,
+    paymentId:          paymentId
   }
 
   const appEngineApi = getAppEngineApiBase();
@@ -180,21 +185,29 @@ export async function sendPreparedTransaction(
   preparedTxHash: string,
   serviceConfig: ServiceConfig): Promise<[SendTransactionResult | undefined, undefined | ServiceError]> {
 
-  const [token, jwtError] = await getAppEngineToken();
+  const fetchResult = await Promise.all([getAppEngineToken(), getLatestSavedWallet(false)]);
+
+  const [token, jwtError] = fetchResult[0];
+  const latestSave = fetchResult[1];
 
   if (!token) {
     console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
     return [undefined, jwtError];
   }
 
-  const walletReady = await warmupAppEngineWallet(token, serviceConfig);
-
-  if (!walletReady) {
-    return [undefined, new ServiceError('service/unknown-error', 'cloud wallet not ready.')];
+  if (!latestSave) {
+    return [undefined, new ServiceError('service/master-wallet-file')];
   }
 
-  const body: any = {
-    preparedTxHash: preparedTxHash
+  const serviceWalletInfo: ServiceWalletInfo = {
+    daemonHost: serviceConfig.daemonHost,
+    daemonPort: serviceConfig.daemonPort,
+    filePath: latestSave.location
+  }
+
+  const body: SendTransactionRequest = {
+    serviceWalletInfo,
+    preparedTxHash
   }
 
   const appEngineApi = getAppEngineApiBase();
@@ -254,29 +267,16 @@ export async function saveWallet(instance: WalletInstance, isRewind: boolean): P
 }
 
 export async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | undefined> {
-  let snapshot = await admin.firestore().collection('wallets/master/saves')
-                  .where('checkpoint', '==', checkpoint)
-                  .where('hasFile', '==', true)
-                  .orderBy('timestamp', 'desc')
-                  .limit(1)
-                  .get();
-
-  if (snapshot.size < 1 && !checkpoint) {
-    console.log('fallback query...');
-    snapshot = await admin.firestore().collection('wallets/master/saves')
-                .where('hasFile', '==', true)
-                .orderBy('timestamp', 'desc')
-                .limit(1)
-                .get();
-  }
+  const snapshot = await admin.firestore().collection('wallets/master/saves')
+                    .where('checkpoint', '==', checkpoint)
+                    .where('hasFile', '==', true)
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
 
   if (snapshot.size === 0) {
     return undefined;
   }
-
-  const save = snapshot.docs[0].data() as SavedWallet;
-  console.log(`save id: ${save.id}, hasFile: ${save.hasFile}`);
-
 
   return snapshot.docs[0].data() as SavedWallet;
 }
@@ -363,74 +363,15 @@ export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
   };
 }
 
-export async function rewindAppEngineWallet(
-  distance: number,
-  serviceConfig: ServiceConfig): Promise<[number | undefined, undefined | ServiceError]> {
-
-  const [token, jwtError] = await getAppEngineToken();
-
-  if (!token) {
-    console.log(`wallet jwt token error: ${(jwtError as ServiceError).message}`);
-    return [undefined, jwtError];
-  }
-
-  const appEngineApi = getAppEngineApiBase();
-
-  const reqConfig = {
-    headers: { Authorization: "Bearer " + token }
-  }
-
-  const walletStarted = await warmupAppEngineWallet(token, serviceConfig);
-
-  if (!walletStarted) {
-    return [undefined, new ServiceError('service/unknown-error', 'failed to warmup app engine wallet.')]
-  }
-
-  const rewindEndpoint = `${appEngineApi}/rewind`;
-
-  console.log(`rewinding App Engine wallet by distance: ${distance}`);
-
-  try {
-    const reqBody               = { distance: distance }
-    const rewindResponse        = await axios.post(rewindEndpoint, reqBody, reqConfig);
-    const walletHeight: number  = rewindResponse.data.walletHeight;
-
-    return [walletHeight, undefined];
-  } catch (error) {
-    return [undefined, new ServiceError('service/unknown-error', error)];
-  }
-}
-
-export async function warmupAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
-  const status = await getAppEngineWalletStatus(jwtToken);
-
-  if (!status) {
-    return false;
-  }
-
-  const maxUptime = 1000 * 60 * 60 * 4 // 4 hours
-  let restartRequired = false;
-
-  if (!status.started) {
-    restartRequired = true;
-  } else {
-    if (status.daemonHost !== serviceConfig.daemonHost) {
-      restartRequired = true;
-    }
-    if (status.uptime && status.uptime > maxUptime) {
-      restartRequired = true;
-    }
-  }
-
-  if (!restartRequired) {
-    return true;
-  }
-
-  return await startAppEngineWallet(jwtToken, serviceConfig);
-}
-
 export async function startAppEngineWallet(jwtToken: string, serviceConfig: ServiceConfig): Promise<boolean> {
   console.log(`starting up App Engine wallet...`);
+
+  const latestSave = await getLatestSavedWallet(false);
+
+  if (!latestSave) {
+    console.log('failed to get latest saved wallet file.');
+    return false;
+  }
 
   const appEngineApi = getAppEngineApiBase();
 
@@ -440,9 +381,10 @@ export async function startAppEngineWallet(jwtToken: string, serviceConfig: Serv
 
   const startEndpoint = `${appEngineApi}/start`;
 
-  const startBody: StartWalletRequest = {
+  const startBody: ServiceWalletInfo = {
     daemonHost: serviceConfig.daemonHost,
-    daemonPort: serviceConfig.daemonPort
+    daemonPort: serviceConfig.daemonPort,
+    filePath: latestSave.location
   }
 
   try {
@@ -459,6 +401,18 @@ export async function startAppEngineWallet(jwtToken: string, serviceConfig: Serv
 }
 
 export async function getAppEngineToken(): Promise<[string | undefined, undefined | ServiceError]> {
+  const tokenDoc = await admin.firestore().doc('admin/app_engine_token').get();
+
+  if (tokenDoc.exists) {
+    const credentials: any = tokenDoc.data();
+
+    console.log(`using cached app engine auth token, expires at: ${credentials.expiry_date}`);
+
+    if (credentials.id_token && credentials.expiry_date && credentials.expiry_date > Date.now()) {
+      return [credentials.id_token, undefined];
+    }
+  }
+
   const target_audience = functions.config().appengine.target_audience;
   const key = await getGoogleServiceAccountKey();
 
@@ -480,11 +434,20 @@ export async function getAppEngineToken(): Promise<[string | undefined, undefine
     const response = await jwtClient.authorize();
 
     if (response.id_token) {
+      // cache the token
+      const expiry_date = Date.now() + 1000 * 60 * 10; // TODO: replace hard-coded value with actual date if possible
+
+      await admin.firestore().doc('admin/app_engine_token').set({
+        id_token: response.id_token,
+        expiry_date: expiry_date
+      });
+
       return [response.id_token, undefined];
     } else {
       return [undefined, new ServiceError('service/unknown-error')];
     }
   } catch (error) {
+    console.log(error);
     return [undefined, new ServiceError('service/unknown-error', error)];
   }
 }
@@ -622,7 +585,7 @@ async function waitForWalletSync(wallet: WalletBackend, timeout: number): Promis
 async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<SavedWallet | undefined> {
   const now = Date.now();
   const saveInterval = 1000 * 60 * 60 * 12; // TODO: refactor constants to config
-  const evaluationPeriod = 1000 * 60 * 60 * 24; // the amount of time before and after the canditate to evaluate
+  const evaluationPeriod = 1000 * 60 * 60 * 24;
 
   // at least the specified save interval must have passed since last checkpoint
   if (latestCheckpoint) {
@@ -634,31 +597,36 @@ async function getCandidateCheckpoint(latestCheckpoint?: SavedWallet): Promise<S
     }
   }
 
-  // get candidate checkpoint
-  const minCutoff = latestCheckpoint ? latestCheckpoint.timestamp + saveInterval : 0;
   const maxCutoff = now - evaluationPeriod;
+  const minCutoff = maxCutoff - (2 * evaluationPeriod);
 
   console.log(`minCutoff: ${minCutoff}`);
   console.log(`maxCutoff: ${maxCutoff}`);
 
-  const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('timestamp', '<', maxCutoff)
-                    .where('timestamp', '>', minCutoff)
-                    .where('hasFile', '==', true)
-                    .orderBy('timestamp', 'desc')
-                    .limit(1)
-                    .get();
+  const querySnapshot = await admin.firestore()
+                          .collection('wallets/master/saves')
+                          .where('timestamp', '<', maxCutoff)
+                          .where('timestamp', '>', minCutoff)
+                          .where('hasFile', '==', true)
+                          .orderBy('timestamp', 'desc')
+                          .get();
 
-  console.log('matches: ' + snapshot.size);
-
-  if (snapshot.size === 0) {
-    console.log('no valid candidate checkpoint found');
+  if (querySnapshot.size === 0) {
+    console.log('no checkpoint candidates found in the evaluation period.');
     return undefined;
   }
 
-  const candidate = snapshot.docs[0].data() as SavedWallet;
+  const candidates = querySnapshot.docs.map(d => d.data() as SavedWallet);
+  const hasRewind = candidates.some(c => c.isRewind);
 
-  // no failed audits in the evaluation period before and after canditate timestamp
+  if (hasRewind) {
+    console.log(`wallet rewind(s) occured in the evaluation period, skipping checkpoint creation.`);
+    return undefined;
+  }
+
+  const candidate = candidates[0];
+
+  // check no failed audits in the evaluation period before and after canditate timestamp
   const audits = await AuditsModule.getAppAuditsInPeriod(
                   candidate.timestamp - evaluationPeriod,
                   candidate.timestamp + evaluationPeriod);
@@ -677,8 +645,6 @@ async function saveWalletFirebase(
   walletHeight: number,
   networkHeight: number,
   isRewind: boolean): Promise<SavedWallet | undefined> {
-
-  // const latestCheckpoint = await getLatestSavedWallet(true);
 
   const docRef    = admin.firestore().collection('wallets/master/saves').doc();
   const saveId    = docRef.id;
@@ -703,11 +669,6 @@ async function saveWalletFirebase(
 
     await file.save(encryptedWallet);
     await docRef.set(saveData);
-
-    // save latest file
-    const latestFilePath = `${folderPath}/wallet_latest.bin`;
-    const latestFile = bucket.file(latestFilePath);
-    await latestFile.save(encryptedWallet);
 
     return saveData;
   } catch (error) {

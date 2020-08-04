@@ -213,6 +213,7 @@ export interface WalletStatus {
   name: string;
   started: boolean;
   uptime?: number;
+  walletFile?: string;
   daemonHost?: string;
   daemonPort?: number;
   walletHeight?: number;
@@ -245,6 +246,7 @@ export interface GoogleServiceAccountKey {
 }
 
 export interface PrepareTransactionRequest {
+  serviceWalletInfo: ServiceWalletInfo;
   subWallet: string;
   sendAddress: string;
   amount: number;
@@ -252,9 +254,15 @@ export interface PrepareTransactionRequest {
   paymentId?: string;
 }
 
-export interface StartWalletRequest {
+export interface SendTransactionRequest {
+  serviceWalletInfo: ServiceWalletInfo;
+  preparedTxHash: string;
+}
+
+export interface ServiceWalletInfo {
   daemonHost: string;
   daemonPort: number;
+  filePath: string;
 }
 
 export interface PreparedTxItem {
