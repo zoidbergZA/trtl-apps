@@ -223,7 +223,10 @@ export async function sendPreparedTransaction(
 
     return [sendResult, undefined];
   } catch (error) {
-    return [undefined, new ServiceError('service/unknown-error', error.response.data)];
+    console.log(`send transaction error: ${error.response.data}`);
+
+    // In this case the transaction MAY still have been sent, but we do not know fore sure.
+    return [undefined, new ServiceError('app/withdrawal-lost', error.response.data)];
   }
 }
 

@@ -17,6 +17,7 @@ export type ServiceErrorCode =  'service/unknown-error'               |
                                 'app/prepared-withdrawal-not-found'   |
                                 'app/invalid-prepared-withdrawal'     |
                                 'app/withdrawal-not-found'            |
+                                'app/withdrawal-lost'                 |
                                 'app/transfer-not-found'              |
 
                                 'request/unauthorized'                |
@@ -74,6 +75,8 @@ export class ServiceError {
         return 'Deposit not found';
       case 'app/withdrawal-not-found':
         return 'Withdrawal request not found';
+      case 'app/withdrawal-lost':
+        return 'Sending of withdrawal resulted in an unknown error, the transaction MAY have succeeded.';
       case 'app/prepared-withdrawal-not-found':
         return 'Prepared withdrawal not found';
       case 'app/invalid-prepared-withdrawal':

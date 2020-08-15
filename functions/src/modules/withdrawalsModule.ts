@@ -170,23 +170,22 @@ export async function processPreparedWithdrawal(
     return [undefined, new ServiceError('transfer/insufficient-funds')];
   }
 
-  try {
-    const withdrawal = await executePreparedWithdrawal(preparedWithdrawal, serviceConfig);
-    return [withdrawal, undefined];
-  } catch (error) {
-    console.error(error);
-    return [undefined, new ServiceError('service/unknown-error', error)];
-  }
+  return executePreparedWithdrawal(preparedWithdrawal, serviceConfig);
 }
 
 export async function processPendingWithdrawal(withdrawal: Withdrawal, serviceWallet: ServiceWallet): Promise<void> {
   const [sendTxResult, sendError] = await sendPendingWithdrawal(withdrawal, serviceWallet);
 
   if (!sendTxResult) {
-    const errorMsg = (sendError as ServiceError).message;
-    console.log(`error trying to send tx for withdrawal ${withdrawal.id} => ${errorMsg}`);
+    const serviceError = sendError as ServiceError;
+    console.log(`error trying to send tx for withdrawal ${withdrawal.id} => ${serviceError.message}`);
 
-    await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
+    if (serviceError.errorCode === 'app/withdrawal-lost') {
+      await markLostWithdrawal(withdrawal.appId, withdrawal.id);
+    } else {
+      await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
+    }
+
     return;
   }
 
@@ -429,7 +428,8 @@ async function processFaultyWithdrawal(
     return;
   } else if (withdrawal.retries < 5) {
     // TODO: refactor max retries var to service config
-    return await retryFaultyWithdrawal(withdrawal, serviceWallet);
+    await retryFaultyWithdrawal(withdrawal, serviceWallet);
+    return;
   }
 
   // The withdrawal will be marked as lost after the wallet height exceeds withdrawTimoutBlocks
@@ -438,7 +438,7 @@ async function processFaultyWithdrawal(
   }
 }
 
-async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: ServiceWallet): Promise<any> {
+async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: ServiceWallet): Promise<void> {
   console.log(`retrying faulty withdrawal: ${withdrawal.id}`);
 
   const withdrawalDocRef  = admin.firestore().doc(`apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`);
@@ -446,13 +446,16 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
   const preparedDoc       = await preparedDocRef.get();
 
   if (!preparedDoc.exists) {
-    return [undefined, new ServiceError('app/prepared-withdrawal-not-found')];
+    console.log(`cancelling faulty withdrawal with id: [${withdrawal.id}], the prepared withdrawal not found!`);
+    await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
+    return;
   }
 
   const preparedWithdrawal = preparedDoc.data() as PreparedWithdrawal;
 
   if (preparedWithdrawal.status !== 'sent') {
-    return [undefined, new ServiceError('app/invalid-prepared-withdrawal', `invalid status: ${preparedWithdrawal.status}`)];
+    await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
+    return;
   }
 
   const [app, appError] = await AppModule.getApp(withdrawal.appId);
@@ -475,8 +478,13 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
     const error = sendError as ServiceError;
     console.log(`send prepared withdrawal error: ${error.message}`);
 
-    await withdrawalDocRef.update(withdrawalUpdate);
-    return [undefined, error];
+    if (error.errorCode === 'app/withdrawal-lost') {
+      await markLostWithdrawal(withdrawal.appId, withdrawal.id);
+    } else {
+      await withdrawalDocRef.update(withdrawalUpdate);
+    }
+
+    return;
   }
 
   if (!sendResult.success) {
@@ -484,20 +492,14 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
     console.log(`send error: [${sendResult.error.errorCode}] ${sendErrorMessage}`);
 
     await withdrawalDocRef.update(withdrawalUpdate);
-    return [undefined, new ServiceError('service/unknown-error', sendErrorMessage)];
   }
 
   withdrawalUpdate.status = 'confirming';
   withdrawalUpdate.daemonErrorCode = 0;
   withdrawalUpdate.txHash = sendResult.transactionHash;
 
-  try {
-    await withdrawalDocRef.update(withdrawalUpdate);
-    console.log(`retrying faulty withdrawal with prepared tx, status has been reset to confirming.`);
-  } catch (error) {
-    console.log(error);
-    return [undefined, new ServiceError('service/unknown-error')];
-  }
+  console.log(`retrying faulty withdrawal with prepared tx, status has been reset to confirming.`);
+  await withdrawalDocRef.update(withdrawalUpdate);
 }
 
 function hasConfirmedFailureErrorCode(withdrawal: Withdrawal): boolean {
@@ -708,7 +710,7 @@ function getTotalAmount(preparedWithdrawal: PreparedWithdrawal): number {
 
 async function executePreparedWithdrawal(
   preparedWithdrawal: PreparedWithdrawal,
-  serviceConfig: ServiceConfig): Promise<Withdrawal> {
+  serviceConfig: ServiceConfig): Promise<[Withdrawal | undefined, undefined | ServiceError]> {
 
   const { paymentId, appId, accountId, txHash, amount, fees, address } = preparedWithdrawal;
   const withdrawDoc = admin.firestore().collection(`apps/${appId}/withdrawals`).doc();
@@ -734,14 +736,15 @@ async function executePreparedWithdrawal(
     retries:              0
   };
 
-  await admin.firestore().runTransaction(async (txn): Promise<any> => {
+  return await admin.firestore().runTransaction(async (txn): Promise<[Withdrawal | undefined, undefined | ServiceError]> => {
     const accountDocRef = admin.firestore().doc(`apps/${appId}/accounts/${withdrawal.accountId}`);
     const accountDoc    = await txn.get(accountDocRef);
     const account       = accountDoc.data() as Account;
     const totalAmount   = getTotalAmount(preparedWithdrawal);
 
     if (account.balanceUnlocked < totalAmount) {
-      return Promise.reject('insufficient unlocked funds.');
+      // TODO: create new ServiceError
+      return [undefined, new ServiceError('service/unknown-error', 'insufficient unlocked funds.')];
     }
 
     if (withdrawal.fees.serviceFee > 0) {
@@ -762,9 +765,9 @@ async function executePreparedWithdrawal(
     txn.create(withdrawDoc, withdrawal);
     txn.update(accountDocRef, accountUpdate);
     txn.update(preparedDocRef, preparedWithdrawalUpdate);
-  });
 
-  return withdrawal;
+    return [withdrawal, undefined];
+  });
 }
 
 async function processServiceCharge(
