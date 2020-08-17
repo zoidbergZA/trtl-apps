@@ -492,14 +492,14 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
     console.log(`send error: [${sendResult.error.errorCode}] ${sendErrorMessage}`);
 
     await withdrawalDocRef.update(withdrawalUpdate);
+  } else {
+    withdrawalUpdate.status = 'confirming';
+    withdrawalUpdate.daemonErrorCode = 0;
+    withdrawalUpdate.txHash = sendResult.transactionHash;
+
+    console.log(`retrying faulty withdrawal [${withdrawal.id}] with prepared withdrawal [${preparedWithdrawal.id}], status has been reset to confirming.`);
+    await withdrawalDocRef.update(withdrawalUpdate);
   }
-
-  withdrawalUpdate.status = 'confirming';
-  withdrawalUpdate.daemonErrorCode = 0;
-  withdrawalUpdate.txHash = sendResult.transactionHash;
-
-  console.log(`retrying faulty withdrawal with prepared tx, status has been reset to confirming.`);
-  await withdrawalDocRef.update(withdrawalUpdate);
 }
 
 function hasConfirmedFailureErrorCode(withdrawal: Withdrawal): boolean {
