@@ -403,6 +403,13 @@ async function processLostWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
       }
     }
   }
+
+  // if withdrawTimoutBlocks has been exceeded, cancel failed withdrawal
+  const failureHeight = withdrawal.requestedAtBlock + serviceWallet.serviceConfig.withdrawTimoutBlocks;
+
+  if (walletHeight >= failureHeight) {
+    return cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
+  }
 }
 
 async function processFaultyWithdrawal(
@@ -432,9 +439,9 @@ async function processFaultyWithdrawal(
     return;
   }
 
-  // The withdrawal will be marked as lost after the wallet height exceeds withdrawTimoutBlocks
+  // The withdrawal will be marked as failed after the wallet height exceeds withdrawTimoutBlocks
   if (walletHeight > (withdrawal.requestedAtBlock + serviceWallet.serviceConfig.withdrawTimoutBlocks)) {
-    await markLostWithdrawal(withdrawal.appId, withdrawal.id);
+    await cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
   }
 }
 
@@ -444,6 +451,13 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
   const withdrawalDocRef  = admin.firestore().doc(`apps/${withdrawal.appId}/withdrawals/${withdrawal.id}`);
   const preparedDocRef    = admin.firestore().doc(`apps/${withdrawal.appId}/preparedWithdrawals/${withdrawal.preparedWithdrawalId}`);
   const preparedDoc       = await preparedDocRef.get();
+
+  const retryUpdate: WithdrawalUpdate = {
+    lastUpdate: Date.now(),
+    retries: withdrawal.retries + 1
+  }
+
+  await withdrawalDocRef.update(retryUpdate);
 
   if (!preparedDoc.exists) {
     console.log(`cancelling faulty withdrawal with id: [${withdrawal.id}], the prepared withdrawal not found!`);
@@ -469,19 +483,12 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
                                     preparedWithdrawal.txHash,
                                     serviceWallet.serviceConfig);
 
-  const withdrawalUpdate: WithdrawalUpdate = {
-    lastUpdate: Date.now(),
-    retries: withdrawal.retries + 1
-  }
-
   if (!sendResult) {
     const error = sendError as ServiceError;
     console.log(`send prepared withdrawal error: ${error.message}`);
 
     if (error.errorCode === 'app/withdrawal-lost') {
       await markLostWithdrawal(withdrawal.appId, withdrawal.id);
-    } else {
-      await withdrawalDocRef.update(withdrawalUpdate);
     }
 
     return;
@@ -490,15 +497,16 @@ async function retryFaultyWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
   if (!sendResult.success) {
     const sendErrorMessage = sendResult.error.toString();
     console.log(`send error: [${sendResult.error.errorCode}] ${sendErrorMessage}`);
-
-    await withdrawalDocRef.update(withdrawalUpdate);
   } else {
-    withdrawalUpdate.status = 'confirming';
-    withdrawalUpdate.daemonErrorCode = 0;
-    withdrawalUpdate.txHash = sendResult.transactionHash;
+    const confirmingUpdate: WithdrawalUpdate = {
+      lastUpdate: Date.now(),
+      status: 'confirming',
+      daemonErrorCode: 0,
+      txHash: sendResult.transactionHash
+    }
 
     console.log(`retrying faulty withdrawal [${withdrawal.id}] with prepared withdrawal [${preparedWithdrawal.id}], status has been reset to confirming.`);
-    await withdrawalDocRef.update(withdrawalUpdate);
+    await withdrawalDocRef.update(confirmingUpdate);
   }
 }
 

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import * as functions from 'firebase-functions';
 import * as ServiceModule from './modules/serviceModule';
 import * as AuditsModule from './modules/auditsModule';
@@ -223,7 +223,14 @@ export async function sendPreparedTransaction(
 
     return [sendResult, undefined];
   } catch (error) {
-    console.log(`send transaction error: ${error.response.data}`);
+    const axiosError = error as AxiosError;
+    const response = axiosError.response;
+
+    console.log(`send transaction error: ${JSON.stringify(axiosError)}`);
+
+    if (response && (response.status === 400 || response.status === 500)) {
+      return [undefined, new ServiceError('service/unknown-error', response.statusText)];
+    }
 
     // In this case the transaction MAY still have been sent, but we do not know fore sure.
     return [undefined, new ServiceError('app/withdrawal-lost', error.response.data)];
