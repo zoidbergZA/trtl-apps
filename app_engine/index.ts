@@ -99,7 +99,7 @@ app.post("/prepare_transaction", async (req, res) => {
   }
 
   if (!wallet) {
-    res.status(500).send("no wallet instance, call /start first.");
+    res.status(500).send("failed to start wallet instance.");
     return;
   }
 
