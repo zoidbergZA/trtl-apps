@@ -64,9 +64,10 @@ export async function updateDeposits(serviceWallet: ServiceWallet): Promise<void
   const [walletHeight, ,] = serviceWallet.instance.wallet.getSyncStatus();
   const scanHeight        = Math.max(0, walletHeight - serviceWallet.serviceConfig.txScanDepth);
 
-  const transactions = serviceWallet.instance.wallet
-    .getTransactions(undefined, undefined, false)
-    .filter(tx => tx.blockHeight >= scanHeight);
+  let transactions = await serviceWallet.instance.wallet
+                      .getTransactions(undefined, undefined, false);
+
+  transactions = transactions.filter(tx => tx.blockHeight >= scanHeight);
 
   const deposits = await getAllDeposits(scanHeight);
 
@@ -312,7 +313,7 @@ async function updateConfirmingDeposits(serviceWallet: ServiceWallet): Promise<v
     let depositTx: Transaction | undefined = undefined;
 
     if (deposit.txHash) {
-      depositTx = serviceWallet.instance.wallet.getTransaction(deposit.txHash);
+      depositTx = await serviceWallet.instance.wallet.getTransaction(deposit.txHash);
     }
 
     if (!depositTx) {

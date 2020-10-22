@@ -280,7 +280,7 @@ async function processCreateApp(
 
       const paymentId           = generateRandomPaymentId();
       const chargesAccountRef   = admin.firestore().doc(`apps/${appId}/serviceAccounts/${serviceChargesAccountId}`);
-      const integratedAddress   = createIntegratedAddress(app.subWallet, paymentId);
+      const integratedAddress   = await createIntegratedAddress(app.subWallet, paymentId);
 
       const chargesAccount: Account = {
         id: serviceChargesAccountId,

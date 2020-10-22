@@ -5,7 +5,7 @@ import * as AuditsModule from './modules/auditsModule';
 import * as Constants from './constants';
 import * as admin from 'firebase-admin';
 import { v4 as uuidv4 } from 'uuid';
-import { WalletBackend, IDaemon, Daemon, WalletError } from 'turtlecoin-wallet-backend';
+import { WalletBackend, Daemon, WalletError } from 'turtlecoin-wallet-backend';
 import { sleep } from './utils';
 import { ServiceError } from './serviceError';
 import { ServiceWallet, ServiceConfig, WalletSyncInfo,
@@ -19,9 +19,9 @@ let sharedInstance: WalletInstance | undefined;
 export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<[string | undefined, undefined | ServiceError]> {
   console.log('creating new master wallet...');
 
-  const daemon: IDaemon = new Daemon(serviceConfig.daemonHost, serviceConfig.daemonPort);
+  const daemon = new Daemon(serviceConfig.daemonHost, serviceConfig.daemonPort);
 
-  const wallet = WalletBackend.createWallet(daemon);
+  const wallet = await WalletBackend.createWallet(daemon);
   await wallet.start();
 
   // give the new wallet time to sync
@@ -40,7 +40,7 @@ export async function createMasterWallet(serviceConfig: ServiceConfig): Promise<
     return [undefined, new ServiceError('service/master-wallet-file', 'an error ocurred while saving wallet to firebase!')];
   }
 
-  const [seed, seedError] = wallet.getMnemonicSeed();
+  const [seed, seedError] = await wallet.getMnemonicSeed();
 
   if (!seed) {
     return [undefined, new ServiceError('service/master-wallet-info', (seedError as WalletError).toString())];
@@ -256,7 +256,7 @@ export async function getSubWalletBalance(subWalletAddress: string): Promise<[bo
     return [false, 0, 0];
   }
 
-  const [unlockedBalance, lockedBalance] = serviceWallet.instance.wallet.getBalance([subWalletAddress]);
+  const [unlockedBalance, lockedBalance] = await serviceWallet.instance.wallet.getBalance([subWalletAddress]);
   return [true, unlockedBalance, lockedBalance];
 }
 
@@ -813,13 +813,13 @@ async function startWalletFromString(
   daemonHost: string,
   daemonPort: number): Promise<[WalletBackend | undefined, undefined | ServiceError]> {
 
-  const daemon: IDaemon = new Daemon(daemonHost, daemonPort);
+  const daemon = new Daemon(daemonHost, daemonPort);
 
   daemon.updateConfig({
     customUserAgentString: Constants.walletBackendUserAgentId
   });
 
-  const [wallet, error] = WalletBackend.openWalletFromEncryptedString(
+  const [wallet, error] = await WalletBackend.openWalletFromEncryptedString(
                             daemon,
                             encryptedString,
                             functions.config().serviceadmin.password);

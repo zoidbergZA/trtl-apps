@@ -22,7 +22,7 @@
     "@google-cloud/firestore": "^3.4.0",
     "@google-cloud/storage": "^4.2.0",
     "express": "^4.16.3",
-    "turtlecoin-wallet-backend": "^5.0.4",
+    "turtlecoin-wallet-backend": "^6.0.2",
     "typescript": "^3.0.1"
   },
   "devDependencies": {

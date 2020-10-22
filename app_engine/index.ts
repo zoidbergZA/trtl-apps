@@ -233,7 +233,7 @@ async function startWallet(serviceWalletInfo: ServiceWalletInfo)
     const walletString    = buffer.toString();
     const daemon          = new WB.Daemon(serviceWalletInfo.daemonHost, serviceWalletInfo.daemonPort);
 
-    const [newInstance, error] = WB.WalletBackend.openWalletFromEncryptedString(
+    const [newInstance, error] = await WB.WalletBackend.openWalletFromEncryptedString(
       daemon,
       walletString,
       walletPassword);

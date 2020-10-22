@@ -244,7 +244,7 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     for (let i = 0; i < minUnclaimedSubWallets; i++) {
       // TODO: refactor add subwallet function to wallet manager
 
-      const [address, error] = serviceWallet.instance.wallet.addSubWallet();
+      const [address, error] = await serviceWallet.instance.wallet.addSubWallet();
 
       if (!address) {
         console.error((error as WalletError));
@@ -319,8 +319,8 @@ export async function updateMasterWallet(skipSync: boolean = false): Promise<voi
     // if there are currently no unclaimed wallets, make the new batch available immediately
     const createdAt = unclaimedSubWallets.length === 0 ? 0 : Date.now();
 
-    newSubWallets.forEach(address => {
-      const [publicSpendKey, privateSpendKey, err] = serviceWallet.instance.wallet.getSpendKeys(address);
+    newSubWallets.forEach(async(address) => {
+      const [publicSpendKey, privateSpendKey, err] = await serviceWallet.instance.wallet.getSpendKeys(address);
 
       if (!publicSpendKey || !privateSpendKey || err) {
         console.error(err);
@@ -699,7 +699,7 @@ async function auditWalletInstance(walletInstance: WalletInstance): Promise<Wall
   const [depositDocs, withdrawalDocs] = await Promise.all([depositsQuery, withdrawalsQuery]);
   const deposits = depositDocs.docs.map(d => d.data() as Deposit);
   const withdrawals = withdrawalDocs.docs.map(w => w.data() as Withdrawal);
-  const walletTxs = walletInstance.wallet.getTransactions(undefined, undefined, false, undefined);
+  const walletTxs = await walletInstance.wallet.getTransactions(undefined, undefined, false, undefined);
 
   const missingDeposits: Deposit[] = [];
   const missingWithdrawals: Withdrawal[] = [];
