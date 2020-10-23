@@ -691,7 +691,12 @@ async function getWalletInstance(
   serviceConfig: ServiceConfig,
   shared = true): Promise<[WalletInstance | undefined, undefined | ServiceError]> {
 
-  const latestSave = await getLatestSavedWallet(false);
+  let latestSave = await getLatestSavedWallet(false);
+
+  // try checkpoint
+  if (!latestSave) {
+    latestSave = await getLatestSavedWallet(true);
+  }
 
   if (!latestSave) {
     console.log('failed to get latest save!');
