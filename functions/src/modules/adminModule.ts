@@ -219,7 +219,7 @@ export const bootstrap = functions.runWith(runtimeOpts).https.onRequest(async (r
 
     if (adminEmail !== typeof('string')) {
       response.status(400).send({ error: 'invalid admin email parameter.' });
-      return;
+      return null;
     }
 
     return ServiceModule.boostrapService(adminEmail).then(result => {
