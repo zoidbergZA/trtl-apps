@@ -106,7 +106,7 @@ export async function getAppAuditsInPeriod(since: number, to: number): Promise<A
 async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAuditResult> {
   console.log(`starting audit for app: ${app.appId}`);
 
-  const appTransactions   = wallet.getTransactions(undefined, undefined, false, app.subWallet);
+  const appTransactions   = await wallet.getTransactions(undefined, undefined, false, app.subWallet);
   const allDeposits       = await AppsModule.getDeposits(app.appId);
   const allWithdrawals    = await AppsModule.getWithdrawals(app.appId);
   const logs: string[]    = [];
@@ -133,7 +133,7 @@ async function auditApp(app: TurtleApp, wallet: WalletBackend): Promise<AppAudit
     }
   });
 
-  const [unlockedBalance, lockedBalance] = wallet.getBalance([app.subWallet]);
+  const [unlockedBalance, lockedBalance] = await wallet.getBalance([app.subWallet]);
 
   const confirmedCredited = successfulDeposits
                             .map(d => d.amount)

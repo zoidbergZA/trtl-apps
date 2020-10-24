@@ -215,11 +215,11 @@ const runtimeOpts: functions.RuntimeOptions = {
 
 export const bootstrap = functions.runWith(runtimeOpts).https.onRequest(async (request, response) => {
   cors(request, response, () => {
-    const adminEmail: string | undefined = request.query.admin;
+    const adminEmail = request.query.admin;
 
-    if (!adminEmail) {
+    if (adminEmail !== typeof('string')) {
       response.status(400).send({ error: 'invalid admin email parameter.' });
-      return;
+      return null;
     }
 
     return ServiceModule.boostrapService(adminEmail).then(result => {

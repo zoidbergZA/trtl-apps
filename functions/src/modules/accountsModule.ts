@@ -28,7 +28,7 @@ export async function createAppAccount(app: TurtleApp): Promise<[Account | undef
   const timestamp             = Date.now();
   const paymentId             = generateRandomPaymentId();
   const spendSignaturePrefix  = generateRandomSignatureSegement();
-  const integratedAddress     = createIntegratedAddress(app.subWallet, paymentId);
+  const integratedAddress     = await createIntegratedAddress(app.subWallet, paymentId);
 
   const account: Account = {
     id:                   accountDoc.id,

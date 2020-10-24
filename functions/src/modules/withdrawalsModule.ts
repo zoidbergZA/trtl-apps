@@ -234,14 +234,15 @@ export async function updateWithdrawals(serviceWallet: ServiceWallet): Promise<v
   const [walletHeight,,]  = serviceWallet.instance.wallet.getSyncStatus();
   const scanHeight        = Math.max(0, serviceWallet.serviceConfig.txScanDepth);
 
-  const transactions = serviceWallet.instance.wallet
-                        .getTransactions(undefined, undefined, false)
-                        .filter(tx => {
-                          const transfers = Array.from(tx.transfers.values());
+  let transactions = await serviceWallet.instance.wallet
+                        .getTransactions(undefined, undefined, false);
 
-                          // tx must be above scan height and contain at least one negative amount transfer
-                          return tx.blockHeight >= scanHeight && transfers.find(t => t < 0)
-                        });
+  transactions = transactions.filter(tx => {
+    const transfers = Array.from(tx.transfers.values());
+
+    // tx must be above scan height and contain at least one negative amount transfer
+    return tx.blockHeight >= scanHeight && transfers.find(t => t < 0)
+  });
 
   // Retry 'pending' withdrawals that have not been updated in at least 1 min.
   const pendingCutoff = Date.now() - (1 * 60 * 1000);
@@ -379,14 +380,14 @@ async function processLostWithdrawal(withdrawal: Withdrawal, serviceWallet: Serv
     return cancelFailedWithdrawal(withdrawal.appId, withdrawal.id);
   }
 
-  const transactions = serviceWallet.instance.wallet
-                        .getTransactions(undefined, undefined, false)
-                        .filter(tx => {
-                          const transfers = Array.from(tx.transfers.values());
+  let transactions = await serviceWallet.instance.wallet
+                      .getTransactions(undefined, undefined, false);
+  transactions = transactions.filter(tx => {
+    const transfers = Array.from(tx.transfers.values());
 
-                          // transfers must contain at least one negative amount transfer
-                          return transfers.some(t => t < 0)
-                        });
+    // transfers must contain at least one negative amount transfer
+    return transfers.some(t => t < 0)
+  });
 
   // it can be completed if we find it's payment ID in the wallet and it has needed confirmations
   const transaction = transactions.find(tx => tx.paymentID === withdrawal.paymentId);
