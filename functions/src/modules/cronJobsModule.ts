@@ -48,6 +48,9 @@ exports.maintenanceJobs = functions.pubsub.schedule('every 12 hours').onRun(asyn
 });
 
 exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (context) => {
+  await ServiceModule.updateServiceNodes();
+  await ServiceModule.checkNodeSwap();
+
   const latestSave = await WalletManager.getLatestSavedWallet(false);
 
   if (!latestSave) {
@@ -68,9 +71,6 @@ exports.heartbeat = functions.pubsub.schedule('every 1 minutes').onRun(async (co
     console.log(`latest saved wallet sync delta too large [${walletSyncDelta}], skipping heartbeat.`);
     return;
   }
-
-  await ServiceModule.updateServiceNodes();
-  await ServiceModule.checkNodeSwap();
 
   const [serviceWallet, error] = await WalletManager.getServiceWallet();
 

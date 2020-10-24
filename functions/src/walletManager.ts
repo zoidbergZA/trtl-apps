@@ -276,13 +276,21 @@ export async function saveWallet(instance: WalletInstance, isRewind: boolean): P
   return [firebaseSave, undefined];
 }
 
-export async function getLatestSavedWallet(checkpoint: boolean): Promise<SavedWallet | undefined> {
-  const snapshot = await admin.firestore().collection('wallets/master/saves')
-                    .where('checkpoint', '==', checkpoint)
-                    .where('hasFile', '==', true)
-                    .orderBy('timestamp', 'desc')
-                    .limit(1)
-                    .get();
+export async function getLatestSavedWallet(checkpointOnly: boolean): Promise<SavedWallet | undefined> {
+  let snapshot = await admin.firestore().collection('wallets/master/saves')
+                  .where('checkpoint', '==', checkpointOnly)
+                  .where('hasFile', '==', true)
+                  .orderBy('timestamp', 'desc')
+                  .limit(1)
+                  .get();
+
+  if (snapshot.size === 0 && !checkpointOnly) {
+    snapshot = await admin.firestore().collection('wallets/master/saves')
+                .where('hasFile', '==', true)
+                .orderBy('timestamp', 'desc')
+                .limit(1)
+                .get();
+  }
 
   if (snapshot.size === 0) {
     return undefined;
@@ -364,6 +372,9 @@ export async function validateUnclaimedSubWallets(): Promise<void> {
 
 export function getWalletSyncInfo(wallet: WalletBackend): WalletSyncInfo {
   const [walletHeight,, networkHeight] = wallet.getSyncStatus();
+
+  console.log(wallet.getSyncStatus());
+
   const delta = networkHeight - walletHeight;
 
   return {
@@ -691,12 +702,7 @@ async function getWalletInstance(
   serviceConfig: ServiceConfig,
   shared = true): Promise<[WalletInstance | undefined, undefined | ServiceError]> {
 
-  let latestSave = await getLatestSavedWallet(false);
-
-  // try checkpoint
-  if (!latestSave) {
-    latestSave = await getLatestSavedWallet(true);
-  }
+  const latestSave = await getLatestSavedWallet(false);
 
   if (!latestSave) {
     console.log('failed to get latest save!');
